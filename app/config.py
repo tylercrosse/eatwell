@@ -23,6 +23,11 @@ class Settings(BaseSettings):
     app_title: str = "Calorie Tracker"
     app_referer: str = "http://localhost:5173"
 
+    # USDA FoodData Central (grounds text estimates). Empty key -> pure-LLM fallback.
+    usda_api_key: str = ""
+    usda_base_url: str = "https://api.nal.usda.gov/fdc/v1"
+    usda_search_page_size: int = 5
+
     # Storage
     db_path: Path = Path("data/app.db")
     photos_dir: Path = Path("data/photos")

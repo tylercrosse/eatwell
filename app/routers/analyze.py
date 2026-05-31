@@ -23,6 +23,25 @@ class AnalyzeResponse(BaseModel):
     analysis: AnalysisResult
 
 
+class TextAnalyzeRequest(BaseModel):
+    description: str
+
+
+@router.post("/analyze/text", response_model=AnalysisResult)
+async def analyze_text(
+    payload: TextAnalyzeRequest,
+    settings: Settings = Depends(get_settings),
+) -> AnalysisResult:
+    desc = payload.description.strip()
+    if not desc:
+        raise HTTPException(status_code=400, detail="Description is empty.")
+    try:
+        return await openrouter.analyze_food_text(desc, settings)
+    except openrouter.EstimationError as exc:
+        # Upstream model failure or unparseable output -> 502 (we depend on a third party).
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
 @router.post("/analyze", response_model=AnalyzeResponse)
 async def analyze(
     file: UploadFile = File(...),

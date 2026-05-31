@@ -184,6 +184,48 @@ body {
   margin-top: 16px;
 }
 
+.capture-or {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 320px;
+  margin: 4px 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.capture-or::before,
+.capture-or::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.capture-text {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 320px;
+}
+
+.capture-text input {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  color: var(--text);
+  font-size: 1rem;
+  width: 100%;
+}
+
+.capture-text input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 .capture-loading {
   display: flex;
   flex-direction: column;
@@ -288,6 +330,39 @@ body {
 .macro-input input:focus {
   outline: none;
   border-color: var(--accent);
+}
+
+.servings {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.servings__btn {
+  flex: none;
+}
+
+.servings__value {
+  flex: 1;
+  text-align: center;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 11px 12px;
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.servings__value:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.per-serving-hint {
+  margin: -4px 0 0;
+  font-size: 0.76rem;
+  color: var(--muted);
 }
 
 .macros {
