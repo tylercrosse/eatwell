@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# App data (SQLite DB + uploaded photos) — never commit
+/data/
+
+# Secrets
+.env
+web/.env.local
+
+# Node / frontend build
+node_modules/
+web/node_modules/
+web/dist/
+web/dev-dist/
+
+# OS / editor
+.DS_Store
