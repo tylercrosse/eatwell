@@ -37,5 +37,29 @@ class FoodEntry(SQLModel, table=True):
     source: str = "ai"  # "ai" | "manual"
     items_json: str | None = None  # raw per-food breakdown from the model
 
+    # "breakfast"|"lunch"|"dinner"|"snacks"; None (legacy rows) is read as "snacks".
+    # Nullable with no DB CHECK so the additive migration works; validation is in Pydantic.
+    meal: str | None = Field(default=None)
+
     created_at: datetime = Field(default_factory=_utcnow)
+    updated_at: datetime = Field(default_factory=_utcnow)
+
+
+class Targets(SQLModel, table=True):
+    """Daily nutrition targets. Single row in v1 (mirrors FoodEntry's user_id-NULL pattern).
+
+    Stores a calorie target plus a protein/carbs/fat percent-of-calories split; gram targets
+    are derived client-side via Atwater factors (4/4/9), so they aren't persisted here.
+    """
+
+    __tablename__ = "targets"
+
+    id: int | None = Field(default=None, primary_key=True)
+    user_id: int | None = Field(default=None, index=True)
+
+    calorie_target: float = 2000.0
+    protein_pct: float = 30.0  # % of calories from protein
+    carbs_pct: float = 40.0
+    fat_pct: float = 30.0
+
     updated_at: datetime = Field(default_factory=_utcnow)

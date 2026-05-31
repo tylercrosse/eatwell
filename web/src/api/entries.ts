@@ -13,6 +13,10 @@ export function postEntry(entry: EntryCreate): Promise<Entry> {
   return apiJson<Entry>('/entries', { method: 'POST', body: JSON.stringify(entry) })
 }
 
+export function patchEntry(id: number, patch: Partial<EntryCreate>): Promise<Entry> {
+  return apiJson<Entry>(`/entries/${id}`, { method: 'PATCH', body: JSON.stringify(patch) })
+}
+
 export function deleteEntry(id: number): Promise<void> {
   return apiJson<void>(`/entries/${id}`, { method: 'DELETE' })
 }

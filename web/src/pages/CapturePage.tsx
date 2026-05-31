@@ -6,6 +6,7 @@ import { composeServingSize } from '../lib/serving'
 import { postEstimate, postEstimateText } from '../api/estimate'
 import { postEntry } from '../api/entries'
 import { localDateTime, localDayKey } from '../lib/date'
+import { mealFromTime } from '../lib/meals'
 import { ApiError } from '../api/client'
 import type { AnalysisResult } from '../types'
 
@@ -25,6 +26,7 @@ function draftFromAnalysis(a: AnalysisResult): Draft {
     fat_g: a.total_fat_g,
     serving_size: a.serving_size_estimate,
     servings: 1,
+    meal: mealFromTime(), // default from the current time; user can override in the card
   }
 }
 
@@ -141,6 +143,7 @@ export function CapturePage({ onLogged }: Props) {
       photo_ref: photoRef,
       items_json: analysis ? JSON.stringify(analysis.items) : null,
       source: 'ai',
+      meal: draft.meal,
       logged_at: localDateTime(),
     })
   }

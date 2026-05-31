@@ -7,8 +7,12 @@ output; ``AnalysisResult`` mirrors it and validates whatever the model returns.
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+
+# Canonical meal buckets, in display order: breakfast, lunch, dinner, snacks.
+Meal = Literal["breakfast", "lunch", "dinner", "snacks"]
 
 # --- AI estimation ---------------------------------------------------------
 
@@ -89,6 +93,7 @@ class EntryCreate(BaseModel):
     photo_ref: str | None = None
     source: str = "manual"
     items_json: str | None = None
+    meal: Meal | None = None
     logged_at: datetime | None = None  # defaults to server now if omitted
 
 
@@ -99,6 +104,7 @@ class EntryUpdate(BaseModel):
     carbs_g: float | None = None
     fat_g: float | None = None
     serving_size: str | None = None
+    meal: Meal | None = None
     logged_at: datetime | None = None
 
 
@@ -114,6 +120,7 @@ class EntryRead(BaseModel):
     confidence: float | None
     photo_ref: str | None
     source: str
+    meal: str | None  # str (not Meal) so an odd stored value never fails response validation
     created_at: datetime
     updated_at: datetime
 
@@ -125,3 +132,27 @@ class DaySummary(BaseModel):
     total_protein_g: float
     total_carbs_g: float
     total_fat_g: float
+
+
+# --- Targets ---------------------------------------------------------------
+
+
+class TargetsRead(BaseModel):
+    calorie_target: float
+    protein_pct: float
+    carbs_pct: float
+    fat_pct: float
+
+
+class TargetsUpdate(BaseModel):
+    calorie_target: float = Field(ge=0)
+    protein_pct: float = Field(ge=0, le=100)
+    carbs_pct: float = Field(ge=0, le=100)
+    fat_pct: float = Field(ge=0, le=100)
+
+    @model_validator(mode="after")
+    def _split_sums_to_100(self) -> TargetsUpdate:
+        total = self.protein_pct + self.carbs_pct + self.fat_pct
+        if not (99.0 <= total <= 101.0):  # allow a little rounding slack
+            raise ValueError("protein_pct + carbs_pct + fat_pct must sum to 100")
+        return self

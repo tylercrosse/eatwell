@@ -10,14 +10,12 @@ RUN npm run build
 FROM python:3.12-slim
 WORKDIR /app
 
-# Install deps from pyproject (no dev extras).
+# Install runtime deps + the app package straight from pyproject, so the image always
+# matches the declared dependencies (no hardcoded list to keep in sync).
 COPY pyproject.toml ./
-RUN pip install --no-cache-dir \
-    "fastapi>=0.115" "uvicorn[standard]>=0.30" "python-multipart>=0.0.9" \
-    "openai>=1.40" "sqlmodel>=0.0.22" "pydantic-settings>=2.4" \
-    "pillow>=10.4" "pillow-heif>=0.18"
-
 COPY app/ ./app/
+RUN pip install --no-cache-dir .
+
 COPY --from=web /web/dist ./web/dist
 
 # Single-service mode: serve the built PWA from FastAPI.

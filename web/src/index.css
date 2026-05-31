@@ -8,6 +8,9 @@
   --accent: #34d399;
   --accent-strong: #10b981;
   --danger: #f87171;
+  --macro-protein: #60a5fa;
+  --macro-carbs: #fbbf24;
+  --macro-fat: #f472b6;
   --radius: 16px;
 
   color-scheme: dark;
@@ -316,6 +319,7 @@ body {
 }
 
 .field input,
+.field select,
 .macro-input input {
   background: var(--surface-2);
   border: 1px solid var(--border);
@@ -327,6 +331,7 @@ body {
 }
 
 .field input:focus,
+.field select:focus,
 .macro-input input:focus {
   outline: none;
   border-color: var(--accent);
@@ -406,51 +411,179 @@ body {
   flex: 1;
 }
 
-/* ---- Daily totals ---- */
-.totals {
+/* ---- Energy summary ---- */
+.energy-summary {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  align-items: center;
+  gap: 20px;
 }
 
-.totals__calories {
+.energy-summary__rings {
   display: flex;
-  align-items: baseline;
-  gap: 6px;
+  justify-content: center;
+  gap: 32px;
 }
 
-.totals__cal-value {
-  font-size: 2.6rem;
+.energy-ring {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.energy-ring__chart {
+  position: relative;
+  width: 120px;
+  height: 120px;
+}
+
+.energy-ring__center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.1;
+}
+
+.energy-ring__value {
+  font-size: 1.6rem;
   font-weight: 800;
-  letter-spacing: -0.03em;
-  color: var(--accent);
+  letter-spacing: -0.02em;
 }
 
-.totals__cal-unit {
+.energy-ring__unit {
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+.energy-ring__sub {
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.energy-ring__label {
+  font-size: 0.78rem;
   color: var(--muted);
   font-weight: 600;
 }
 
-.totals__macros {
-  display: flex;
-  gap: 24px;
-}
-
-.totals__macro {
+.energy-summary__bars {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  gap: 12px;
 }
 
-.totals__macro-value {
-  font-size: 1.1rem;
+.macro-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.macro-bar__head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+}
+
+.macro-bar__label {
+  font-weight: 600;
+}
+
+.macro-bar__nums {
+  color: var(--muted);
+}
+
+.macro-bar__track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.macro-bar__fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.macro-bar__fill.is-over {
+  background: var(--danger);
+}
+
+/* ---- Meal sections ---- */
+.meal-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.meal-section__header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 2px;
+}
+
+.meal-section__title {
+  font-size: 1rem;
   font-weight: 700;
 }
 
-.totals__macro-label {
-  font-size: 0.72rem;
+.meal-section__totals {
+  font-size: 0.74rem;
   color: var(--muted);
+}
+
+.entry__meal-select {
+  margin-top: 4px;
+  align-self: flex-start;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  padding: 3px 6px;
+}
+
+.entry__meal-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* ---- Goals ---- */
+.goals {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.goals__heading {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.goals__split {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.goals__total {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.goals__total--bad {
+  color: var(--danger);
+}
+
+.goals__grams {
+  font-size: 0.8rem;
 }
 
 /* ---- Day nav ---- */
@@ -520,6 +653,7 @@ body {
   color: var(--muted);
 }
 
+.entry__action,
 .entry__delete {
   background: none;
   border: none;
@@ -529,8 +663,23 @@ body {
   padding: 6px;
 }
 
+.entry__action:active {
+  color: var(--accent);
+}
+
 .entry__delete:active {
   color: var(--danger);
+}
+
+/* Editing: the row becomes a full-width form (reuses .field / .macros styles). */
+.entry--editing {
+  display: block;
+}
+
+.entry-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .empty {

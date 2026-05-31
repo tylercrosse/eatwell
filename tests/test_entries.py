@@ -67,3 +67,30 @@ def test_delete_then_404(client):
     assert client.delete(f"/api/entries/{created['id']}").status_code == 204
     assert client.get(f"/api/entries/{created['id']}").status_code == 404
     assert client.delete(f"/api/entries/{created['id']}").status_code == 404
+
+
+def test_create_with_meal_round_trips(client):
+    # Catches a missing `meal` in EntryRead: it would be stored but never returned.
+    created = _make(client, meal="lunch")
+    assert created["meal"] == "lunch"
+    assert client.get(f"/api/entries/{created['id']}").json()["meal"] == "lunch"
+
+
+def test_create_without_meal_is_null(client):
+    assert _make(client)["meal"] is None
+
+
+def test_patch_meal_only(client):
+    created = _make(client)
+    r = client.patch(f"/api/entries/{created['id']}", json={"meal": "dinner"})
+    assert r.status_code == 200
+    assert r.json()["meal"] == "dinner"
+    assert r.json()["food_name"] == "Eggs"  # untouched
+
+
+def test_create_rejects_unknown_meal(client):
+    r = client.post(
+        "/api/entries",
+        json={"food_name": "Brunch thing", "meal": "brunch"},
+    )
+    assert r.status_code == 422

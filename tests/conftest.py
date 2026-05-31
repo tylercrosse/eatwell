@@ -23,16 +23,17 @@ from PIL import Image  # noqa: E402
 
 from app.db import engine, init_db  # noqa: E402
 from app.main import app  # noqa: E402
-from app.models import FoodEntry  # noqa: E402
+from app.models import FoodEntry, Targets  # noqa: E402
 from sqlmodel import Session, delete  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
 def clean_db():
-    """Give each test an empty table so created rows don't leak between tests."""
+    """Give each test empty tables so created rows don't leak between tests."""
     init_db()
     with Session(engine) as s:
         s.exec(delete(FoodEntry))
+        s.exec(delete(Targets))  # single targets row would otherwise leak across tests
         s.commit()
     yield
 

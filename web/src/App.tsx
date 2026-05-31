@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { CapturePage } from './pages/CapturePage'
 import { LogPage } from './pages/LogPage'
+import { GoalsPage } from './pages/GoalsPage'
 
-type Tab = 'capture' | 'log'
+type Tab = 'capture' | 'log' | 'goals'
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('capture')
@@ -14,7 +15,9 @@ export default function App() {
       </header>
 
       <main className="app__main">
-        {tab === 'capture' ? <CapturePage onLogged={() => setTab('log')} /> : <LogPage />}
+        {tab === 'capture' && <CapturePage onLogged={() => setTab('log')} />}
+        {tab === 'log' && <LogPage />}
+        {tab === 'goals' && <GoalsPage />}
       </main>
 
       <nav className="tabbar">
@@ -31,6 +34,13 @@ export default function App() {
         >
           <span className="tabbar__icon">📋</span>
           Log
+        </button>
+        <button
+          className={`tabbar__btn ${tab === 'goals' ? 'is-active' : ''}`}
+          onClick={() => setTab('goals')}
+        >
+          <span className="tabbar__icon">🎯</span>
+          Goals
         </button>
       </nav>
     </div>

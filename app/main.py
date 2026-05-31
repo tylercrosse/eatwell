@@ -15,7 +15,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
 from app.db import init_db
-from app.routers import analyze, entries
+from app.routers import analyze, entries, targets
 
 settings = get_settings()
 
@@ -37,6 +37,7 @@ app.add_middleware(
 
 app.include_router(analyze.router, prefix="/api")
 app.include_router(entries.router, prefix="/api")
+app.include_router(targets.router, prefix="/api")
 
 
 @app.get("/api/health")

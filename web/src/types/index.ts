@@ -23,6 +23,8 @@ export interface AnalyzeResponse {
   analysis: AnalysisResult
 }
 
+export type Meal = 'breakfast' | 'lunch' | 'dinner' | 'snacks'
+
 export interface Entry {
   id: number
   logged_at: string
@@ -35,6 +37,7 @@ export interface Entry {
   confidence: number | null
   photo_ref: string | null
   source: string
+  meal: string | null
   created_at: string
   updated_at: string
 }
@@ -50,6 +53,7 @@ export interface EntryCreate {
   photo_ref?: string | null
   source?: string
   items_json?: string | null
+  meal?: Meal
   logged_at?: string
 }
 
@@ -60,4 +64,13 @@ export interface DaySummary {
   total_protein_g: number
   total_carbs_g: number
   total_fat_g: number
+}
+
+// Daily targets: a calorie goal + a protein/carbs/fat percent-of-calories split.
+// Gram targets are derived client-side (see lib/targets.ts).
+export interface Targets {
+  calorie_target: number
+  protein_pct: number
+  carbs_pct: number
+  fat_pct: number
 }

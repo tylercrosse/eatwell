@@ -1,5 +1,7 @@
 import { MacroInput } from './MacroInput'
 import { round } from '../lib/totals'
+import { MEAL_LABELS, MEAL_ORDER } from '../lib/meals'
+import type { Meal } from '../types'
 
 export interface Draft {
   food_name: string
@@ -11,6 +13,7 @@ export interface Draft {
   fat_g: number
   serving_size: string // free-text label describing a single serving
   servings: number // quantity multiplier applied to the baseline macros
+  meal: Meal // which meal this entry belongs to
 }
 
 const SERVINGS_STEP = 0.5
@@ -75,6 +78,17 @@ export function EstimateCard({
           placeholder="e.g. 1 bowl (~300g)"
           onChange={(e) => onChange({ serving_size: e.target.value })}
         />
+      </label>
+
+      <label className="field">
+        <span className="field__label">Meal</span>
+        <select value={draft.meal} onChange={(e) => onChange({ meal: e.target.value as Meal })}>
+          {MEAL_ORDER.map((m) => (
+            <option key={m} value={m}>
+              {MEAL_LABELS[m]}
+            </option>
+          ))}
+        </select>
       </label>
 
       <div className="field">
