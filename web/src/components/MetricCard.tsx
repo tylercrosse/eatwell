@@ -3,10 +3,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { MetricEditor } from './MetricEditor'
 import { deleteMetric } from '../api/metrics'
 import { kgToDisplay, useWeightUnit } from '../lib/units'
-import { round } from '../lib/totals'
+import { round, round1 } from '../lib/totals'
 import type { BodyMetric } from '../types'
-
-const round1 = (n: number) => Math.round(n * 10) / 10
 
 interface Props {
   day: string // the day key being viewed; the metric is upserted for this date

@@ -48,3 +48,16 @@ def user_query(model: type[_Model], user: User) -> SelectOfScalar[_Model]:
     Every per-user query goes through here, so the user_id filter is defined once.
     """
     return select(model).where(model.user_id == user.id)
+
+
+def get_owned(
+    session: Session, model: type[_Model], obj_id: int, user: User, *, what: str = "Item"
+) -> _Model:
+    """Fetch a row by id, raising 404 if it's missing OR owned by another user.
+
+    The single ownership-check primitive used by the id-addressed CRUD routes.
+    """
+    obj = session.get(model, obj_id)
+    if obj is None or obj.user_id != user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"{what} not found.")
+    return obj

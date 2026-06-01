@@ -7,7 +7,7 @@ import { getTargets, putTargets } from '../api/targets'
 import { getLatestMetric, getMetrics } from '../api/metrics'
 import { getEntriesRange } from '../api/entries'
 import { DEFAULT_TARGETS, macroGramTargets } from '../lib/targets'
-import { round } from '../lib/totals'
+import { round, round1 } from '../lib/totals'
 import { cmToFtIn, displayToKg, ftInToCm, kgToDisplay, useWeightUnit } from '../lib/units'
 import { formatFullDay, lastNDays, localDayKey, shiftDay } from '../lib/date'
 import { adaptiveTdee, staticTdee, targetForRate } from '../lib/tdee'
@@ -29,7 +29,7 @@ export function GoalsPage() {
 
 /** Round a display-unit value to 1 decimal, or null. Keeps kg↔lb switches from showing noise. */
 function show(value: number | null | undefined): number | null {
-  return value == null ? null : Math.round(value * 10) / 10
+  return value == null ? null : round1(value)
 }
 
 function GoalsForm({ initial }: { initial: Targets }) {

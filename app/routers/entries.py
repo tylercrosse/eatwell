@@ -9,10 +9,10 @@ from __future__ import annotations
 from datetime import date as date_cls
 from datetime import datetime, time, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session
 
-from app.deps import get_current_user, get_session, user_query
+from app.deps import get_current_user, get_owned, get_session, user_query
 from app.models import FoodEntry, User
 from app.schemas import DaySummary, EntryCreate, EntryRead, EntryUpdate
 
@@ -24,14 +24,6 @@ def _day_bounds(day: date_cls) -> tuple[datetime, datetime]:
     start = datetime.combine(day, time.min)
     end = datetime.combine(day, time.max)
     return start, end
-
-
-def _get_owned(entry_id: int, user: User, session: Session) -> FoodEntry:
-    """Fetch an entry by id, 404ing if it's missing OR owned by someone else."""
-    entry = session.get(FoodEntry, entry_id)
-    if entry is None or entry.user_id != user.id:
-        raise HTTPException(status_code=404, detail="Entry not found.")
-    return entry
 
 
 @router.post("/entries", response_model=EntryRead, status_code=201)
@@ -124,7 +116,7 @@ def get_entry(
     session: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ) -> FoodEntry:
-    return _get_owned(entry_id, user, session)
+    return get_owned(session, FoodEntry, entry_id, user, what="Entry")
 
 
 @router.patch("/entries/{entry_id}", response_model=EntryRead)
@@ -134,7 +126,7 @@ def update_entry(
     session: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ) -> FoodEntry:
-    entry = _get_owned(entry_id, user, session)
+    entry = get_owned(session, FoodEntry, entry_id, user, what="Entry")
     updates = payload.model_dump(exclude_unset=True)
     for field, value in updates.items():
         setattr(entry, field, value)
@@ -151,6 +143,6 @@ def delete_entry(
     session: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ) -> None:
-    entry = _get_owned(entry_id, user, session)
+    entry = get_owned(session, FoodEntry, entry_id, user, what="Entry")
     session.delete(entry)
     session.commit()

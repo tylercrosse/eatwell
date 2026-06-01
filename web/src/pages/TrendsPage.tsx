@@ -19,8 +19,9 @@ import { getMetrics } from '../api/metrics'
 import { getTargets } from '../api/targets'
 import { ATWATER } from '../lib/targets'
 import { ema, movingAverage } from '../lib/stats'
-import { formatShortDay, lastNDays } from '../lib/date'
+import { daysBetween, formatShortDay, lastNDays } from '../lib/date'
 import { kgToDisplay, useWeightUnit } from '../lib/units'
+import { round1 } from '../lib/totals'
 
 const RANGES = [7, 30, 90] as const
 const MA_WINDOW = 7
@@ -31,6 +32,7 @@ const COLORS = {
   carbs: '#fbbf24',
   fat: '#f472b6',
   accent: '#34d399',
+  goal: '#a78bfa',
   muted: '#94a3b8',
   grid: '#334155',
 }
@@ -40,8 +42,6 @@ const TOOLTIP = {
   itemStyle: { color: '#e2e8f0' },
 }
 const AXIS_TICK = { fill: COLORS.muted, fontSize: 11 }
-
-const round1 = (n: number) => Math.round(n * 10) / 10
 
 /** Recharts v3's click state carries the active index (not a payload); map it to a day key. */
 function activeDayKey(state: unknown, data: ReadonlyArray<{ dayKey: string }>): string | undefined {
@@ -87,20 +87,57 @@ export function TrendsPage({ goToDay }: Props) {
     })
   }, [entriesQuery.data, axis])
 
-  // Weight + body-fat over logged days; EMA-smoothed weight trend (scale weight is noisy).
+  // Weight + body-fat on the same daily axis as the calories chart. Actuals + EMA trend,
+  // plus a dashed goal-pace projection drawn forward from the LAST logged weight at the goal
+  // rate (clamped at the goal); body fat glides to its goal over the weight-goal timeline.
   const weightData = useMemo(() => {
-    const rows = metricsQuery.data ?? []
-    const withWeight = rows.filter((r) => r.weight_kg != null)
-    const emaSeries = ema(withWeight.map((r) => r.weight_kg as number), WEIGHT_EMA_ALPHA)
-    const emaByDate = new Map(withWeight.map((r, i) => [r.date, emaSeries[i]]))
-    return rows.map((r) => ({
-      dayKey: r.date,
-      date: formatShortDay(r.date),
-      weight: r.weight_kg == null ? null : round1(kgToDisplay(r.weight_kg, unit)),
-      trend: emaByDate.has(r.date) ? round1(kgToDisplay(emaByDate.get(r.date) as number, unit)) : null,
-      bodyFat: r.body_fat_pct,
-    }))
-  }, [metricsQuery.data, unit])
+    const metrics = metricsQuery.data ?? []
+    const byDate = new Map(metrics.map((m) => [m.date, m]))
+    const logged = metrics.filter((m) => m.weight_kg != null)
+    const emaVals = ema(logged.map((m) => m.weight_kg as number), WEIGHT_EMA_ALPHA)
+    const emaByDate = new Map(logged.map((m, i) => [m.date, emaVals[i]]))
+
+    const t = targetsQuery.data
+    const last = logged.length ? logged[logged.length - 1] : null
+    const currentKg = last?.weight_kg ?? null
+    const anchorWeightDate = last?.date ?? null
+    const goalKg = t?.goal_weight_kg ?? null
+    const magKg = Math.abs(t?.weekly_rate_kg ?? 0)
+    const dir = goalKg != null && currentKg != null && magKg > 0 ? Math.sign(goalKg - currentKg) : 0
+    const dailyKg = (dir * magKg) / 7
+
+    const lastBf = [...metrics].reverse().find((m) => m.body_fat_pct != null) ?? null
+    const currentBf = lastBf?.body_fat_pct ?? null
+    const anchorBfDate = lastBf?.date ?? null
+    const goalBf = t?.goal_body_fat_pct ?? null
+    const daysToGoal = dir !== 0 ? (Math.abs((goalKg as number) - (currentKg as number)) / magKg) * 7 : 0
+    const bfDaily =
+      dir !== 0 && goalBf != null && currentBf != null && daysToGoal > 0 ? (goalBf - currentBf) / daysToGoal : null
+
+    const rows = axis.map((dk) => {
+      const m = byDate.get(dk)
+      let projWeight: number | null = null
+      if (dir !== 0 && currentKg != null && goalKg != null && anchorWeightDate != null && dk >= anchorWeightDate) {
+        const raw = currentKg + dailyKg * daysBetween(anchorWeightDate, dk)
+        projWeight = round1(kgToDisplay(dir < 0 ? Math.max(goalKg, raw) : Math.min(goalKg, raw), unit))
+      }
+      let projBodyFat: number | null = null
+      if (bfDaily != null && currentBf != null && goalBf != null && anchorBfDate != null && dk >= anchorBfDate) {
+        const raw = currentBf + bfDaily * daysBetween(anchorBfDate, dk)
+        projBodyFat = round1(bfDaily < 0 ? Math.max(goalBf, raw) : Math.min(goalBf, raw))
+      }
+      return {
+        dayKey: dk,
+        date: formatShortDay(dk),
+        weight: m?.weight_kg == null ? null : round1(kgToDisplay(m.weight_kg, unit)),
+        trend: emaByDate.has(dk) ? round1(kgToDisplay(emaByDate.get(dk) as number, unit)) : null,
+        bodyFat: m?.body_fat_pct ?? null,
+        projWeight,
+        projBodyFat,
+      }
+    })
+    return { rows, hasProjection: dir !== 0 }
+  }, [metricsQuery.data, targetsQuery.data, unit, axis])
 
   const hasEntries = (entriesQuery.data?.length ?? 0) > 0
   const hasWeight = (metricsQuery.data ?? []).some((r) => r.weight_kg != null)
@@ -132,7 +169,7 @@ export function TrendsPage({ goToDay }: Props) {
           <ResponsiveContainer width="100%" height={220}>
             <ComposedChart
               data={calData}
-              margin={{ top: 8, right: 8, bottom: 0, left: -12 }}
+              margin={{ top: 8, right: 40, bottom: 0, left: 0 }}
               onClick={(state) => {
                 const dk = activeDayKey(state, calData)
                 if (dk) goToDay(dk)
@@ -140,7 +177,7 @@ export function TrendsPage({ goToDay }: Props) {
             >
               <CartesianGrid stroke={COLORS.grid} strokeOpacity={0.4} vertical={false} />
               <XAxis dataKey="date" tick={AXIS_TICK} tickLine={false} axisLine={{ stroke: COLORS.grid }} minTickGap={24} />
-              <YAxis tick={AXIS_TICK} tickLine={false} axisLine={false} width={44} />
+              <YAxis tick={AXIS_TICK} tickLine={false} axisLine={false} width={52} />
               <Tooltip {...TOOLTIP} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
               <Bar dataKey="Protein" stackId="m" fill={COLORS.protein} />
@@ -167,22 +204,28 @@ export function TrendsPage({ goToDay }: Props) {
         {hasWeight ? (
           <ResponsiveContainer width="100%" height={220}>
             <LineChart
-              data={weightData}
-              margin={{ top: 8, right: 8, bottom: 0, left: -12 }}
+              data={weightData.rows}
+              margin={{ top: 8, right: 8, bottom: 0, left: 0 }}
               onClick={(state) => {
-                const dk = activeDayKey(state, weightData)
+                const dk = activeDayKey(state, weightData.rows)
                 if (dk) goToDay(dk)
               }}
             >
               <CartesianGrid stroke={COLORS.grid} strokeOpacity={0.4} vertical={false} />
               <XAxis dataKey="date" tick={AXIS_TICK} tickLine={false} axisLine={{ stroke: COLORS.grid }} minTickGap={24} />
-              <YAxis yAxisId="w" tick={AXIS_TICK} tickLine={false} axisLine={false} width={44} domain={['auto', 'auto']} />
+              <YAxis yAxisId="w" tick={AXIS_TICK} tickLine={false} axisLine={false} width={52} domain={['auto', 'auto']} tickFormatter={(v) => `${Math.round(Number(v) * 10) / 10}`} />
               <YAxis yAxisId="bf" orientation="right" tick={AXIS_TICK} tickLine={false} axisLine={false} width={32} domain={['auto', 'auto']} />
               <Tooltip {...TOOLTIP} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
               <Line yAxisId="w" dataKey="weight" name={`Weight (${unit})`} stroke={COLORS.muted} strokeWidth={1} dot={{ r: 2 }} connectNulls />
               <Line yAxisId="w" dataKey="trend" name="Trend" stroke={COLORS.accent} strokeWidth={2.5} dot={false} connectNulls />
+              {weightData.hasProjection && (
+                <Line yAxisId="w" dataKey="projWeight" name="Goal pace" stroke={COLORS.goal} strokeWidth={2} strokeDasharray="5 4" dot={false} connectNulls />
+              )}
               <Line yAxisId="bf" dataKey="bodyFat" name="Body fat %" stroke={COLORS.fat} strokeWidth={1.5} dot={{ r: 2 }} connectNulls />
+              {weightData.hasProjection && (
+                <Line yAxisId="bf" dataKey="projBodyFat" name="BF goal" stroke={COLORS.fat} strokeWidth={1.5} strokeDasharray="5 4" dot={false} connectNulls />
+              )}
             </LineChart>
           </ResponsiveContainer>
         ) : (

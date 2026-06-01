@@ -6,6 +6,7 @@ import { composeServingSize, parseServingSize } from '../lib/serving'
 import { round } from '../lib/totals'
 import { MacroInput } from './MacroInput'
 import { DensityBadge } from './DensityBadge'
+import { ServingsStepper } from './ServingsStepper'
 
 /** "Fiber 5g · Sugar 12g · Sodium 400mg" for whichever detail fields are present. */
 function extrasText(e: Entry): string {
@@ -15,9 +16,6 @@ function extrasText(e: Entry): string {
   if (e.sodium_mg != null) parts.push(`Sodium ${round(e.sodium_mg)}mg`)
   return parts.join(' · ')
 }
-
-const SERVINGS_STEP = 0.5
-const SERVINGS_MIN = 0.25
 
 interface Props {
   entry: Entry
@@ -73,11 +71,6 @@ export function EntryRow({ entry, saving, onSave, onDelete }: Props) {
   function startEdit() {
     setForm(formFromEntry(entry)) // re-seed in case the entry changed since last open
     setEditing(true)
-  }
-
-  function setServings(next: number) {
-    const clamped = Math.max(SERVINGS_MIN, Number.isFinite(next) ? next : SERVINGS_MIN)
-    setForm({ ...form, servings: Math.round(clamped * 100) / 100 })
   }
 
   function save() {
@@ -148,37 +141,7 @@ export function EntryRow({ entry, saving, onSave, onDelete }: Props) {
             />
           </label>
 
-          <div className="field">
-            <span className="field__label">Servings</span>
-            <div className="servings">
-              <button
-                type="button"
-                className="btn btn--icon servings__btn"
-                onClick={() => setServings(form.servings - SERVINGS_STEP)}
-                disabled={form.servings <= SERVINGS_MIN}
-                aria-label="Decrease servings"
-              >
-                −
-              </button>
-              <input
-                className="servings__value"
-                type="number"
-                inputMode="decimal"
-                min={SERVINGS_MIN}
-                step={SERVINGS_STEP}
-                value={form.servings}
-                onChange={(e) => setServings(e.target.value === '' ? SERVINGS_MIN : Number(e.target.value))}
-              />
-              <button
-                type="button"
-                className="btn btn--icon servings__btn"
-                onClick={() => setServings(form.servings + SERVINGS_STEP)}
-                aria-label="Increase servings"
-              >
-                +
-              </button>
-            </div>
-          </div>
+          <ServingsStepper value={form.servings} onChange={(v) => setForm({ ...form, servings: v })} />
 
           <div className="macros">
             <MacroInput label="Calories" unit="kcal" value={form.calories * f} onChange={(v) => setForm({ ...form, calories: v / f })} />

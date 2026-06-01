@@ -9,21 +9,14 @@ from __future__ import annotations
 from datetime import date as date_cls
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session
 
-from app.deps import get_current_user, get_session, user_query
+from app.deps import get_current_user, get_owned, get_session, user_query
 from app.models import ExerciseEntry, User
 from app.schemas import ExerciseCreate, ExerciseRead, ExerciseUpdate
 
 router = APIRouter(tags=["exercise"])
-
-
-def _get_owned(exercise_id: int, user: User, session: Session) -> ExerciseEntry:
-    row = session.get(ExerciseEntry, exercise_id)
-    if row is None or row.user_id != user.id:
-        raise HTTPException(status_code=404, detail="Exercise not found.")
-    return row
 
 
 @router.post("/exercise", response_model=ExerciseRead, status_code=201)
@@ -59,7 +52,7 @@ def update_exercise(
     session: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ) -> ExerciseEntry:
-    row = _get_owned(exercise_id, user, session)
+    row = get_owned(session, ExerciseEntry, exercise_id, user, what="Exercise")
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(row, field, value)
     row.updated_at = datetime.now(timezone.utc)
@@ -75,6 +68,6 @@ def delete_exercise(
     session: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ) -> None:
-    row = _get_owned(exercise_id, user, session)
+    row = get_owned(session, ExerciseEntry, exercise_id, user, what="Exercise")
     session.delete(row)
     session.commit()

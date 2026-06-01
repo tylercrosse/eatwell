@@ -1,5 +1,6 @@
 import { MacroInput } from './MacroInput'
 import { DensityBadge } from './DensityBadge'
+import { ServingsStepper } from './ServingsStepper'
 import { round } from '../lib/totals'
 import { MEAL_LABELS, MEAL_ORDER } from '../lib/meals'
 import { dayKeyOf, localDayKey, withDayKey } from '../lib/date'
@@ -22,9 +23,6 @@ export interface Draft {
   meal: Meal // which meal this entry belongs to
   logged_at: string // local datetime; the date is editable (to backfill a past day)
 }
-
-const SERVINGS_STEP = 0.5
-const SERVINGS_MIN = 0.25
 
 interface Props {
   draft: Draft
@@ -54,13 +52,8 @@ export function EstimateCard({
 }: Props) {
   const conf = confidence != null ? confidenceLabel(confidence) : null
 
-  // Always positive (min-clamped below), so safe to divide by when editing macros.
+  // Always positive (ServingsStepper clamps to the minimum), so safe to divide by.
   const f = draft.servings
-
-  function setServings(next: number) {
-    const clamped = Math.max(SERVINGS_MIN, Number.isFinite(next) ? next : SERVINGS_MIN)
-    onChange({ servings: Math.round(clamped * 100) / 100 })
-  }
 
   return (
     <div className="card estimate">
@@ -111,37 +104,7 @@ export function EstimateCard({
         />
       </label>
 
-      <div className="field">
-        <span className="field__label">Servings</span>
-        <div className="servings">
-          <button
-            type="button"
-            className="btn btn--icon servings__btn"
-            onClick={() => setServings(draft.servings - SERVINGS_STEP)}
-            disabled={draft.servings <= SERVINGS_MIN}
-            aria-label="Decrease servings"
-          >
-            −
-          </button>
-          <input
-            className="servings__value"
-            type="number"
-            inputMode="decimal"
-            min={SERVINGS_MIN}
-            step={SERVINGS_STEP}
-            value={draft.servings}
-            onChange={(e) => setServings(e.target.value === '' ? SERVINGS_MIN : Number(e.target.value))}
-          />
-          <button
-            type="button"
-            className="btn btn--icon servings__btn"
-            onClick={() => setServings(draft.servings + SERVINGS_STEP)}
-            aria-label="Increase servings"
-          >
-            +
-          </button>
-        </div>
-      </div>
+      <ServingsStepper value={draft.servings} onChange={(v) => onChange({ servings: v })} />
 
       <div className="macros">
         <MacroInput label="Calories" unit="kcal" value={draft.calories * f} onChange={(v) => onChange({ calories: v / f })} />

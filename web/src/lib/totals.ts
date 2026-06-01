@@ -23,3 +23,8 @@ export function sumTotals(entries: Entry[]): MacroTotals {
 export function round(n: number): number {
   return Math.round(n)
 }
+
+/** Round to 1 decimal place (e.g. weights/body-fat display). */
+export function round1(n: number): number {
+  return Math.round(n * 10) / 10
+}

@@ -1,3 +1,13 @@
+// Servings stepper bounds, shared by the estimate card and the entry editor.
+export const SERVINGS_STEP = 0.5
+export const SERVINGS_MIN = 0.25
+
+/** Clamp a servings value to the minimum, guard NaN, and round to 2 decimals. */
+export function clampServings(n: number): number {
+  const clamped = Math.max(SERVINGS_MIN, Number.isFinite(n) ? n : SERVINGS_MIN)
+  return Math.round(clamped * 100) / 100
+}
+
 /** Trim trailing zeros so 1.50 → "1.5" and 2 → "2". */
 export function formatServings(n: number): string {
   return Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100)
