@@ -46,10 +46,63 @@ export function lastNDays(n: number, endKey: string = localDayKey()): string[] {
   return days
 }
 
+/** Whole days from `a` to `b` (b − a); negative if b precedes a. */
+export function daysBetween(a: string, b: string): number {
+  const [ay, am, ad] = a.split('-').map(Number)
+  const [by, bm, bd] = b.split('-').map(Number)
+  return Math.round((new Date(by, bm - 1, bd).getTime() - new Date(ay, am - 1, ad).getTime()) / 86400000)
+}
+
 /** Short axis label for a day key, e.g. "May 31". */
 export function formatShortDay(dayKey: string): string {
   const [y, m, d] = dayKey.split('-').map(Number)
   return new Date(y, m - 1, d).toLocaleDateString([], { month: 'short', day: 'numeric' })
+}
+
+// ---- Month helpers (calendar day-picker) ----
+
+/** The "YYYY-MM" month a day key belongs to (handy for same-month comparisons). */
+export function monthOf(dayKey: string): string {
+  return dayKey.slice(0, 7)
+}
+
+/** First day of the month N months from the given day key (e.g. for prev/next month). */
+export function addMonths(dayKey: string, n: number): string {
+  const [y, m] = dayKey.split('-').map(Number)
+  return localDayKey(new Date(y, m - 1 + n, 1))
+}
+
+/** First and last day keys of the month containing `dayKey`. */
+export function monthBounds(dayKey: string): { start: string; end: string } {
+  const [y, m] = dayKey.split('-').map(Number)
+  return { start: localDayKey(new Date(y, m - 1, 1)), end: localDayKey(new Date(y, m, 0)) }
+}
+
+/** 6×7 grid of day keys for the calendar month containing `dayKey` (Sun-first, padded). */
+export function monthMatrix(dayKey: string): string[][] {
+  const [y, m] = dayKey.split('-').map(Number)
+  const startDow = new Date(y, m - 1, 1).getDay() // 0 = Sunday
+  const weeks: string[][] = []
+  for (let w = 0; w < 6; w++) {
+    const row: string[] = []
+    for (let d = 0; d < 7; d++) {
+      row.push(localDayKey(new Date(y, m - 1, 1 - startDow + w * 7 + d)))
+    }
+    weeks.push(row)
+  }
+  return weeks
+}
+
+/** Full date label with year, e.g. "May 31, 2027" (for projected goal dates). */
+export function formatFullDay(dayKey: string): string {
+  const [y, m, d] = dayKey.split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' })
+}
+
+/** Month + year label, e.g. "May 2026". */
+export function formatMonthLabel(dayKey: string): string {
+  const [y, m] = dayKey.split('-').map(Number)
+  return new Date(y, m - 1, 1).toLocaleDateString([], { month: 'long', year: 'numeric' })
 }
 
 /** Friendly label for a day key relative to today. */

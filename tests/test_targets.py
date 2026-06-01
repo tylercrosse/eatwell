@@ -17,6 +17,10 @@ def test_get_returns_defaults_when_unset(client):
         "goal_weight_kg": None,
         "goal_body_fat_pct": None,
         "weekly_rate_kg": None,
+        "height_cm": None,
+        "birth_year": None,
+        "sex": None,
+        "activity_factor": None,
     }
 
 

@@ -15,7 +15,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
 from app.db import init_db
-from app.routers import analyze, auth, entries, foods, metrics, targets
+from app.routers import analyze, auth, entries, exercise, foods, metrics, targets
 
 settings = get_settings()
 
@@ -39,6 +39,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api")
 app.include_router(analyze.router, prefix="/api")
 app.include_router(entries.router, prefix="/api")
+app.include_router(exercise.router, prefix="/api")
 app.include_router(foods.router, prefix="/api")
 app.include_router(metrics.router, prefix="/api")
 app.include_router(targets.router, prefix="/api")

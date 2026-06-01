@@ -44,6 +44,69 @@ def test_delete_metric(client):
     assert client.get("/api/metrics").json() == []
 
 
+def test_latest_metric_returns_most_recent_weight(client):
+    client.post("/api/metrics", json={"date": "2026-05-29", "weight_kg": 80})
+    client.post("/api/metrics", json={"date": "2026-05-31", "weight_kg": 79})
+    client.post("/api/metrics", json={"date": "2026-06-01", "body_fat_pct": 18})  # no weight
+    latest = client.get("/api/metrics/latest").json()
+    assert latest["weight_kg"] == 79  # most recent row that has a weight (05-31)
+    assert latest["date"] == "2026-05-31"
+
+
+def test_latest_metric_null_when_no_weight(client):
+    assert client.get("/api/metrics/latest").json() is None
+    client.post("/api/metrics", json={"date": "2026-05-31", "steps": 5000})  # steps only
+    assert client.get("/api/metrics/latest").json() is None
+
+
+def test_patch_clears_steps_keeps_weight(client):
+    created = client.post("/api/metrics", json={"date": "2026-05-31", "weight_kg": 80, "steps": 8000}).json()
+    r = client.patch(f"/api/metrics/{created['id']}", json={"steps": None})
+    assert r.status_code == 200
+    assert r.json()["steps"] is None
+    assert r.json()["weight_kg"] == 80  # preserved
+
+
+def test_patch_updates_steps(client):
+    created = client.post("/api/metrics", json={"date": "2026-05-31", "steps": 5000}).json()
+    r = client.patch(f"/api/metrics/{created['id']}", json={"steps": 9000})
+    assert r.status_code == 200
+    assert r.json()["steps"] == 9000
+
+
+def test_patch_missing_metric_404(client):
+    assert client.patch("/api/metrics/999", json={"steps": 100}).status_code == 404
+
+
+def test_steps_round_trip(client):
+    created = client.post("/api/metrics", json={"date": "2026-05-31", "steps": 8000}).json()
+    assert created["steps"] == 8000
+    assert created["weight_kg"] is None
+
+
+def test_steps_only_is_allowed(client):
+    assert client.post("/api/metrics", json={"date": "2026-05-31", "steps": 5000}).status_code == 200
+
+
+def test_profile_round_trip_on_targets(client):
+    payload = {
+        "calorie_target": 2000,
+        "protein_pct": 30,
+        "carbs_pct": 40,
+        "fat_pct": 30,
+        "height_cm": 178,
+        "birth_year": 1990,
+        "sex": "male",
+        "activity_factor": 1.375,
+    }
+    assert client.put("/api/targets", json=payload).status_code == 200, payload
+    got = client.get("/api/targets").json()
+    assert got["height_cm"] == 178
+    assert got["birth_year"] == 1990
+    assert got["sex"] == "male"
+    assert got["activity_factor"] == 1.375
+
+
 def test_goal_fields_round_trip_on_targets(client):
     payload = {
         "calorie_target": 2000,

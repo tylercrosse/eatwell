@@ -9,12 +9,13 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel
+from sqlmodel import Session, select
 
 from app import openrouter, storage
 from app.config import Settings
-from app.deps import get_current_user, get_settings
-from app.models import User
-from app.schemas import AnalysisResult
+from app.deps import get_current_user, get_session, get_settings
+from app.models import BodyMetric, User
+from app.schemas import ActivityAnalyzeRequest, ActivityResult, AnalysisResult
 
 router = APIRouter(tags=["analyze"])
 
@@ -26,6 +27,29 @@ class AnalyzeResponse(BaseModel):
 
 class TextAnalyzeRequest(BaseModel):
     description: str
+
+
+@router.post("/analyze/activity", response_model=ActivityResult)
+async def analyze_activity(
+    payload: ActivityAnalyzeRequest,
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+    user: User = Depends(get_current_user),
+) -> ActivityResult:
+    desc = payload.description.strip()
+    if not desc:
+        raise HTTPException(status_code=400, detail="Description is empty.")
+    # Tune the burn estimate to the user's most-recent known weight, if any.
+    row = session.exec(
+        select(BodyMetric)
+        .where(BodyMetric.user_id == user.id, BodyMetric.weight_kg.is_not(None))
+        .order_by(BodyMetric.date.desc())
+        .limit(1)
+    ).first()
+    try:
+        return await openrouter.analyze_activity_text(desc, row.weight_kg if row else None, settings)
+    except openrouter.EstimationError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
 @router.post("/analyze/text", response_model=AnalysisResult)

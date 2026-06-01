@@ -2,146 +2,171 @@
 
 ## Context
 
-The app is a single-user, publicly-accessible calorie tracker: FastAPI + SQLModel + SQLite on the
-backend (custom additive migrations in [app/db.py](app/db.py), no Alembic), OpenRouter LLM estimation
-with optional USDA grounding ([app/openrouter.py](app/openrouter.py), [app/usda.py](app/usda.py)), and a
-React 19 + Vite + React Query SPA with plain-CSS dark theme and a tab-based shell ([web/src/App.tsx](web/src/App.tsx)).
-Current features: photo/text → AI estimate → reviewable entry, entries CRUD + day summary, meal
-grouping, and daily calorie + macro-split targets.
+The app is a calorie tracker: FastAPI + SQLModel + SQLite on the backend (custom additive migrations in
+[app/db.py](app/db.py), no Alembic), OpenRouter LLM estimation with optional USDA grounding
+([app/openrouter.py](app/openrouter.py), [app/usda.py](app/usda.py)), and a React 19 + Vite + React Query
+SPA with a plain-CSS dark theme and a tab-based shell ([web/src/App.tsx](web/src/App.tsx)).
 
-This backlog turns the initial five feature ideas (+ "anything else") into sequenced, executable work.
-Two architectural facts make several items cheap:
-
-- **Multi-user was anticipated.** Every table already carries a nullable `user_id` (always `NULL` today)
-  and there's an auth placeholder in [app/deps.py](app/deps.py) with code comments describing the exact
-  scoping pattern. Auth is wiring, not a rewrite.
-- **The text-estimation pattern is reusable.** `analyze_food_text` + the USDA tool loop in
-  [app/openrouter.py](app/openrouter.py) is a clean template for free-text exercise estimation (M4).
+Shipped so far: photo/text → AI estimate → reviewable entry; entries CRUD + per-day summary + meal
+grouping; extended nutrition (weight/fiber/sugar/sodium) + calorie-density indicator; recent-food quick
+re-log; **Google-OAuth multi-user (allowlist, per-user scoping)**; **weight/body-fat logging + body
+goals**; **Recharts trends**; calorie/macro targets; editable entry dates.
 
 **Decisions:** quick wins first → auth → health metrics/charts → activity; auth via **Google OAuth +
 email allowlist** (closed access, no public signup); expenditure shown as **net = intake − expenditure
 with a gross/net toggle**; charts via **Recharts**.
 
----
+## Status legend
 
-## Milestone 1 — Quick wins (ship first)
+✅ Done · 🚧 Partial · ⏸ Deferred · ⬜ Not started
 
-### 1.1 + 1.2 Extend the nutrition schema: numeric grams + fiber/sugar/sodium
-
-Do these together so there's **one** schema/migration change, not two. Calorie density needs a numeric
-weight (today `serving_size` is free text like `"1 bowl (~300g)"` — no usable grams). Fiber & sugar
-directly support the satiety/density thesis and USDA already returns them.
-
-- **Backend:**
-  - Add `weight_g`, `fiber_g`, `sugar_g`, `sodium_mg` (all optional float) to the analysis JSON schema +
-    `FoodItem`/`AnalysisResult` ([app/schemas.py](app/schemas.py) ~40–79) and to `FoodEntry`
-    ([app/models.py](app/models.py)) + `EntryCreate`/`EntryRead`/`EntryUpdate`.
-  - Migrate via the existing additive helper `_migrate_add_columns` in [app/db.py](app/db.py) (already
-    proven by [tests/test_migration.py](tests/test_migration.py)).
-  - Ask the model for total grams + fiber/sugar in the system prompts ([app/openrouter.py](app/openrouter.py)
-    lines ~20–37); pull USDA fiber (`291`), total sugars (`269`), sodium (`307`) in [app/usda.py](app/usda.py).
-- **Frontend:** mirror the new optional fields in `Entry`/`EntryCreate` ([web/src/types/index.ts](web/src/types/index.ts));
-  add editable inputs (reuse [MacroInput](web/src/components/MacroInput.tsx)) in
-  [EstimateCard](web/src/components/EstimateCard.tsx) and [EntryRow](web/src/components/EntryRow.tsx).
-- **Effort:** S–M.
-
-### 1.3 Calorie-density indicator
-
-- New util `web/src/lib/density.ts`: `calorieDensity(calories, weight_g)` → kcal/100g + band. Convert the
-  per-pound scale to per-100g (1 lb = 453.6 g): **very low <88**, **low 88–176**, **medium 176–397**,
-  **very high >397** kcal/100g (i.e. 400 / 800 / 1800 kcal/lb cutoffs).
-- Color-coded badge on [EntryRow](web/src/components/EntryRow.tsx) and [EstimateCard](web/src/components/EstimateCard.tsx)
-  (reuse the confidence-badge color pattern); show day-average density in [EnergySummary](web/src/components/EnergySummary.tsx).
-- Depends on 1.1 (`weight_g`). **Effort:** S.
-
-### 1.4 Recent / favorite foods + quick re-log ⭐ biggest everyday gap
-
-Today *every* log hits the AI (latency, token cost, variability). Let users re-log known foods instantly.
-
-- **v1 (recent):** backend `GET /api/foods/recent` returns distinct recent `FoodEntry` by `food_name`;
-  CapturePage gets a searchable list that prefills an `EstimateCard` draft with **no AI call** (reuse
-  `draftFromAnalysis` in [CapturePage](web/src/pages/CapturePage.tsx)).
-- **v2 (saved foods):** new `SavedFood` table + `/api/foods` CRUD, new `web/src/api/foods.ts`, a ⭐ toggle.
-- **v3 (saved meals/combos):** stretch.
-- **Effort:** M. High UX + cost win.
+| Milestone | Status |
+| --- | --- |
+| M1 Quick wins | ✅ (1.4 saved-foods/meals pending) |
+| M2 Multi-user auth | ✅ |
+| M3 Health metrics & insights | 🚧 (3.1 + 3.2 done; 3.3 deferred) |
+| M4 Activity & expenditure | ⬜ |
+| M5 IA & navigation | ⬜ (new) |
 
 ---
 
-## Milestone 2 — Multi-user via Google OAuth + allowlist
+## Milestone 1 — Quick wins ✅
 
-Closed access for the two near-term users on one deployment; Google handles passwords, an email allowlist
-keeps it private without building signup. Doing this **before** the data-heavy milestones avoids a larger
-backfill later (a one-line `UPDATE` assigns today's `NULL`-owned rows to the owner account).
+### 1.1 + 1.2 Extend the nutrition schema: numeric grams + fiber/sugar/sodium — ✅
 
-- **Backend:**
-  - New `User` model (`id`, `google_sub` unique, `email`, `name`, `picture`).
-  - Config additions ([app/config.py](app/config.py)): `google_client_id`, `allowed_emails` (CSV allowlist),
-    `jwt_secret`, token TTL. Deps: `google-auth` (verify ID token) + `PyJWT`.
-  - `POST /api/auth/google` (verify Google ID token → check allowlist → upsert `User` → issue app JWT in an
-    httpOnly cookie), `GET /api/auth/me`, `POST /api/auth/logout`. Implement the real `get_current_user` in
-    [app/deps.py](app/deps.py) (replacing the placeholder).
-  - **Scope every query by `user_id`** in [entries.py](app/routers/entries.py), [targets.py](app/routers/targets.py),
-    and all new routers — the pattern is already documented in code comments. Backfill existing rows.
-- **Frontend:** Google Identity Services button + a login gate around [App.tsx](web/src/App.tsx); send
-  credentials and handle `401 → login` in [web/src/api/client.ts](web/src/api/client.ts); `VITE_GOOGLE_CLIENT_ID`.
-- **Effort:** M–L (foundational).
+Did these together as one schema/migration change. `weight_g`, `fiber_g`, `sugar_g`, `sodium_mg` added to
+the analysis JSON schema + `FoodEntry` + entry schemas ([app/schemas.py](app/schemas.py),
+[app/models.py](app/models.py)); migration via `_migrate_add_columns` ([app/db.py](app/db.py)); prompts +
+USDA grounding (fiber `291`, sugars `269`, sodium `307`) updated; editable inputs in
+[EstimateCard](web/src/components/EstimateCard.tsx) + [EntryRow](web/src/components/EntryRow.tsx).
 
----
+### 1.3 Calorie-density indicator — ✅
 
-## Milestone 3 — Health metrics & insights
+[web/src/lib/density.ts](web/src/lib/density.ts) (`calorieDensity` + bands), color-coded
+[DensityBadge](web/src/components/DensityBadge.tsx) on entries + the estimate card, and a day-level
+**calorie-density mix** stacked bar in [EnergySummary](web/src/components/EnergySummary.tsx) (richer than
+the originally-planned single "day-average" number).
 
-### 3.1 Weight & body-fat logging + goals
+### 1.4 Recent / favorite foods + quick re-log — 🚧
 
-- New `BodyMetric` model (`user_id`, `date`, `weight_kg`, `body_fat_pct`, `note`) — upsert one row per day.
-  Router `/api/metrics` (POST / GET-range / PATCH / DELETE).
-- Goals: add `goal_weight_kg`, `goal_body_fat_pct`, `weekly_rate` to the `Targets` model (additive migration).
-- Store canonical **kg**; add a kg/lb display toggle. Logging UI on a new Progress page (or Goals page),
-  reusing the MacroInput field pattern. **Effort:** M.
-
-### 3.2 Progress / Trends view — Recharts
-
-- Add `recharts`; add a `trends` tab to the `Tab` union + tab bar in [App.tsx](web/src/App.tsx).
-- Backend aggregation endpoint `GET /api/entries/range?from&to` → per-day totals (reuse the day-summary
-  logic so the chart isn't pulling every entry); metrics range from 3.1.
-- Charts: **(a)** stacked bar — daily calories split by macro contribution (`protein*4`, `carbs*4`, `fat*9`,
-  reuse `ATWATER` in [web/src/lib/targets.ts](web/src/lib/targets.ts)) vs a target reference line;
-  **(b)** calorie/macro trend line with 7-day moving average; **(c)** weight + body-fat over time with an
-  EMA-smoothed trend (scale weight is noisy). Reuse `sumTotals` and the date utils in [web/src/lib/](web/src/lib/).
-- **Effort:** M–L.
-
-### 3.3 TDEE/BMR + adaptive target recommender (stretch, killer)
-
-- Add `height_cm`, `age`/`birth_year`, `sex` to the user profile → Mifflin-St Jeor BMR × activity factor = TDEE;
-  recommend a calorie target for a chosen weekly rate instead of guessing 2000.
-- Adaptive (MacroFactor-style): infer real TDEE from the trailing weight trend vs logged intake and auto-suggest
-  target adjustments — a genuine differentiator. Depends on 3.1 + 3.2. **Effort:** M (basic) → L (adaptive).
+- **v1 (recent):** ✅ `GET /api/foods/recent` ([app/routers/foods.py](app/routers/foods.py)) + recent-food
+  list on the capture flow, prefilling a draft with no AI call.
+- **v2 (saved foods):** ⬜ `SavedFood` table + `/api/foods` CRUD + ⭐ toggle.
+- **v3 (saved meals/combos):** ⬜ stretch.
 
 ---
 
-## Milestone 4 — Activity & expenditure
+## Milestone 2 — Multi-user via Google OAuth + allowlist — ✅
+
+`User` model + [app/auth.py](app/auth.py) (Google ID-token verify + session JWT) + auth router
+([app/routers/auth.py](app/routers/auth.py): `/auth/google`, `/auth/me`, `/auth/logout`); real
+`get_current_user` + shared `user_query` scoping helper ([app/deps.py](app/deps.py)); every data route
+scoped by `user_id`; owner-email backfill of pre-auth rows. Frontend login gate + Google Identity Services
+button ([web/src/components/LoginPage.tsx](web/src/components/LoginPage.tsx)), `credentials: 'include'`,
+build-time `VITE_GOOGLE_CLIENT_ID` (threaded through the [Dockerfile](Dockerfile)).
+
+---
+
+## Milestone 3 — Health metrics & insights — 🚧
+
+### 3.1 Weight & body-fat logging + goals — ✅
+
+`BodyMetric` model (one row/user/day) + `/api/metrics` (POST upsert / GET-range / DELETE,
+[app/routers/metrics.py](app/routers/metrics.py)); `goal_weight_kg` / `goal_body_fat_pct` /
+`weekly_rate_kg` on `Targets`; canonical kg with a kg/lb toggle ([web/src/lib/units.ts](web/src/lib/units.ts));
+body-goals UI on [GoalsPage](web/src/pages/GoalsPage.tsx).
+
+### 3.2 Progress / Trends view — Recharts — ✅
+
+`GET /api/entries/range` (reuses day-summary aggregation); lazy-loaded
+[TrendsPage](web/src/pages/TrendsPage.tsx) (recharts code-split) with: stacked calories-by-macro bar + a
+7-day moving-average line + target reference line; weight + body-fat lines with an EMA-smoothed weight
+trend ([web/src/lib/stats.ts](web/src/lib/stats.ts)); a 7/30/90-day range selector.
+
+### 3.3 TDEE/BMR + adaptive target recommender — ⏸ Deferred (stretch, killer)
+
+Add `height_cm`, `age`/`birth_year`, `sex` to the profile → Mifflin-St Jeor BMR × activity = TDEE; suggest
+a calorie target for a chosen weekly rate. Adaptive version infers real TDEE from the trailing weight trend
+vs intake. The `weekly_rate_kg` goal (shipped in 3.1) is the hook this builds on. Depends on 3.1 + 3.2.
+**Effort:** M (basic) → L (adaptive).
+
+### Shipped beyond the original M3 plan
+
+- **Editable entry dates** — date picker in the create ([EstimateCard](web/src/components/EstimateCard.tsx))
+  and edit ([EntryRow](web/src/components/EntryRow.tsx)) flows, so a forgotten meal can be backfilled to a
+  past day (`logged_at` date; helpers `dayKeyOf`/`withDayKey` in [date.ts](web/src/lib/date.ts)).
+- **Weight/body-fat backfill** — date picker on the Trends quick-log card.
+- **Body metric on the Log page** — [MetricCard](web/src/components/MetricCard.tsx) shows a day's
+  weight/body-fat like an entry row, with the same edit/delete buttons (only on days that have one).
+
+---
+
+## Milestone 4 — Information architecture & navigation — ⬜ (new)
+
+Inspiration: Cronometer's per-day action bar (FOOD / EXERCISE / BIOMETRIC / NOTE / FAST) + a single day log
+that mixes biometrics and food. We adopt the *idea* (add anything to the day you're viewing) but keep our
+simpler surface — only the types we support (food, biometric; exercise lands in M4). We don't plan to add
+notes/fasting for now.
+
+### 4.1 Fold "Add" into the Log page; add Food + Biometric on the viewed day
+
+The "Add" flow should act on **the day you're looking at**, not a separate "today"-only tab.
+
+- Remove the top-level **`capture` tab** from [App.tsx](web/src/App.tsx) (`Tab` union + tab bar) → tabs
+  become **Log / Trends / Goals**.
+- Add an action bar near the day header on [LogPage](web/src/pages/LogPage.tsx) with **"+ Food"** and
+  **"+ Weight / Body fat"** (Cronometer-style, minus the types we don't support yet).
+  - **+ Food** launches the existing capture flow ([CapturePage](web/src/pages/CapturePage.tsx): photo /
+    text / recent → [EstimateCard](web/src/components/EstimateCard.tsx)) as a modal/sheet or in-page
+    sub-view, with the new entry's date **defaulted to the viewed day** (entry-date support already exists).
+  - **+ Weight / Body fat** opens the metric editor for the viewed day. Extract the inline edit form from
+    [MetricCard](web/src/components/MetricCard.tsx) into a reusable `MetricEditor` shared by add + edit.
+- Remove the weight quick-log card from [TrendsPage](web/src/pages/TrendsPage.tsx) → Trends becomes
+  view-only charts. Backfilling = navigate to the day on Log and add (pairs with 5.2's day picker).
+- **Effort:** M — mostly relocating existing components + a modal/sheet shell + dropping a tab.
+
+### 4.2 Navigation
+
+- **Calendar day-picker:** clicking `.day-nav__label` on [LogPage](web/src/pages/LogPage.tsx) opens a month
+  calendar to jump to any day, with **days that have entries visually marked**.
+  - Native `<input type="date">` can't color individual days → use a small custom month-grid popover (or a
+    light calendar lib).
+  - Day-marking source: reuse `GET /api/entries/range?from&to` across the visible month and mark dates with
+    `entry_count > 0` (and optionally days with a body metric). A tiny dedicated "days-with-data" endpoint is
+    an option if the range payload is too heavy.
+- **Click a Trends value → open that day:** Recharts `onClick` on bars/points yields the datum's date; map
+  back to a day key, switch to the Log tab, and set the Log day.
+  - **Refactor:** LogPage owns its `day` state and App owns `tab`. Lift a `goToDay(dayKey)` (which sets both
+    `tab='log'` and the day) to [App.tsx](web/src/App.tsx), or a small shared context. Prerequisite for cross-tab nav.
+- **Effort:** M (calendar) + S (chart click + state lift).
+
+---
+
+## Milestone 5 — Activity & expenditure — ⬜
 
 - **Model:** daily `Expenditure` row (`user_id`, `date`, `steps`, `steps_kcal`, `exercise_kcal`, `note`).
 - **4.1 Steps → calories:** `kcal ≈ steps × weight_kg × k`. Needs latest `BodyMetric` weight (depends on 3.1).
 - **4.2 Exercise logging:**
+  - Add as option to Log page
   - Manual: kcal + description.
   - **Free-text AI estimate** ("30 min easy lifting"): add `analyze_activity_text` + `POST /api/analyze/activity`,
     mirroring `analyze_food_text` in [app/openrouter.py](app/openrouter.py) exactly (system prompt with MET
     tables → kcal + duration). High-reuse.
-  - Double-count guard (the "fancy" idea): optionally subtract step-derived kcal overlapping a logged workout —
-    mark advanced; v1 leaves it to the user.
-- **Net-calorie integration:** [EnergySummary](web/src/components/EnergySummary.tsx) gains a
-  gross/net toggle — `remaining = target − (intake − expenditure)`; thread per-day expenditure into
+  - Double-count guard: optionally subtract step-derived kcal overlapping a logged workout — advanced; v1
+    leaves it to the user.
+- **Net-calorie integration:** [EnergySummary](web/src/components/EnergySummary.tsx) gains a gross/net
+  toggle — `remaining = target − (intake − expenditure)`; thread per-day expenditure into
   [LogPage](web/src/pages/LogPage.tsx). **Effort:** M–L.
 
 ---
 
-## Backlog — additional ideas, unsequenced
+## Backlog — additional ideas, unsequenced — ⬜
 
 - **Barcode scanning** ⭐ — PWA camera + `@zxing/browser` → barcode → **Open Food Facts** (free, no key) →
   exact packaged-food macros prefilled into a draft. Best accuracy/speed for packaged foods. (M)
 - **Data export** — `GET /api/export` (CSV/JSON of entries + metrics). Cheap, valuable for a health log. (S)
 - **Water tracking** — per-day counter. (S)
-- **Weekly view + log search/filter** — beyond the current day-by-day nav. (S–M)
+- **Weekly view + log search/filter** — beyond the day-by-day nav (partly addressed by 5.2's day picker). (S–M)
 - **Streaks / adherence** — logging streak + on-target days. (S)
 - **Offline robustness** — audit the installed `vite-plugin-pwa`: cache the shell, queue entry writes offline. (M)
 - **Photo history gallery** — photos are already stored under `/data/photos`. (S)
@@ -151,40 +176,32 @@ backfill later (a one-line `UPDATE` assigns today's `NULL`-owned rows to the own
 
 ## Refactor checkpoints
 
-The foundation is healthy and every milestone is additive, so the guidance is **let it rip, with one
-deliberate refactor at auth** — not broad stop-and-refactor passes.
-
-- **Milestone 2 (auth) — refactor here.** Land the real `current_user` dependency
-  ([app/deps.py](app/deps.py)) plus a single shared per-user scoping helper, so
-  `where(user_id == current_user.id)` lives in one place instead of being copy-pasted into every
-  endpoint and retrofitted later. Highest-leverage cleanup; small.
-- **Milestone 3 (optional).** Reassess navigation only if it hurts: tab-state in [App.tsx](web/src/App.tsx)
-  is fine to ~4–5 tabs; when adding Trends + a Body/Progress area behind the auth gate, decide whether to
-  introduce React Router (deep links, browser back). Not mandatory.
-- **Opportunistic (not a stop):** delete the unused `DailyTotals`/`EntryList` components; have the 3.2
-  range endpoint reuse the existing day-summary logic rather than duplicating it.
+- **M2 (auth) — ✅ done.** Real `current_user` dependency + single `user_query` scoping helper landed in
+  [app/deps.py](app/deps.py); no router hand-writes the user_id filter.
+- **Navigation — now scoped as M5.2.** The cross-tab "go to day" need finally forces lifting the selected
+  day to App (or a context). Reassess React Router then (deep links / browser back) — still optional.
+- **Opportunistic:** ✅ GoalsPage `setState`-in-effect fixed (query-wrapper + form-from-props); ✅ the 3.2
+  range endpoint reuses day-summary aggregation. ⬜ Still pending: delete the unused
+  `DailyTotals`/`EntryList` components.
 
 ---
 
 ## Dependency summary
 
 ```text
-1.1/1.2 (nutrition fields) ──> 1.3 (density)
-2 (auth) ── foundational; do before 3/4 to avoid backfill
-3.1 (weight) ──> 3.2 charts(weight), 3.3 TDEE, 4.1 steps→kcal
-3.2 (range endpoint + Recharts) ──> 3.3
+1.1/1.2 (nutrition) ──> 1.3 (density)           [done]
+2 (auth) ── foundational, before 3/4            [done]
+3.1 (weight) ──> 3.2 charts, 3.3 TDEE, 4.1 steps→kcal
+5.2 (lift `day` to App) ──> Trends value → day navigation
 ```
 
 ---
 
 ## Verification (per feature)
 
-- **Backend:** `pytest` (suite + [tests/conftest.py](tests/conftest.py) exist). Per feature, mirror the existing
-  tests — [test_entries.py](tests/test_entries.py) (CRUD/roundtrip), [test_targets.py](tests/test_targets.py)
-  (validation/upsert), [test_analyze_text.py](tests/test_analyze_text.py) (LLM tool-loop), and add a
-  [test_migration.py](tests/test_migration.py)-style test for every new column (legacy table → migrate → assert
-  column + idempotency).
-- **Frontend / e2e:** run backend (`uvicorn`) + `vite dev` and walk each flow — log via density/fiber fields,
-  quick re-log a recent food (confirm no AI call), Google login as a second account (confirm data isolation),
-  add weight and view trend charts, log steps + a free-text workout and toggle gross/net.
-- Each milestone is independently shippable; land 1.1+1.2 first (single migration) so 1.3 has its grams field.
+- **Backend:** `pytest` (63 passing). Per feature, mirror existing tests — [test_entries.py](tests/test_entries.py),
+  [test_targets.py](tests/test_targets.py), [test_metrics.py](tests/test_metrics.py),
+  [test_auth.py](tests/test_auth.py), [test_analyze_text.py](tests/test_analyze_text.py); add a
+  [test_migration.py](tests/test_migration.py)-style test per new column.
+- **Frontend / e2e:** `tsc -b && vite build` + `eslint`; run backend (`uvicorn`) + `vite dev` and walk each
+  flow.

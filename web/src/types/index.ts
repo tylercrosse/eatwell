@@ -111,6 +111,11 @@ export interface Targets {
   goal_weight_kg?: number | null
   goal_body_fat_pct?: number | null
   weekly_rate_kg?: number | null
+  // Profile for the BMR/TDEE recommender.
+  height_cm?: number | null
+  birth_year?: number | null
+  sex?: 'male' | 'female' | null
+  activity_factor?: number | null
 }
 
 // A daily body measurement (GET/POST /api/metrics). Weight stored in kg.
@@ -119,6 +124,7 @@ export interface BodyMetric {
   date: string // YYYY-MM-DD
   weight_kg: number | null
   body_fat_pct: number | null
+  steps: number | null
   note: string | null
 }
 
@@ -126,5 +132,32 @@ export interface MetricCreate {
   date?: string
   weight_kg?: number | null
   body_fat_pct?: number | null
+  steps?: number | null
   note?: string | null
+}
+
+// A logged workout (GET/POST /api/exercise). Calories burned; multiple per day.
+export interface ExerciseEntry {
+  id: number
+  date: string
+  description: string
+  calories: number
+  duration_min: number | null
+  source: string
+}
+
+export interface ExerciseCreate {
+  description: string
+  calories: number
+  duration_min?: number | null
+  source?: string
+  date?: string
+}
+
+// AI estimate for a free-text activity (POST /api/analyze/activity).
+export interface ActivityResult {
+  name: string
+  duration_min: number | null
+  calories: number
+  confidence: number
 }

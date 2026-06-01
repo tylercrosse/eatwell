@@ -29,7 +29,7 @@ from PIL import Image  # noqa: E402
 from app.db import engine, init_db  # noqa: E402
 from app.deps import get_current_user  # noqa: E402
 from app.main import app  # noqa: E402
-from app.models import BodyMetric, FoodEntry, Targets, User  # noqa: E402
+from app.models import BodyMetric, ExerciseEntry, FoodEntry, Targets, User  # noqa: E402
 from sqlmodel import Session, delete  # noqa: E402
 
 # Stand-in signed-in user for the data-CRUD tests, injected via dependency override so
@@ -45,6 +45,7 @@ def clean_db():
         s.exec(delete(FoodEntry))
         s.exec(delete(Targets))  # single targets row would otherwise leak across tests
         s.exec(delete(BodyMetric))
+        s.exec(delete(ExerciseEntry))
         s.exec(delete(User))
         s.commit()
     yield

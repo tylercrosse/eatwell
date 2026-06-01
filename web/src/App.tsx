@@ -1,20 +1,21 @@
 import { lazy, Suspense, useCallback, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CapturePage } from './pages/CapturePage'
 import { LogPage } from './pages/LogPage'
 import { GoalsPage } from './pages/GoalsPage'
 import { LoginPage } from './components/LoginPage'
 import { getMe, loginWithGoogle, logout } from './api/auth'
 import { ApiError } from './api/client'
+import { localDayKey } from './lib/date'
 
 // Lazy so the charting lib (recharts) is a separate chunk, off the initial load path.
 const TrendsPage = lazy(() => import('./pages/TrendsPage').then((m) => ({ default: m.TrendsPage })))
 
-type Tab = 'capture' | 'log' | 'trends' | 'goals'
+type Tab = 'log' | 'trends' | 'goals'
 
 export default function App() {
   const queryClient = useQueryClient()
-  const [tab, setTab] = useState<Tab>('capture')
+  const [tab, setTab] = useState<Tab>('log')
+  const [day, setDay] = useState<string>(localDayKey()) // the day the Log page is viewing
   const [loginError, setLoginError] = useState<string | null>(null)
 
   // 401 here just means "not signed in" — surface the login screen, don't retry.
@@ -34,6 +35,11 @@ export default function App() {
   })
 
   const onCredential = useCallback((credential: string) => login.mutate(credential), [login])
+  // Jump to a specific day on the Log tab (used by the Trends charts).
+  const goToDay = useCallback((d: string) => {
+    setDay(d)
+    setTab('log')
+  }, [])
 
   if (meQuery.isLoading) {
     return (
@@ -61,24 +67,16 @@ export default function App() {
       </header>
 
       <main className="app__main">
-        {tab === 'capture' && <CapturePage onLogged={() => setTab('log')} />}
-        {tab === 'log' && <LogPage />}
+        {tab === 'log' && <LogPage day={day} setDay={setDay} />}
         {tab === 'trends' && (
           <Suspense fallback={<p className="muted">Loading…</p>}>
-            <TrendsPage />
+            <TrendsPage goToDay={goToDay} />
           </Suspense>
         )}
         {tab === 'goals' && <GoalsPage />}
       </main>
 
       <nav className="tabbar">
-        <button
-          className={`tabbar__btn ${tab === 'capture' ? 'is-active' : ''}`}
-          onClick={() => setTab('capture')}
-        >
-          <span className="tabbar__icon">📷</span>
-          Add
-        </button>
         <button
           className={`tabbar__btn ${tab === 'log' ? 'is-active' : ''}`}
           onClick={() => setTab('log')}

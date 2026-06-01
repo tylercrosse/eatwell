@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import {
   Bar,
   CartesianGrid,
@@ -13,16 +13,14 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { NumberField } from '../components/NumberField'
 import { UnitToggle } from '../components/UnitToggle'
 import { getEntriesRange } from '../api/entries'
-import { getMetrics, postMetric } from '../api/metrics'
+import { getMetrics } from '../api/metrics'
 import { getTargets } from '../api/targets'
 import { ATWATER } from '../lib/targets'
 import { ema, movingAverage } from '../lib/stats'
-import { formatShortDay, lastNDays, localDayKey } from '../lib/date'
-import { displayToKg, kgToDisplay, useWeightUnit, type WeightUnit } from '../lib/units'
-import type { MetricCreate } from '../types'
+import { formatShortDay, lastNDays } from '../lib/date'
+import { kgToDisplay, useWeightUnit } from '../lib/units'
 
 const RANGES = [7, 30, 90] as const
 const MA_WINDOW = 7
@@ -45,7 +43,18 @@ const AXIS_TICK = { fill: COLORS.muted, fontSize: 11 }
 
 const round1 = (n: number) => Math.round(n * 10) / 10
 
-export function TrendsPage() {
+/** Recharts v3's click state carries the active index (not a payload); map it to a day key. */
+function activeDayKey(state: unknown, data: ReadonlyArray<{ dayKey: string }>): string | undefined {
+  const idx = (state as { activeTooltipIndex?: number | string | null } | null)?.activeTooltipIndex
+  const n = typeof idx === 'string' ? Number(idx) : idx
+  return typeof n === 'number' && Number.isInteger(n) && n >= 0 && n < data.length ? data[n].dayKey : undefined
+}
+
+interface Props {
+  goToDay: (day: string) => void // open a specific day on the Log tab
+}
+
+export function TrendsPage({ goToDay }: Props) {
   const [unit, setUnit] = useWeightUnit()
   const [days, setDays] = useState<number>(30)
 
@@ -68,6 +77,7 @@ export function TrendsPage() {
     return axis.map((day, i) => {
       const d = byDate.get(day)
       return {
+        dayKey: day,
         date: formatShortDay(day),
         Protein: Math.round((d?.total_protein_g ?? 0) * ATWATER.protein),
         Carbs: Math.round((d?.total_carbs_g ?? 0) * ATWATER.carbs),
@@ -84,6 +94,7 @@ export function TrendsPage() {
     const emaSeries = ema(withWeight.map((r) => r.weight_kg as number), WEIGHT_EMA_ALPHA)
     const emaByDate = new Map(withWeight.map((r, i) => [r.date, emaSeries[i]]))
     return rows.map((r) => ({
+      dayKey: r.date,
       date: formatShortDay(r.date),
       weight: r.weight_kg == null ? null : round1(kgToDisplay(r.weight_kg, unit)),
       trend: emaByDate.has(r.date) ? round1(kgToDisplay(emaByDate.get(r.date) as number, unit)) : null,
@@ -113,13 +124,20 @@ export function TrendsPage() {
         <UnitToggle unit={unit} onChange={setUnit} />
       </div>
 
-      <WeightLogCard unit={unit} />
+      <p className="muted trends__hint">Tap a day on a chart to open it.</p>
 
       <div className="card chart-card">
         <h3 className="chart-card__title">Calories by macro</h3>
         {hasEntries ? (
           <ResponsiveContainer width="100%" height={220}>
-            <ComposedChart data={calData} margin={{ top: 8, right: 8, bottom: 0, left: -12 }}>
+            <ComposedChart
+              data={calData}
+              margin={{ top: 8, right: 8, bottom: 0, left: -12 }}
+              onClick={(state) => {
+                const dk = activeDayKey(state, calData)
+                if (dk) goToDay(dk)
+              }}
+            >
               <CartesianGrid stroke={COLORS.grid} strokeOpacity={0.4} vertical={false} />
               <XAxis dataKey="date" tick={AXIS_TICK} tickLine={false} axisLine={{ stroke: COLORS.grid }} minTickGap={24} />
               <YAxis tick={AXIS_TICK} tickLine={false} axisLine={false} width={44} />
@@ -148,7 +166,14 @@ export function TrendsPage() {
         <h3 className="chart-card__title">Weight &amp; body fat</h3>
         {hasWeight ? (
           <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={weightData} margin={{ top: 8, right: 8, bottom: 0, left: -12 }}>
+            <LineChart
+              data={weightData}
+              margin={{ top: 8, right: 8, bottom: 0, left: -12 }}
+              onClick={(state) => {
+                const dk = activeDayKey(state, weightData)
+                if (dk) goToDay(dk)
+              }}
+            >
               <CartesianGrid stroke={COLORS.grid} strokeOpacity={0.4} vertical={false} />
               <XAxis dataKey="date" tick={AXIS_TICK} tickLine={false} axisLine={{ stroke: COLORS.grid }} minTickGap={24} />
               <YAxis yAxisId="w" tick={AXIS_TICK} tickLine={false} axisLine={false} width={44} domain={['auto', 'auto']} />
@@ -164,57 +189,6 @@ export function TrendsPage() {
           <p className="muted chart-card__empty">Log your weight to see the trend.</p>
         )}
       </div>
-    </div>
-  )
-}
-
-function WeightLogCard({ unit }: { unit: WeightUnit }) {
-  const queryClient = useQueryClient()
-  const today = localDayKey()
-  const [date, setDate] = useState<string>(today)
-  const [weight, setWeight] = useState<number | null>(null)
-  const [bodyFat, setBodyFat] = useState<number | null>(null)
-
-  const save = useMutation({
-    mutationFn: postMetric,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['metrics'] })
-      setWeight(null) // keep `date` so backfilling consecutive days stays quick
-      setBodyFat(null)
-    },
-  })
-
-  const canSave = weight != null || bodyFat != null
-
-  function submit() {
-    // Only include fields the user filled — the upsert preserves the day's other value.
-    const payload: MetricCreate = { date }
-    if (weight != null) payload.weight_kg = displayToKg(weight, unit)
-    if (bodyFat != null) payload.body_fat_pct = bodyFat
-    save.mutate(payload)
-  }
-
-  return (
-    <div className="card">
-      <h3 className="chart-card__title">Log weight</h3>
-      <label className="field">
-        <span className="field__label">Date</span>
-        <input type="date" max={today} value={date} onChange={(e) => setDate(e.target.value || today)} />
-      </label>
-      <div className="macros">
-        <NumberField label="Weight" unit={unit} min={0} value={weight} onChange={setWeight} />
-        <NumberField label="Body fat" unit="%" min={0} value={bodyFat} onChange={setBodyFat} />
-      </div>
-      {save.isError && <p className="error-text">Couldn't save. Try again.</p>}
-      <button className="btn btn--primary" disabled={!canSave || save.isPending} onClick={submit}>
-        {save.isPending
-          ? 'Saving…'
-          : save.isSuccess && !canSave
-            ? 'Saved ✓'
-            : date === today
-              ? 'Log weight'
-              : `Log for ${date}`}
-      </button>
     </div>
   )
 }

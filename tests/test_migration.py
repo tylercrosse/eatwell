@@ -81,5 +81,34 @@ def test_adds_targets_goal_columns(tmp_path):
 
     _migrate_add_columns(eng)  # must skip the absent food_entries table, not error
     cols = _columns(eng, "targets")
-    for c in ("goal_weight_kg", "goal_body_fat_pct", "weekly_rate_kg"):
+    for c in (
+        "goal_weight_kg",
+        "goal_body_fat_pct",
+        "weekly_rate_kg",
+        "height_cm",
+        "birth_year",
+        "sex",
+        "activity_factor",
+    ):
         assert c in cols, f"{c} not added by migration"
+
+
+LEGACY_METRICS_CREATE = """
+CREATE TABLE body_metrics (
+    id INTEGER PRIMARY KEY,
+    date DATE,
+    weight_kg FLOAT,
+    body_fat_pct FLOAT,
+    note VARCHAR
+)
+"""
+
+
+def test_adds_metric_steps_column(tmp_path):
+    eng = create_engine(f"sqlite:///{tmp_path / 'legacy.db'}")
+    with eng.connect() as conn:
+        conn.exec_driver_sql(LEGACY_METRICS_CREATE)
+        conn.commit()
+
+    _migrate_add_columns(eng)
+    assert "steps" in _columns(eng, "body_metrics")

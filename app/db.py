@@ -33,6 +33,13 @@ _ADDED_COLUMNS: dict[str, dict[str, str]] = {
         "goal_weight_kg": "FLOAT",
         "goal_body_fat_pct": "FLOAT",
         "weekly_rate_kg": "FLOAT",
+        "height_cm": "FLOAT",
+        "birth_year": "INTEGER",
+        "sex": "VARCHAR",
+        "activity_factor": "FLOAT",
+    },
+    "body_metrics": {
+        "steps": "INTEGER",
     },
 }
 

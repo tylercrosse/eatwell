@@ -2,24 +2,44 @@ import type { MacroTotals } from '../lib/totals'
 import { round } from '../lib/totals'
 import { macroGramTargets } from '../lib/targets'
 import { DENSITY_BANDS, type DensityBand, type DensityBreakdown } from '../lib/density'
+import { usePersistentToggle } from '../lib/prefs'
 import type { Targets } from '../types'
 
 interface Props {
   totals: MacroTotals
   targets: Targets
   density: DensityBreakdown
+  expenditure: number // kcal burned this day (steps + exercise); 0 if none
 }
 
-/** Calorie rings (Consumed + Remaining) + macro progress bars, against daily targets. */
-export function EnergySummary({ totals, targets, density }: Props) {
+/** Calorie rings (Consumed + Remaining) + macro progress bars, against daily targets.
+ *  When expenditure is logged, a Net/Gross toggle factors burned calories into Remaining. */
+export function EnergySummary({ totals, targets, density, expenditure }: Props) {
+  const [netMode, setNetMode] = usePersistentToggle('net-mode', true)
   const grams = macroGramTargets(targets)
   const target = targets.calorie_target
   const consumed = totals.calories
-  const remaining = target - consumed
+  const useNet = expenditure > 0 && netMode
+  // Net mode lets burned calories add back to what you can still eat.
+  const remaining = useNet ? target - consumed + expenditure : target - consumed
   const consumedFrac = target > 0 ? consumed / target : 0
 
   return (
     <div className="card energy-summary">
+      {expenditure > 0 && (
+        <div className="energy-summary__net">
+          <span className="muted">🔥 {round(expenditure)} kcal burned</span>
+          <div className="seg" role="group" aria-label="Calorie mode">
+            <button className={`seg__btn ${!netMode ? 'is-active' : ''}`} onClick={() => setNetMode(false)}>
+              Gross
+            </button>
+            <button className={`seg__btn ${netMode ? 'is-active' : ''}`} onClick={() => setNetMode(true)}>
+              Net
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="energy-summary__rings">
         <Ring
           label="Consumed"

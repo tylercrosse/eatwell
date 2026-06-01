@@ -15,7 +15,12 @@ from pydantic import ValidationError
 
 from app import usda
 from app.config import Settings
-from app.schemas import FOOD_ANALYSIS_JSON_SCHEMA, AnalysisResult
+from app.schemas import (
+    ACTIVITY_ANALYSIS_JSON_SCHEMA,
+    FOOD_ANALYSIS_JSON_SCHEMA,
+    ActivityResult,
+    AnalysisResult,
+)
 
 _SYSTEM_PROMPT = (
     "You are a nutrition estimator. Given a food photo, identify each distinct food, "
@@ -60,6 +65,14 @@ SEARCH_FOODS_TOOL = {
         },
     },
 }
+
+_ACTIVITY_SYSTEM_PROMPT = (
+    "You estimate energy expenditure for a described physical activity (e.g. '30 min easy "
+    "weight lifting' or '20 min light jog'). Estimate the duration in minutes, the total "
+    "calories burned, and a short activity name, using standard MET values for an adult of "
+    "about {weight} kg. Return ONLY data matching the schema. If unsure, still give your best "
+    "estimate but lower the confidence (0 = guess, 1 = very confident)."
+)
 
 _MAX_TOOL_ROUNDS = 4
 
@@ -168,6 +181,47 @@ async def analyze_food_text(description: str, settings: Settings) -> AnalysisRes
 
     content = resp.choices[0].message.content if resp.choices else None
     return _parse_analysis(content)
+
+
+def _parse_activity(content: str | None) -> ActivityResult:
+    if not content:
+        raise EstimationError("Model returned an empty response.")
+    try:
+        return ActivityResult.model_validate_json(content)
+    except ValidationError as exc:
+        raise EstimationError(f"Model returned malformed activity data: {exc}") from exc
+
+
+async def analyze_activity_text(
+    description: str, weight_kg: float | None, settings: Settings
+) -> ActivityResult:
+    """Estimate calories burned for a free-text activity, tuned to the user's weight."""
+    if not settings.openrouter_api_key:
+        raise EstimationError("OPENROUTER_API_KEY is not configured.")
+
+    weight = round(weight_kg) if weight_kg else 75
+    try:
+        resp = await _client(settings).chat.completions.create(
+            model=settings.openrouter_model,
+            timeout=settings.openrouter_timeout,
+            messages=[
+                {"role": "system", "content": _ACTIVITY_SYSTEM_PROMPT.format(weight=weight)},
+                {"role": "user", "content": f"Estimate the calories burned for: {description}"},
+            ],
+            response_format={
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "activity_analysis",
+                    "strict": True,
+                    "schema": ACTIVITY_ANALYSIS_JSON_SCHEMA,
+                },
+            },
+        )
+    except APIError as exc:
+        raise EstimationError(f"OpenRouter request failed: {exc}") from exc
+
+    content = resp.choices[0].message.content if resp.choices else None
+    return _parse_activity(content)
 
 
 async def _run_tool_loop(client: AsyncOpenAI, messages: list[dict], settings: Settings) -> None:

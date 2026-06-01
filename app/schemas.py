@@ -187,6 +187,10 @@ class TargetsRead(BaseModel):
     goal_weight_kg: float | None = None
     goal_body_fat_pct: float | None = None
     weekly_rate_kg: float | None = None
+    height_cm: float | None = None
+    birth_year: int | None = None
+    sex: str | None = None
+    activity_factor: float | None = None
 
 
 class TargetsUpdate(BaseModel):
@@ -197,6 +201,10 @@ class TargetsUpdate(BaseModel):
     goal_weight_kg: float | None = Field(default=None, ge=0)
     goal_body_fat_pct: float | None = Field(default=None, ge=0, le=100)
     weekly_rate_kg: float | None = None  # target change/week; negative = loss
+    height_cm: float | None = Field(default=None, ge=0)
+    birth_year: int | None = Field(default=None, ge=1900, le=2100)
+    sex: Literal["male", "female"] | None = None
+    activity_factor: float | None = Field(default=None, ge=1.0, le=2.5)
 
     @model_validator(mode="after")
     def _split_sums_to_100(self) -> TargetsUpdate:
@@ -215,13 +223,23 @@ class MetricCreate(BaseModel):
     date: date_cls | None = None  # defaults to server's today if omitted
     weight_kg: float | None = Field(default=None, ge=0)
     body_fat_pct: float | None = Field(default=None, ge=0, le=100)
+    steps: int | None = Field(default=None, ge=0)
     note: str | None = None
 
     @model_validator(mode="after")
     def _at_least_one_measure(self) -> MetricCreate:
-        if self.weight_kg is None and self.body_fat_pct is None:
-            raise ValueError("Provide weight_kg and/or body_fat_pct.")
+        if self.weight_kg is None and self.body_fat_pct is None and self.steps is None:
+            raise ValueError("Provide weight_kg, body_fat_pct and/or steps.")
         return self
+
+
+class MetricUpdate(BaseModel):
+    # Partial update — only provided fields change; an explicit null clears that field
+    # (so steps can be removed without dropping a same-day weight). No "at least one" rule.
+    weight_kg: float | None = Field(default=None, ge=0)
+    body_fat_pct: float | None = Field(default=None, ge=0, le=100)
+    steps: int | None = Field(default=None, ge=0)
+    note: str | None = None
 
 
 class MetricRead(BaseModel):
@@ -229,4 +247,60 @@ class MetricRead(BaseModel):
     date: date_cls
     weight_kg: float | None
     body_fat_pct: float | None
+    steps: int | None
     note: str | None
+
+
+# --- Exercise --------------------------------------------------------------
+
+
+class ExerciseCreate(BaseModel):
+    description: str
+    calories: float = Field(default=0.0, ge=0)
+    duration_min: float | None = Field(default=None, ge=0)
+    source: str = "manual"
+    date: date_cls | None = None  # defaults to server's today if omitted
+
+
+class ExerciseUpdate(BaseModel):
+    description: str | None = None
+    calories: float | None = Field(default=None, ge=0)
+    duration_min: float | None = Field(default=None, ge=0)
+    date: date_cls | None = None
+
+
+class ExerciseRead(BaseModel):
+    id: int
+    date: date_cls
+    description: str
+    calories: float
+    duration_min: float | None
+    source: str
+
+
+# --- Activity AI estimate --------------------------------------------------
+
+
+class ActivityAnalyzeRequest(BaseModel):
+    description: str
+
+
+class ActivityResult(BaseModel):
+    name: str
+    duration_min: float | None = None
+    calories: float
+    confidence: float = Field(ge=0.0, le=1.0)
+
+
+# Strict JSON schema for the activity estimator (mirrors the food one's shape).
+ACTIVITY_ANALYSIS_JSON_SCHEMA: dict = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "name": {"type": "string", "description": "Short activity name, e.g. 'Light jog'"},
+        "duration_min": {"type": "number", "description": "Estimated duration in minutes"},
+        "calories": {"type": "number", "description": "Total kcal burned"},
+        "confidence": {"type": "number", "description": "0 to 1"},
+    },
+    "required": ["name", "duration_min", "calories", "confidence"],
+}

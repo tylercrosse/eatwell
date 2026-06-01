@@ -14,7 +14,7 @@ from sqlmodel import Session
 
 from app.deps import get_current_user, get_session, user_query
 from app.models import BodyMetric, User
-from app.schemas import MetricCreate, MetricRead
+from app.schemas import MetricCreate, MetricRead, MetricUpdate
 
 router = APIRouter(tags=["metrics"])
 
@@ -53,6 +53,43 @@ def list_metrics(
     if end is not None:
         stmt = stmt.where(BodyMetric.date <= end)
     return list(session.exec(stmt.order_by(BodyMetric.date)).all())
+
+
+@router.get("/metrics/latest", response_model=MetricRead | None)
+def latest_metric(
+    session: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+) -> BodyMetric | None:
+    """The user's most recent metric that has a weight (for step→kcal when today's is absent).
+
+    Returns null if no weight has ever been logged.
+    """
+    stmt = (
+        user_query(BodyMetric, user)
+        .where(BodyMetric.weight_kg.is_not(None))
+        .order_by(BodyMetric.date.desc())
+        .limit(1)
+    )
+    return session.exec(stmt).first()
+
+
+@router.patch("/metrics/{metric_id}", response_model=MetricRead)
+def update_metric(
+    metric_id: int,
+    payload: MetricUpdate,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+) -> BodyMetric:
+    row = session.get(BodyMetric, metric_id)
+    if row is None or row.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Metric not found.")
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(row, field, value)
+    row.updated_at = datetime.now(timezone.utc)
+    session.add(row)
+    session.commit()
+    session.refresh(row)
+    return row
 
 
 @router.delete("/metrics/{metric_id}", status_code=204)

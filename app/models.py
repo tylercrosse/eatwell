@@ -91,10 +91,17 @@ class Targets(SQLModel, table=True):
     fat_pct: float = 30.0
 
     # Body goals (optional). weekly_rate_kg is the target weight change per week
-    # (negative = loss); used later for TDEE-based target recommendations.
+    # (negative = loss); feeds the TDEE-based target recommendation.
     goal_weight_kg: float | None = None
     goal_body_fat_pct: float | None = None
     weekly_rate_kg: float | None = None
+
+    # Profile for BMR/TDEE (Mifflin-St Jeor). sex is 'male'|'female' (biological, for BMR);
+    # activity_factor multiplies BMR (1.2 sedentary … 1.9 athlete).
+    height_cm: float | None = None
+    birth_year: int | None = None
+    sex: str | None = None
+    activity_factor: float | None = None
 
     updated_at: datetime = Field(default_factory=_utcnow)
 
@@ -113,7 +120,29 @@ class BodyMetric(SQLModel, table=True):
     date: date_cls = Field(index=True)  # local calendar day the measurement is for
     weight_kg: float | None = None
     body_fat_pct: float | None = None
+    steps: int | None = None  # daily step count; converted to kcal using that day's weight
     note: str | None = None
+
+    created_at: datetime = Field(default_factory=_utcnow)
+    updated_at: datetime = Field(default_factory=_utcnow)
+
+
+class ExerciseEntry(SQLModel, table=True):
+    """A logged workout/activity that burns calories. Multiple per day (like food entries).
+
+    Calories are an estimate (AI from a free-text description, or entered manually).
+    """
+
+    __tablename__ = "exercise_entries"
+
+    id: int | None = Field(default=None, primary_key=True)
+    user_id: int | None = Field(default=None, index=True)
+
+    date: date_cls = Field(index=True)  # local calendar day the activity is for
+    description: str
+    duration_min: float | None = None
+    calories: float = 0.0
+    source: str = "manual"  # "manual" | "ai"
 
     created_at: datetime = Field(default_factory=_utcnow)
     updated_at: datetime = Field(default_factory=_utcnow)

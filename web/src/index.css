@@ -228,7 +228,7 @@ body {
   align-items: center;
   text-align: center;
   gap: 8px;
-  margin-top: 12vh;
+  margin-top: 0; /* shown inside the Log-page "Add food" modal */
 }
 
 .capture-intro h2 {
@@ -468,7 +468,8 @@ body {
 
 .field input,
 .field select,
-.macro-input input {
+.macro-input input,
+.macro-input select {
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -480,7 +481,8 @@ body {
 
 .field input:focus,
 .field select:focus,
-.macro-input input:focus {
+.macro-input input:focus,
+.macro-input select:focus {
   outline: none;
   border-color: var(--accent);
 }
@@ -798,6 +800,13 @@ body {
   font-size: 0.8rem;
 }
 
+.goals__plan {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
 .goals__heading-row {
   display: flex;
   align-items: center;
@@ -866,6 +875,16 @@ body {
 .day-nav__label {
   font-size: 1.05rem;
   font-weight: 700;
+  background: none;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 10px;
+}
+
+.day-nav__label:active {
+  background: var(--surface-2);
 }
 
 /* ---- Entry list ---- */
@@ -966,4 +985,184 @@ body {
   text-align: center;
   color: var(--muted);
   margin-top: 24px;
+}
+
+/* ---- Log add actions ---- */
+.log-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.log-actions .btn {
+  flex: 1;
+}
+
+.trends__hint {
+  font-size: 0.74rem;
+  text-align: center;
+  margin-top: -4px;
+}
+
+/* ---- Modal (centered dialog) ---- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.modal {
+  width: 100%;
+  max-width: 480px;
+  max-height: calc(100dvh - 32px); /* never taller than the viewport; body scrolls inside */
+  overflow-y: auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 4px 16px 16px;
+}
+
+.modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  padding: 4px 0 10px;
+}
+
+.modal__title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.modal__close {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.modal__body {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---- Day picker (calendar) ---- */
+.daypicker {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.daypicker__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.daypicker__month {
+  font-weight: 700;
+}
+
+.daypicker__dow {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  text-align: center;
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.daypicker__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.daypicker__day {
+  position: relative;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.daypicker__day.is-muted {
+  opacity: 0.4;
+}
+
+.daypicker__day.is-today {
+  border-color: var(--border);
+}
+
+.daypicker__day.is-selected {
+  background: var(--accent-strong);
+  color: #03251a;
+  font-weight: 700;
+}
+
+.daypicker__day:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.daypicker__dot {
+  position: absolute;
+  bottom: 5px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.daypicker__day.is-selected .daypicker__dot {
+  background: #03251a;
+}
+
+/* ---- Net calories + burned + recommendation ---- */
+.energy-summary__net {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.78rem;
+}
+
+.entry__cal--burn {
+  color: #fb923c;
+}
+
+.goals__rec {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.85rem;
+}
+
+.add-exercise__divider {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+  margin-top: 4px;
 }

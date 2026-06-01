@@ -6,7 +6,7 @@ import { composeServingSize, parseServingSize } from '../lib/serving'
 import { postEstimate, postEstimateText } from '../api/estimate'
 import { postEntry } from '../api/entries'
 import { getRecentFoods } from '../api/foods'
-import { localDateTime, localDayKey } from '../lib/date'
+import { localDateTime, withDayKey } from '../lib/date'
 import { mealFromTime } from '../lib/meals'
 import { ApiError } from '../api/client'
 import type { AnalysisResult, RecentFood } from '../types'
@@ -14,11 +14,12 @@ import type { AnalysisResult, RecentFood } from '../types'
 type Status = 'idle' | 'uploading' | 'review' | 'done' | 'error'
 
 interface Props {
-  onLogged: () => void // switch to the log tab after saving
+  day: string // new entries default to this day (the day being viewed)
+  onLogged: () => void // called after a successful save (host closes the modal)
 }
 
 /** Build the editable, one-serving-baseline draft shown in the review card. */
-function draftFromAnalysis(a: AnalysisResult): Draft {
+function draftFromAnalysis(a: AnalysisResult, day: string): Draft {
   return {
     food_name: a.items.map((i) => i.name).join(', ') || 'Meal',
     calories: a.total_calories,
@@ -32,12 +33,12 @@ function draftFromAnalysis(a: AnalysisResult): Draft {
     serving_size: a.serving_size_estimate,
     servings: 1,
     meal: mealFromTime(), // default from the current time; user can override in the card
-    logged_at: localDateTime(), // defaults to now; date editable in the card
+    logged_at: withDayKey(localDateTime(), day), // viewed day + now's time; date editable in the card
   }
 }
 
 /** Re-log a recent food: prefill the card from a stored entry, no AI call. */
-function draftFromRecent(food: RecentFood): Draft {
+function draftFromRecent(food: RecentFood, day: string): Draft {
   const { base } = parseServingSize(food.serving_size ?? null) // strip any "2×" so servings starts at 1
   return {
     food_name: food.food_name,
@@ -52,11 +53,11 @@ function draftFromRecent(food: RecentFood): Draft {
     serving_size: base,
     servings: 1,
     meal: mealFromTime(),
-    logged_at: localDateTime(),
+    logged_at: withDayKey(localDateTime(), day),
   }
 }
 
-export function CapturePage({ onLogged }: Props) {
+export function CapturePage({ day, onLogged }: Props) {
   const queryClient = useQueryClient()
   const [status, setStatus] = useState<Status>('idle')
   const [error, setError] = useState<string | null>(null)
@@ -101,7 +102,7 @@ export function CapturePage({ onLogged }: Props) {
     onSuccess: (res) => {
       setAnalysis(res.analysis)
       setPhotoRef(res.photo_ref)
-      setDraft(draftFromAnalysis(res.analysis))
+      setDraft(draftFromAnalysis(res.analysis, day))
       setStatus('review')
     },
     onError: onEstimateError,
@@ -117,7 +118,7 @@ export function CapturePage({ onLogged }: Props) {
     onSuccess: (res) => {
       setAnalysis(res)
       setPhotoRef(null)
-      setDraft(draftFromAnalysis(res))
+      setDraft(draftFromAnalysis(res, day))
       setStatus('review')
     },
     onError: onEstimateError,
@@ -128,8 +129,9 @@ export function CapturePage({ onLogged }: Props) {
   const save = useMutation({
     mutationFn: postEntry,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['entries', localDayKey()] })
-      queryClient.invalidateQueries({ queryKey: ['summary', localDayKey()] })
+      // Entry may be logged for any day (not just today) — refresh all day lists + trends.
+      queryClient.invalidateQueries({ queryKey: ['entries'] })
+      queryClient.invalidateQueries({ queryKey: ['entries-range'] })
       queryClient.invalidateQueries({ queryKey: ['foods', 'recent'] })
       reset()
       onLogged()
@@ -164,7 +166,7 @@ export function CapturePage({ onLogged }: Props) {
     setPreview(null)
     setAnalysis(null)
     setPhotoRef(null)
-    setDraft(draftFromRecent(food))
+    setDraft(draftFromRecent(food, day))
     setStatus('review')
   }
 
