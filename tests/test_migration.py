@@ -18,9 +18,20 @@ CREATE TABLE food_entries (
 """
 
 
-def _columns(eng) -> set[str]:
+LEGACY_TARGETS_CREATE = """
+CREATE TABLE targets (
+    id INTEGER PRIMARY KEY,
+    calorie_target FLOAT,
+    protein_pct FLOAT,
+    carbs_pct FLOAT,
+    fat_pct FLOAT
+)
+"""
+
+
+def _columns(eng, table: str = "food_entries") -> set[str]:
     with eng.connect() as conn:
-        return {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(food_entries)")}
+        return {row[1] for row in conn.exec_driver_sql(f"PRAGMA table_info({table})")}
 
 
 def test_adds_meal_column_and_is_idempotent(tmp_path):
@@ -60,3 +71,15 @@ def test_adds_nutrition_columns_and_is_idempotent(tmp_path):
     # Idempotent: a second run changes nothing and doesn't error.
     _migrate_add_columns(eng)
     assert _columns(eng) == cols
+
+
+def test_adds_targets_goal_columns(tmp_path):
+    eng = create_engine(f"sqlite:///{tmp_path / 'legacy.db'}")
+    with eng.connect() as conn:
+        conn.exec_driver_sql(LEGACY_TARGETS_CREATE)  # only targets exists (no food_entries)
+        conn.commit()
+
+    _migrate_add_columns(eng)  # must skip the absent food_entries table, not error
+    cols = _columns(eng, "targets")
+    for c in ("goal_weight_kg", "goal_body_fat_pct", "weekly_rate_kg"):
+        assert c in cols, f"{c} not added by migration"

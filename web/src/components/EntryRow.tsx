@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { Entry, EntryCreate, Meal } from '../types'
 import { MEAL_LABELS, MEAL_ORDER, bucketOf } from '../lib/meals'
-import { formatTime } from '../lib/date'
+import { dayKeyOf, formatTime, localDayKey, withDayKey } from '../lib/date'
 import { composeServingSize, parseServingSize } from '../lib/serving'
 import { round } from '../lib/totals'
 import { MacroInput } from './MacroInput'
@@ -31,6 +31,7 @@ interface EditForm {
   serving_base: string // label for ONE serving (multiplier lives in `servings`)
   servings: number // quantity multiplier applied to the baseline macros
   meal: Meal
+  logged_at: string // local datetime; the date is editable (to fix/backfill a day)
   // Macros below are the baseline for ONE serving; saved values are these scaled
   // by `servings`. Editing a macro field adjusts this baseline.
   calories: number
@@ -52,6 +53,7 @@ function formFromEntry(e: Entry): EditForm {
     serving_base: base,
     servings: f,
     meal: bucketOf(e.meal),
+    logged_at: e.logged_at,
     calories: e.calories / f,
     protein_g: e.protein_g / f,
     carbs_g: e.carbs_g / f,
@@ -86,6 +88,7 @@ export function EntryRow({ entry, saving, onSave, onDelete }: Props) {
       food_name: name || entry.food_name, // never blank out the name
       serving_size: composeServingSize(form.serving_base, form.servings) || null,
       meal: form.meal,
+      logged_at: form.logged_at,
       calories: form.calories * f,
       protein_g: form.protein_g * f,
       carbs_g: form.carbs_g * f,
@@ -131,6 +134,18 @@ export function EntryRow({ entry, saving, onSave, onDelete }: Props) {
                 </option>
               ))}
             </select>
+          </label>
+
+          <label className="field">
+            <span className="field__label">Date</span>
+            <input
+              type="date"
+              max={localDayKey()}
+              value={dayKeyOf(form.logged_at)}
+              onChange={(e) =>
+                setForm({ ...form, logged_at: withDayKey(form.logged_at, e.target.value || localDayKey()) })
+              }
+            />
           </label>
 
           <div className="field">

@@ -18,14 +18,22 @@ engine = create_engine(
 )
 
 
-# Columns added to food_entries after its original shape, as {name: SQLite type}.
-# create_all never ALTERs an existing table, so each is added below if missing.
-_FOOD_ENTRY_ADDED_COLUMNS: dict[str, str] = {
-    "meal": "VARCHAR",
-    "weight_g": "FLOAT",
-    "fiber_g": "FLOAT",
-    "sugar_g": "FLOAT",
-    "sodium_mg": "FLOAT",
+# Columns added to existing tables after their original shape, as {table: {name: type}}.
+# create_all never ALTERs an existing table, so each is added below if missing. (Brand-new
+# tables like body_metrics are created in full by create_all and don't appear here.)
+_ADDED_COLUMNS: dict[str, dict[str, str]] = {
+    "food_entries": {
+        "meal": "VARCHAR",
+        "weight_g": "FLOAT",
+        "fiber_g": "FLOAT",
+        "sugar_g": "FLOAT",
+        "sodium_mg": "FLOAT",
+    },
+    "targets": {
+        "goal_weight_kg": "FLOAT",
+        "goal_body_fat_pct": "FLOAT",
+        "weekly_rate_kg": "FLOAT",
+    },
 }
 
 
@@ -33,13 +41,17 @@ def _migrate_add_columns(eng: Engine = engine) -> None:
     """Additive, idempotent column migrations for SQLite (no Alembic).
 
     Guarded by a PRAGMA membership check per column, so it's safe to run repeatedly.
-    New nullable columns backfill existing rows to NULL.
+    New nullable columns backfill existing rows to NULL. Tables absent from the DB (empty
+    PRAGMA) are skipped, so this stays safe to call against a partial schema (e.g. tests).
     """
     with eng.connect() as conn:
-        cols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(food_entries)")}
-        for name, sql_type in _FOOD_ENTRY_ADDED_COLUMNS.items():
-            if name not in cols:
-                conn.exec_driver_sql(f"ALTER TABLE food_entries ADD COLUMN {name} {sql_type}")
+        for table, columns in _ADDED_COLUMNS.items():
+            existing = {row[1] for row in conn.exec_driver_sql(f"PRAGMA table_info({table})")}
+            if not existing:
+                continue  # table doesn't exist yet; create_all will build it in full
+            for name, sql_type in columns.items():
+                if name not in existing:
+                    conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN {name} {sql_type}")
         conn.commit()
 
 

@@ -2,6 +2,7 @@ import { MacroInput } from './MacroInput'
 import { DensityBadge } from './DensityBadge'
 import { round } from '../lib/totals'
 import { MEAL_LABELS, MEAL_ORDER } from '../lib/meals'
+import { dayKeyOf, localDayKey, withDayKey } from '../lib/date'
 import type { Meal } from '../types'
 
 export interface Draft {
@@ -19,6 +20,7 @@ export interface Draft {
   serving_size: string // free-text label describing a single serving
   servings: number // quantity multiplier applied to the baseline macros
   meal: Meal // which meal this entry belongs to
+  logged_at: string // local datetime; the date is editable (to backfill a past day)
 }
 
 const SERVINGS_STEP = 0.5
@@ -97,6 +99,16 @@ export function EstimateCard({
             </option>
           ))}
         </select>
+      </label>
+
+      <label className="field">
+        <span className="field__label">Date</span>
+        <input
+          type="date"
+          max={localDayKey()}
+          value={dayKeyOf(draft.logged_at)}
+          onChange={(e) => onChange({ logged_at: withDayKey(draft.logged_at, e.target.value || localDayKey()) })}
+        />
       </label>
 
       <div className="field">

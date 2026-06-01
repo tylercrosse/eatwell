@@ -798,6 +798,64 @@ body {
   font-size: 0.8rem;
 }
 
+.goals__heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* ---- Segmented control (range + unit toggles) ---- */
+.seg {
+  display: inline-flex;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px;
+  gap: 2px;
+}
+
+.seg__btn {
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.seg__btn.is-active {
+  background: var(--accent-strong);
+  color: #03251a;
+}
+
+/* ---- Trends ---- */
+.trends__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.chart-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chart-card__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.chart-card__empty {
+  text-align: center;
+  padding: 24px 0;
+}
+
 /* ---- Day nav ---- */
 .day-nav {
   display: flex;

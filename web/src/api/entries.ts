@@ -9,6 +9,11 @@ export function getDaySummary(dayKey: string): Promise<DaySummary> {
   return apiJson<DaySummary>(`/entries/summary?date=${dayKey}`)
 }
 
+/** Per-day totals across [from, to] (inclusive day keys). Sparse — only days with entries. */
+export function getEntriesRange(from: string, to: string): Promise<DaySummary[]> {
+  return apiJson<DaySummary[]>(`/entries/range?from=${from}&to=${to}`)
+}
+
 export function postEntry(entry: EntryCreate): Promise<Entry> {
   return apiJson<Entry>('/entries', { method: 'POST', body: JSON.stringify(entry) })
 }

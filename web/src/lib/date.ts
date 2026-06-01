@@ -21,11 +21,35 @@ export function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 }
 
+/** The local day key ("YYYY-MM-DD") portion of a naive datetime string. */
+export function dayKeyOf(iso: string): string {
+  return iso.slice(0, 10)
+}
+
+/** Replace the date in a naive datetime string, keeping its time-of-day. */
+export function withDayKey(iso: string, dayKey: string): string {
+  const time = iso.slice(11) || '12:00:00'
+  return `${dayKey}T${time}`
+}
+
 /** Shift a day key by N days (for the log's prev/next navigation). */
 export function shiftDay(dayKey: string, days: number): string {
   const [y, m, d] = dayKey.split('-').map(Number)
   const dt = new Date(y, m - 1, d + days)
   return localDayKey(dt)
+}
+
+/** Array of N day keys ending at `endKey` (inclusive), ascending. Builds a chart axis. */
+export function lastNDays(n: number, endKey: string = localDayKey()): string[] {
+  const days: string[] = []
+  for (let i = n - 1; i >= 0; i--) days.push(shiftDay(endKey, -i))
+  return days
+}
+
+/** Short axis label for a day key, e.g. "May 31". */
+export function formatShortDay(dayKey: string): string {
+  const [y, m, d] = dayKey.split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString([], { month: 'short', day: 'numeric' })
 }
 
 /** Friendly label for a day key relative to today. */

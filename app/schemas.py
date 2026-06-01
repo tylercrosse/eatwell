@@ -6,6 +6,7 @@ output; ``AnalysisResult`` mirrors it and validates whatever the model returns.
 
 from __future__ import annotations
 
+from datetime import date as date_cls
 from datetime import datetime
 from typing import Literal
 
@@ -183,6 +184,9 @@ class TargetsRead(BaseModel):
     protein_pct: float
     carbs_pct: float
     fat_pct: float
+    goal_weight_kg: float | None = None
+    goal_body_fat_pct: float | None = None
+    weekly_rate_kg: float | None = None
 
 
 class TargetsUpdate(BaseModel):
@@ -190,6 +194,9 @@ class TargetsUpdate(BaseModel):
     protein_pct: float = Field(ge=0, le=100)
     carbs_pct: float = Field(ge=0, le=100)
     fat_pct: float = Field(ge=0, le=100)
+    goal_weight_kg: float | None = Field(default=None, ge=0)
+    goal_body_fat_pct: float | None = Field(default=None, ge=0, le=100)
+    weekly_rate_kg: float | None = None  # target change/week; negative = loss
 
     @model_validator(mode="after")
     def _split_sums_to_100(self) -> TargetsUpdate:
@@ -197,3 +204,29 @@ class TargetsUpdate(BaseModel):
         if not (99.0 <= total <= 101.0):  # allow a little rounding slack
             raise ValueError("protein_pct + carbs_pct + fat_pct must sum to 100")
         return self
+
+
+# --- Body metrics ----------------------------------------------------------
+
+
+class MetricCreate(BaseModel):
+    # Annotated with the aliased import (not bare ``date``): the field is named ``date`` and
+    # its ``= None`` default would otherwise shadow the type during annotation evaluation.
+    date: date_cls | None = None  # defaults to server's today if omitted
+    weight_kg: float | None = Field(default=None, ge=0)
+    body_fat_pct: float | None = Field(default=None, ge=0, le=100)
+    note: str | None = None
+
+    @model_validator(mode="after")
+    def _at_least_one_measure(self) -> MetricCreate:
+        if self.weight_kg is None and self.body_fat_pct is None:
+            raise ValueError("Provide weight_kg and/or body_fat_pct.")
+        return self
+
+
+class MetricRead(BaseModel):
+    id: int
+    date: date_cls
+    weight_kg: float | None
+    body_fat_pct: float | None
+    note: str | None

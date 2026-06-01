@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { lazy, Suspense, useCallback, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CapturePage } from './pages/CapturePage'
 import { LogPage } from './pages/LogPage'
@@ -7,7 +7,10 @@ import { LoginPage } from './components/LoginPage'
 import { getMe, loginWithGoogle, logout } from './api/auth'
 import { ApiError } from './api/client'
 
-type Tab = 'capture' | 'log' | 'goals'
+// Lazy so the charting lib (recharts) is a separate chunk, off the initial load path.
+const TrendsPage = lazy(() => import('./pages/TrendsPage').then((m) => ({ default: m.TrendsPage })))
+
+type Tab = 'capture' | 'log' | 'trends' | 'goals'
 
 export default function App() {
   const queryClient = useQueryClient()
@@ -60,6 +63,11 @@ export default function App() {
       <main className="app__main">
         {tab === 'capture' && <CapturePage onLogged={() => setTab('log')} />}
         {tab === 'log' && <LogPage />}
+        {tab === 'trends' && (
+          <Suspense fallback={<p className="muted">Loading…</p>}>
+            <TrendsPage />
+          </Suspense>
+        )}
         {tab === 'goals' && <GoalsPage />}
       </main>
 
@@ -77,6 +85,13 @@ export default function App() {
         >
           <span className="tabbar__icon">📋</span>
           Log
+        </button>
+        <button
+          className={`tabbar__btn ${tab === 'trends' ? 'is-active' : ''}`}
+          onClick={() => setTab('trends')}
+        >
+          <span className="tabbar__icon">📈</span>
+          Trends
         </button>
         <button
           className={`tabbar__btn ${tab === 'goals' ? 'is-active' : ''}`}

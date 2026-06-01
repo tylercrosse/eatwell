@@ -2,7 +2,9 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { EnergySummary } from '../components/EnergySummary'
 import { MealSection } from '../components/MealSection'
+import { MetricCard } from '../components/MetricCard'
 import { deleteEntry, getEntries, patchEntry } from '../api/entries'
+import { getMetrics } from '../api/metrics'
 import { getTargets } from '../api/targets'
 import { formatDayLabel, localDayKey, shiftDay } from '../lib/date'
 import { sumTotals } from '../lib/totals'
@@ -20,13 +22,18 @@ export function LogPage() {
     queryFn: () => getEntries(day),
   })
   const targetsQuery = useQuery({ queryKey: ['targets'], queryFn: getTargets })
+  const metricQuery = useQuery({ queryKey: ['metrics', day, day], queryFn: () => getMetrics(day, day) })
 
-  const invalidateDay = () => queryClient.invalidateQueries({ queryKey: ['entries', day] })
+  // Invalidate all day lists (an edit can move an entry to another day) + the trends range.
+  const invalidateEntries = () => {
+    queryClient.invalidateQueries({ queryKey: ['entries'] })
+    queryClient.invalidateQueries({ queryKey: ['entries-range'] })
+  }
 
-  const remove = useMutation({ mutationFn: deleteEntry, onSuccess: invalidateDay })
+  const remove = useMutation({ mutationFn: deleteEntry, onSuccess: invalidateEntries })
   const update = useMutation({
     mutationFn: ({ id, patch }: { id: number; patch: Partial<EntryCreate> }) => patchEntry(id, patch),
-    onSuccess: invalidateDay,
+    onSuccess: invalidateEntries,
   })
 
   const entries = entriesQuery.data ?? []
@@ -53,6 +60,8 @@ export function LogPage() {
       </div>
 
       <EnergySummary totals={totals} targets={targetsQuery.data ?? DEFAULT_TARGETS} density={density} />
+
+      {metricQuery.data?.[0] && <MetricCard day={day} metric={metricQuery.data[0]} />}
 
       {entriesQuery.isLoading ? (
         <p className="muted">Loading…</p>

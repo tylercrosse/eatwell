@@ -1,21 +1,30 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { MacroInput } from '../components/MacroInput'
+import { NumberField } from '../components/NumberField'
+import { UnitToggle } from '../components/UnitToggle'
 import { getTargets, putTargets } from '../api/targets'
 import { DEFAULT_TARGETS, macroGramTargets } from '../lib/targets'
 import { round } from '../lib/totals'
+import { displayToKg, kgToDisplay, useWeightUnit } from '../lib/units'
 import type { Targets } from '../types'
 
 export function GoalsPage() {
-  const queryClient = useQueryClient()
   const targetsQuery = useQuery({ queryKey: ['targets'], queryFn: getTargets })
+  if (targetsQuery.isLoading) return <p className="muted">Loading…</p>
+  // Key on the loaded data so the form initializes from it once, without a seeding effect.
+  return <GoalsForm initial={targetsQuery.data ?? DEFAULT_TARGETS} />
+}
 
-  const [form, setForm] = useState<Targets>(DEFAULT_TARGETS)
+/** Round a display-unit value to 1 decimal, or null. Keeps kg↔lb switches from showing noise. */
+function show(value: number | null | undefined): number | null {
+  return value == null ? null : Math.round(value * 10) / 10
+}
 
-  // Seed the form once the saved targets load.
-  useEffect(() => {
-    if (targetsQuery.data) setForm(targetsQuery.data)
-  }, [targetsQuery.data])
+function GoalsForm({ initial }: { initial: Targets }) {
+  const queryClient = useQueryClient()
+  const [unit, setUnit] = useWeightUnit()
+  const [form, setForm] = useState<Targets>(initial)
 
   const save = useMutation({
     mutationFn: putTargets,
@@ -31,7 +40,11 @@ export function GoalsPage() {
     setForm((f) => ({ ...f, ...patch }))
   }
 
-  if (targetsQuery.isLoading) return <p className="muted">Loading…</p>
+  // Goal weight + weekly rate are stored in kg; edit in the chosen display unit.
+  const setGoalWeight = (v: number | null) =>
+    set({ goal_weight_kg: v == null ? null : displayToKg(v, unit) })
+  const setWeeklyRate = (v: number | null) =>
+    set({ weekly_rate_kg: v == null ? null : displayToKg(v, unit) })
 
   return (
     <div className="page">
@@ -55,17 +68,47 @@ export function GoalsPage() {
         <p className="goals__grams muted">
           ≈ {round(grams.protein_g)} g protein · {round(grams.carbs_g)} g carbs · {round(grams.fat_g)} g fat
         </p>
-
-        {save.isError && <p className="error-text">Couldn't save targets. Try again.</p>}
-
-        <button
-          className="btn btn--primary"
-          disabled={!pctOk || save.isPending}
-          onClick={() => save.mutate(form)}
-        >
-          {save.isPending ? 'Saving…' : save.isSuccess ? 'Saved ✓' : 'Save targets'}
-        </button>
       </div>
+
+      <div className="card goals">
+        <div className="goals__heading-row">
+          <h2 className="goals__heading">Body goals</h2>
+          <UnitToggle unit={unit} onChange={setUnit} />
+        </div>
+        <div className="macros">
+          <NumberField
+            label="Goal weight"
+            unit={unit}
+            min={0}
+            value={show(form.goal_weight_kg == null ? null : kgToDisplay(form.goal_weight_kg, unit))}
+            onChange={setGoalWeight}
+          />
+          <NumberField
+            label="Goal body fat"
+            unit="%"
+            min={0}
+            value={show(form.goal_body_fat_pct ?? null)}
+            onChange={(v) => set({ goal_body_fat_pct: v })}
+          />
+          <NumberField
+            label="Weekly change"
+            unit={`${unit}/wk`}
+            value={show(form.weekly_rate_kg == null ? null : kgToDisplay(form.weekly_rate_kg, unit))}
+            onChange={setWeeklyRate}
+          />
+        </div>
+        <p className="goals__grams muted">Negative weekly change = losing; positive = gaining.</p>
+      </div>
+
+      {save.isError && <p className="error-text">Couldn't save targets. Try again.</p>}
+
+      <button
+        className="btn btn--primary"
+        disabled={!pctOk || save.isPending}
+        onClick={() => save.mutate(form)}
+      >
+        {save.isPending ? 'Saving…' : save.isSuccess ? 'Saved ✓' : 'Save goals'}
+      </button>
     </div>
   )
 }

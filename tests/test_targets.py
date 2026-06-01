@@ -14,6 +14,9 @@ def test_get_returns_defaults_when_unset(client):
         "protein_pct": 30.0,
         "carbs_pct": 40.0,
         "fat_pct": 30.0,
+        "goal_weight_kg": None,
+        "goal_body_fat_pct": None,
+        "weekly_rate_kg": None,
     }
 
 

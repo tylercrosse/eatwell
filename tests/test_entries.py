@@ -119,3 +119,26 @@ def test_patch_weight_only(client):
     assert r.status_code == 200
     assert r.json()["weight_g"] == 250
     assert r.json()["calories"] == 200  # untouched
+
+
+def test_patch_logged_at_moves_entry_to_another_day(client):
+    created = _make(client, logged_at="2026-05-31T08:30:00")
+    r = client.patch(f"/api/entries/{created['id']}", json={"logged_at": "2026-05-29T20:00:00"})
+    assert r.status_code == 200
+    assert r.json()["logged_at"] == "2026-05-29T20:00:00"
+    # The entry now lists under the new day, not the old one.
+    assert client.get("/api/entries", params={"date": "2026-05-31"}).json() == []
+    moved = client.get("/api/entries", params={"date": "2026-05-29"}).json()
+    assert [e["id"] for e in moved] == [created["id"]]
+
+
+def test_range_aggregates_per_day(client):
+    _make(client, calories=200, logged_at="2026-05-31T08:00:00")
+    _make(client, food_name="Rice", calories=300, logged_at="2026-05-31T12:00:00")
+    _make(client, food_name="Toast", calories=150, logged_at="2026-06-01T08:00:00")
+
+    rows = client.get("/api/entries/range", params={"from": "2026-05-31", "to": "2026-06-01"}).json()
+    assert [r["date"] for r in rows] == ["2026-05-31", "2026-06-01"]  # ascending, sparse
+    assert rows[0]["entry_count"] == 2
+    assert rows[0]["total_calories"] == 500
+    assert rows[1]["total_calories"] == 150

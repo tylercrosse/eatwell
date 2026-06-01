@@ -32,6 +32,7 @@ function draftFromAnalysis(a: AnalysisResult): Draft {
     serving_size: a.serving_size_estimate,
     servings: 1,
     meal: mealFromTime(), // default from the current time; user can override in the card
+    logged_at: localDateTime(), // defaults to now; date editable in the card
   }
 }
 
@@ -51,6 +52,7 @@ function draftFromRecent(food: RecentFood): Draft {
     serving_size: base,
     servings: 1,
     meal: mealFromTime(),
+    logged_at: localDateTime(),
   }
 }
 
@@ -186,7 +188,7 @@ export function CapturePage({ onLogged }: Props) {
       items_json: analysis ? JSON.stringify(analysis.items) : null,
       source: analysis ? 'ai' : 'manual', // recent re-logs have no fresh analysis
       meal: draft.meal,
-      logged_at: localDateTime(),
+      logged_at: draft.logged_at, // user may have backdated this in the card
     })
   }
 

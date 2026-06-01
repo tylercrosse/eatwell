@@ -107,4 +107,24 @@ export interface Targets {
   protein_pct: number
   carbs_pct: number
   fat_pct: number
+  // Body goals (optional). weekly_rate_kg is target change/week (negative = loss).
+  goal_weight_kg?: number | null
+  goal_body_fat_pct?: number | null
+  weekly_rate_kg?: number | null
+}
+
+// A daily body measurement (GET/POST /api/metrics). Weight stored in kg.
+export interface BodyMetric {
+  id: number
+  date: string // YYYY-MM-DD
+  weight_kg: number | null
+  body_fat_pct: number | null
+  note: string | null
+}
+
+export interface MetricCreate {
+  date?: string
+  weight_kg?: number | null
+  body_fat_pct?: number | null
+  note?: string | null
 }

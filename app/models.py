@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date as date_cls
 from datetime import datetime, timezone
 
 from sqlmodel import Field, SQLModel
@@ -89,4 +90,30 @@ class Targets(SQLModel, table=True):
     carbs_pct: float = 40.0
     fat_pct: float = 30.0
 
+    # Body goals (optional). weekly_rate_kg is the target weight change per week
+    # (negative = loss); used later for TDEE-based target recommendations.
+    goal_weight_kg: float | None = None
+    goal_body_fat_pct: float | None = None
+    weekly_rate_kg: float | None = None
+
+    updated_at: datetime = Field(default_factory=_utcnow)
+
+
+class BodyMetric(SQLModel, table=True):
+    """A daily body measurement: weight and/or body-fat %. One row per user per day.
+
+    Weight is stored canonically in kilograms; the client converts for display (kg/lb).
+    """
+
+    __tablename__ = "body_metrics"
+
+    id: int | None = Field(default=None, primary_key=True)
+    user_id: int | None = Field(default=None, index=True)
+
+    date: date_cls = Field(index=True)  # local calendar day the measurement is for
+    weight_kg: float | None = None
+    body_fat_pct: float | None = None
+    note: str | None = None
+
+    created_at: datetime = Field(default_factory=_utcnow)
     updated_at: datetime = Field(default_factory=_utcnow)

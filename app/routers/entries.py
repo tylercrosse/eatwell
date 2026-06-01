@@ -87,6 +87,37 @@ def day_summary(
     )
 
 
+@router.get("/entries/range", response_model=list[DaySummary])
+def entries_range(
+    start: date_cls = Query(alias="from"),
+    end: date_cls = Query(alias="to"),
+    session: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+) -> list[DaySummary]:
+    """Per-day totals across [from, to] (inclusive). Sparse — only days with entries;
+    the client fills gaps for the chart axis. Defined before /entries/{id} so the literal
+    'range' segment isn't parsed as an id."""
+    start_dt = datetime.combine(start, time.min)
+    end_dt = datetime.combine(end, time.max)
+    stmt = user_query(FoodEntry, user).where(
+        FoodEntry.logged_at >= start_dt, FoodEntry.logged_at <= end_dt
+    )
+    by_day: dict[date_cls, list[FoodEntry]] = {}
+    for e in session.exec(stmt).all():
+        by_day.setdefault(e.logged_at.date(), []).append(e)
+    return [
+        DaySummary(
+            date=day.isoformat(),
+            entry_count=len(group),
+            total_calories=sum(x.calories for x in group),
+            total_protein_g=sum(x.protein_g for x in group),
+            total_carbs_g=sum(x.carbs_g for x in group),
+            total_fat_g=sum(x.fat_g for x in group),
+        )
+        for day, group in sorted(by_day.items())
+    ]
+
+
 @router.get("/entries/{entry_id}", response_model=EntryRead)
 def get_entry(
     entry_id: int,
