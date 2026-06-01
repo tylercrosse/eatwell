@@ -20,9 +20,11 @@ from app.schemas import FOOD_ANALYSIS_JSON_SCHEMA, AnalysisResult
 _SYSTEM_PROMPT = (
     "You are a nutrition estimator. Given a food photo, identify each distinct food, "
     "estimate its serving size and macros, and return ONLY data matching the schema. "
-    "Calories are kcal; protein, carbs and fat are in grams. The totals must be the sum "
-    "of the per-item values. If you are unsure, still give your best estimate but lower "
-    "the confidence value (0 = guess, 1 = very confident)."
+    "Calories are kcal; protein, carbs and fat are in grams. The macro totals must be the "
+    "sum of the per-item values. Also estimate the total edible weight in grams "
+    "(total_weight_g) and the totals for fiber and sugar (grams) and sodium (milligrams). "
+    "If you are unsure, still give your best estimate but lower the confidence value "
+    "(0 = guess, 1 = very confident)."
 )
 
 _TEXT_SYSTEM_PROMPT = (
@@ -30,10 +32,11 @@ _TEXT_SYSTEM_PROMPT = (
     "(e.g. 'small gelato' or '12 oz iced latte'). Use the search_foods tool to look up "
     "grounded nutrition data for each distinct food. The tool returns macros PER 100g (or "
     "per 100ml). Scale each food to the portion the user described, list each as an item, and "
-    "make the totals the sum of the per-item values. Calories are kcal; protein, carbs and fat "
-    "are in grams. Prefer the tool data over your own guesses; if a search returns nothing "
-    "useful or the tool is unavailable, fall back to your best estimate and lower the confidence "
-    "(0 = guess, 1 = very confident)."
+    "make the macro totals the sum of the per-item values. Also estimate the total edible "
+    "weight in grams (total_weight_g) and the totals for fiber and sugar (grams) and sodium "
+    "(milligrams). Calories are kcal; protein, carbs and fat are in grams. Prefer the tool data "
+    "over your own guesses; if a search returns nothing useful or the tool is unavailable, fall "
+    "back to your best estimate and lower the confidence (0 = guess, 1 = very confident)."
 )
 
 # OpenAI-style function tool the text estimator may call to ground each food.

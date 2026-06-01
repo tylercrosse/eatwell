@@ -5,6 +5,16 @@ import { formatTime } from '../lib/date'
 import { composeServingSize, parseServingSize } from '../lib/serving'
 import { round } from '../lib/totals'
 import { MacroInput } from './MacroInput'
+import { DensityBadge } from './DensityBadge'
+
+/** "Fiber 5g · Sugar 12g · Sodium 400mg" for whichever detail fields are present. */
+function extrasText(e: Entry): string {
+  const parts: string[] = []
+  if (e.fiber_g != null) parts.push(`Fiber ${round(e.fiber_g)}g`)
+  if (e.sugar_g != null) parts.push(`Sugar ${round(e.sugar_g)}g`)
+  if (e.sodium_mg != null) parts.push(`Sodium ${round(e.sodium_mg)}mg`)
+  return parts.join(' · ')
+}
 
 const SERVINGS_STEP = 0.5
 const SERVINGS_MIN = 0.25
@@ -27,6 +37,10 @@ interface EditForm {
   protein_g: number
   carbs_g: number
   fat_g: number
+  weight_g: number // 0 = unknown (a null entry value)
+  fiber_g: number
+  sugar_g: number
+  sodium_mg: number
 }
 
 /** Split a stored entry back into the per-serving baseline the editor works on. */
@@ -42,6 +56,10 @@ function formFromEntry(e: Entry): EditForm {
     protein_g: e.protein_g / f,
     carbs_g: e.carbs_g / f,
     fat_g: e.fat_g / f,
+    weight_g: (e.weight_g ?? 0) / f,
+    fiber_g: (e.fiber_g ?? 0) / f,
+    sugar_g: (e.sugar_g ?? 0) / f,
+    sodium_mg: (e.sodium_mg ?? 0) / f,
   }
 }
 
@@ -63,6 +81,7 @@ export function EntryRow({ entry, saving, onSave, onDelete }: Props) {
   function save() {
     const f = form.servings // baseline macros scaled by the chosen quantity
     const name = form.food_name.trim()
+    const scaledOrNull = (v: number) => (v > 0 ? v * f : null) // keep unset detail fields null
     onSave(entry.id, {
       food_name: name || entry.food_name, // never blank out the name
       serving_size: composeServingSize(form.serving_base, form.servings) || null,
@@ -71,6 +90,10 @@ export function EntryRow({ entry, saving, onSave, onDelete }: Props) {
       protein_g: form.protein_g * f,
       carbs_g: form.carbs_g * f,
       fat_g: form.fat_g * f,
+      weight_g: scaledOrNull(form.weight_g),
+      fiber_g: scaledOrNull(form.fiber_g),
+      sugar_g: scaledOrNull(form.sugar_g),
+      sodium_mg: scaledOrNull(form.sodium_mg),
     })
     setEditing(false)
   }
@@ -149,6 +172,13 @@ export function EntryRow({ entry, saving, onSave, onDelete }: Props) {
             <MacroInput label="Fat" unit="g" value={form.fat_g * f} onChange={(v) => setForm({ ...form, fat_g: v / f })} />
           </div>
 
+          <div className="macros">
+            <MacroInput label="Weight" unit="g" value={form.weight_g * f} onChange={(v) => setForm({ ...form, weight_g: v / f })} />
+            <MacroInput label="Fiber" unit="g" value={form.fiber_g * f} onChange={(v) => setForm({ ...form, fiber_g: v / f })} />
+            <MacroInput label="Sugar" unit="g" value={form.sugar_g * f} onChange={(v) => setForm({ ...form, sugar_g: v / f })} />
+            <MacroInput label="Sodium" unit="mg" value={form.sodium_mg * f} onChange={(v) => setForm({ ...form, sodium_mg: v / f })} />
+          </div>
+
           {form.servings !== 1 && (
             <p className="per-serving-hint">
               Per serving: {round(form.calories)} kcal · P {round(form.protein_g)} · C{' '}
@@ -169,6 +199,8 @@ export function EntryRow({ entry, saving, onSave, onDelete }: Props) {
     )
   }
 
+  const extras = extrasText(entry)
+  const hasDensity = entry.weight_g != null && entry.weight_g > 0
   return (
     <li className="card entry">
       <div className="entry__main">
@@ -180,6 +212,12 @@ export function EntryRow({ entry, saving, onSave, onDelete }: Props) {
         <span className="entry__macros">
           P {round(entry.protein_g)} · C {round(entry.carbs_g)} · F {round(entry.fat_g)}
         </span>
+        {(hasDensity || extras) && (
+          <span className="entry__extras">
+            <DensityBadge calories={entry.calories} weightG={entry.weight_g} variant="compact" />
+            {extras && <span>{extras}</span>}
+          </span>
+        )}
       </div>
       <div className="entry__right">
         <span className="entry__cal">{round(entry.calories)}</span>

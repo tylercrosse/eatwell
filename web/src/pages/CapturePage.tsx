@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { PhotoCapture } from '../components/PhotoCapture'
 import { EstimateCard, type Draft } from '../components/EstimateCard'
-import { composeServingSize } from '../lib/serving'
+import { composeServingSize, parseServingSize } from '../lib/serving'
 import { postEstimate, postEstimateText } from '../api/estimate'
 import { postEntry } from '../api/entries'
+import { getRecentFoods } from '../api/foods'
 import { localDateTime, localDayKey } from '../lib/date'
 import { mealFromTime } from '../lib/meals'
 import { ApiError } from '../api/client'
-import type { AnalysisResult } from '../types'
+import type { AnalysisResult, RecentFood } from '../types'
 
 type Status = 'idle' | 'uploading' | 'review' | 'done' | 'error'
 
@@ -24,9 +25,32 @@ function draftFromAnalysis(a: AnalysisResult): Draft {
     protein_g: a.total_protein_g,
     carbs_g: a.total_carbs_g,
     fat_g: a.total_fat_g,
+    weight_g: a.total_weight_g ?? 0,
+    fiber_g: a.total_fiber_g ?? 0,
+    sugar_g: a.total_sugar_g ?? 0,
+    sodium_mg: a.total_sodium_mg ?? 0,
     serving_size: a.serving_size_estimate,
     servings: 1,
     meal: mealFromTime(), // default from the current time; user can override in the card
+  }
+}
+
+/** Re-log a recent food: prefill the card from a stored entry, no AI call. */
+function draftFromRecent(food: RecentFood): Draft {
+  const { base } = parseServingSize(food.serving_size ?? null) // strip any "2×" so servings starts at 1
+  return {
+    food_name: food.food_name,
+    calories: food.calories,
+    protein_g: food.protein_g,
+    carbs_g: food.carbs_g,
+    fat_g: food.fat_g,
+    weight_g: food.weight_g ?? 0,
+    fiber_g: food.fiber_g ?? 0,
+    sugar_g: food.sugar_g ?? 0,
+    sodium_mg: food.sodium_mg ?? 0,
+    serving_size: base,
+    servings: 1,
+    meal: mealFromTime(),
   }
 }
 
@@ -97,11 +121,14 @@ export function CapturePage({ onLogged }: Props) {
     onError: onEstimateError,
   })
 
+  const recentQuery = useQuery({ queryKey: ['foods', 'recent'], queryFn: () => getRecentFoods() })
+
   const save = useMutation({
     mutationFn: postEntry,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['entries', localDayKey()] })
       queryClient.invalidateQueries({ queryKey: ['summary', localDayKey()] })
+      queryClient.invalidateQueries({ queryKey: ['foods', 'recent'] })
       reset()
       onLogged()
     },
@@ -129,20 +156,35 @@ export function CapturePage({ onLogged }: Props) {
     if (desc) estimateText.mutate(desc)
   }
 
+  // Re-log a recent food without an AI call: jump straight to the review card.
+  function onPickRecent(food: RecentFood) {
+    setError(null)
+    setPreview(null)
+    setAnalysis(null)
+    setPhotoRef(null)
+    setDraft(draftFromRecent(food))
+    setStatus('review')
+  }
+
   function onConfirm() {
     if (!draft) return
     const f = draft.servings // baseline macros scaled by the chosen quantity
+    const scaledOrNull = (v: number) => (v > 0 ? v * f : null) // keep unset detail fields null
     save.mutate({
       food_name: draft.food_name,
       calories: draft.calories * f,
       protein_g: draft.protein_g * f,
       carbs_g: draft.carbs_g * f,
       fat_g: draft.fat_g * f,
+      weight_g: scaledOrNull(draft.weight_g),
+      fiber_g: scaledOrNull(draft.fiber_g),
+      sugar_g: scaledOrNull(draft.sugar_g),
+      sodium_mg: scaledOrNull(draft.sodium_mg),
       serving_size: composeServingSize(draft.serving_size, draft.servings),
       confidence: analysis?.confidence ?? null,
       photo_ref: photoRef,
       items_json: analysis ? JSON.stringify(analysis.items) : null,
-      source: 'ai',
+      source: analysis ? 'ai' : 'manual', // recent re-logs have no fresh analysis
       meal: draft.meal,
       logged_at: localDateTime(),
     })
@@ -169,6 +211,25 @@ export function CapturePage({ onLogged }: Props) {
               Estimate from description
             </button>
           </form>
+
+          {(recentQuery.data?.length ?? 0) > 0 && (
+            <div className="capture-recent">
+              <span className="capture-recent__title">Recent — tap to re-log</span>
+              <div className="capture-recent__list">
+                {recentQuery.data!.map((food) => (
+                  <button
+                    key={food.food_name}
+                    type="button"
+                    className="recent-chip"
+                    onClick={() => onPickRecent(food)}
+                  >
+                    <span className="recent-chip__name">{food.food_name}</span>
+                    <span className="recent-chip__cal">{Math.round(food.calories)} kcal</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

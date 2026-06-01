@@ -31,6 +31,12 @@ class AnalysisResult(BaseModel):
     total_protein_g: float
     total_carbs_g: float
     total_fat_g: float
+    # Extended totals. Optional here (older payloads / unit tests may omit them) but
+    # required in the strict JSON schema below, so the model always returns them.
+    total_weight_g: float | None = None
+    total_fiber_g: float | None = None
+    total_sugar_g: float | None = None
+    total_sodium_mg: float | None = None
     serving_size_estimate: str
     confidence: float = Field(ge=0.0, le=1.0)
 
@@ -61,6 +67,10 @@ FOOD_ANALYSIS_JSON_SCHEMA: dict = {
         "total_protein_g": {"type": "number"},
         "total_carbs_g": {"type": "number"},
         "total_fat_g": {"type": "number"},
+        "total_weight_g": {"type": "number", "description": "Total edible weight in grams"},
+        "total_fiber_g": {"type": "number", "description": "grams"},
+        "total_sugar_g": {"type": "number", "description": "grams"},
+        "total_sodium_mg": {"type": "number", "description": "milligrams"},
         "serving_size_estimate": {
             "type": "string",
             "description": "e.g. '1 bowl (~300g)'",
@@ -73,6 +83,10 @@ FOOD_ANALYSIS_JSON_SCHEMA: dict = {
         "total_protein_g",
         "total_carbs_g",
         "total_fat_g",
+        "total_weight_g",
+        "total_fiber_g",
+        "total_sugar_g",
+        "total_sodium_mg",
         "serving_size_estimate",
         "confidence",
     ],
@@ -88,6 +102,10 @@ class EntryCreate(BaseModel):
     protein_g: float = 0.0
     carbs_g: float = 0.0
     fat_g: float = 0.0
+    weight_g: float | None = None
+    fiber_g: float | None = None
+    sugar_g: float | None = None
+    sodium_mg: float | None = None
     serving_size: str | None = None
     confidence: float | None = None
     photo_ref: str | None = None
@@ -103,6 +121,10 @@ class EntryUpdate(BaseModel):
     protein_g: float | None = None
     carbs_g: float | None = None
     fat_g: float | None = None
+    weight_g: float | None = None
+    fiber_g: float | None = None
+    sugar_g: float | None = None
+    sodium_mg: float | None = None
     serving_size: str | None = None
     meal: Meal | None = None
     logged_at: datetime | None = None
@@ -116,6 +138,10 @@ class EntryRead(BaseModel):
     protein_g: float
     carbs_g: float
     fat_g: float
+    weight_g: float | None
+    fiber_g: float | None
+    sugar_g: float | None
+    sodium_mg: float | None
     serving_size: str | None
     confidence: float | None
     photo_ref: str | None
@@ -123,6 +149,21 @@ class EntryRead(BaseModel):
     meal: str | None  # str (not Meal) so an odd stored value never fails response validation
     created_at: datetime
     updated_at: datetime
+
+
+class RecentFood(BaseModel):
+    """A recently-logged food, returned for one-tap re-logging (no AI call)."""
+
+    food_name: str
+    calories: float
+    protein_g: float
+    carbs_g: float
+    fat_g: float
+    weight_g: float | None = None
+    fiber_g: float | None = None
+    sugar_g: float | None = None
+    sodium_mg: float | None = None
+    serving_size: str | None = None
 
 
 class DaySummary(BaseModel):

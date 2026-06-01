@@ -94,3 +94,28 @@ def test_create_rejects_unknown_meal(client):
         json={"food_name": "Brunch thing", "meal": "brunch"},
     )
     assert r.status_code == 422
+
+
+def test_nutrition_fields_round_trip(client):
+    created = _make(client, weight_g=300, fiber_g=5, sugar_g=12, sodium_mg=400)
+    assert created["weight_g"] == 300
+    assert created["fiber_g"] == 5
+    got = client.get(f"/api/entries/{created['id']}").json()
+    assert got["sugar_g"] == 12
+    assert got["sodium_mg"] == 400
+
+
+def test_nutrition_fields_default_null(client):
+    created = _make(client)
+    assert created["weight_g"] is None
+    assert created["fiber_g"] is None
+    assert created["sugar_g"] is None
+    assert created["sodium_mg"] is None
+
+
+def test_patch_weight_only(client):
+    created = _make(client)
+    r = client.patch(f"/api/entries/{created['id']}", json={"weight_g": 250})
+    assert r.status_code == 200
+    assert r.json()["weight_g"] == 250
+    assert r.json()["calories"] == 200  # untouched

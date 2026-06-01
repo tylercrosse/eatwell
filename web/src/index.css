@@ -229,6 +229,63 @@ body {
   border-color: var(--accent);
 }
 
+/* ---- Recent foods (quick re-log) ---- */
+.capture-recent {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 320px;
+  margin-top: 12px;
+}
+
+.capture-recent__title {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-align: left;
+}
+
+.capture-recent__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.recent-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 14px;
+  color: var(--text);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.recent-chip:active {
+  border-color: var(--accent);
+}
+
+.recent-chip__name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-chip__cal {
+  flex: none;
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+
 .capture-loading {
   display: flex;
   flex-direction: column;
@@ -303,6 +360,39 @@ body {
 }
 .conf--low {
   background: rgba(248, 113, 113, 0.15);
+  color: var(--danger);
+}
+
+/* ---- Calorie density badge ---- */
+.density {
+  align-self: flex-start;
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.density__value {
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.density--very-low {
+  background: rgba(52, 211, 153, 0.16);
+  color: var(--accent);
+}
+.density--low {
+  background: rgba(132, 204, 22, 0.16);
+  color: #a3e635;
+}
+.density--medium {
+  background: rgba(251, 191, 36, 0.16);
+  color: #fbbf24;
+}
+.density--very-high {
+  background: rgba(248, 113, 113, 0.16);
   color: var(--danger);
 }
 
@@ -633,6 +723,16 @@ body {
 .entry__meta,
 .entry__macros {
   font-size: 0.76rem;
+  color: var(--muted);
+}
+
+.entry__extras {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 3px;
+  font-size: 0.72rem;
   color: var(--muted);
 }
 

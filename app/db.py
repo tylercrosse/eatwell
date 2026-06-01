@@ -18,16 +18,28 @@ engine = create_engine(
 )
 
 
+# Columns added to food_entries after its original shape, as {name: SQLite type}.
+# create_all never ALTERs an existing table, so each is added below if missing.
+_FOOD_ENTRY_ADDED_COLUMNS: dict[str, str] = {
+    "meal": "VARCHAR",
+    "weight_g": "FLOAT",
+    "fiber_g": "FLOAT",
+    "sugar_g": "FLOAT",
+    "sodium_mg": "FLOAT",
+}
+
+
 def _migrate_add_columns(eng: Engine = engine) -> None:
     """Additive, idempotent column migrations for SQLite (no Alembic).
 
-    ``create_all`` never ALTERs an existing table, so new columns on old tables are added
-    here. Each block is guarded by a PRAGMA membership check, so it's safe to run repeatedly.
+    Guarded by a PRAGMA membership check per column, so it's safe to run repeatedly.
+    New nullable columns backfill existing rows to NULL.
     """
     with eng.connect() as conn:
         cols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(food_entries)")}
-        if "meal" not in cols:
-            conn.exec_driver_sql("ALTER TABLE food_entries ADD COLUMN meal VARCHAR")
+        for name, sql_type in _FOOD_ENTRY_ADDED_COLUMNS.items():
+            if name not in cols:
+                conn.exec_driver_sql(f"ALTER TABLE food_entries ADD COLUMN {name} {sql_type}")
         conn.commit()
 
 

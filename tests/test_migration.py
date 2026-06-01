@@ -44,3 +44,19 @@ def test_adds_meal_column_and_is_idempotent(tmp_path):
     # Running again must not error or duplicate the column.
     _migrate_add_columns(eng)
     assert len([c for c in _columns(eng) if c == "meal"]) == 1
+
+
+def test_adds_nutrition_columns_and_is_idempotent(tmp_path):
+    eng = create_engine(f"sqlite:///{tmp_path / 'legacy.db'}")
+    with eng.connect() as conn:
+        conn.exec_driver_sql(LEGACY_CREATE)
+        conn.commit()
+
+    _migrate_add_columns(eng)
+    cols = _columns(eng)
+    for c in ("weight_g", "fiber_g", "sugar_g", "sodium_mg"):
+        assert c in cols, f"{c} not added by migration"
+
+    # Idempotent: a second run changes nothing and doesn't error.
+    _migrate_add_columns(eng)
+    assert _columns(eng) == cols

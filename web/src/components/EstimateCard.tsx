@@ -1,4 +1,5 @@
 import { MacroInput } from './MacroInput'
+import { DensityBadge } from './DensityBadge'
 import { round } from '../lib/totals'
 import { MEAL_LABELS, MEAL_ORDER } from '../lib/meals'
 import type { Meal } from '../types'
@@ -11,6 +12,10 @@ export interface Draft {
   protein_g: number
   carbs_g: number
   fat_g: number
+  weight_g: number // total edible weight (powers the density badge); 0 = unknown
+  fiber_g: number
+  sugar_g: number
+  sodium_mg: number
   serving_size: string // free-text label describing a single serving
   servings: number // quantity multiplier applied to the baseline macros
   meal: Meal // which meal this entry belongs to
@@ -60,6 +65,9 @@ export function EstimateCard({
       {previewUrl && <img className="estimate__photo" src={previewUrl} alt="Food" />}
 
       {conf && <span className={`conf ${conf.cls}`}>{conf.text}</span>}
+
+      {/* Density is a ratio, so the per-serving baseline gives the same band as the total. */}
+      <DensityBadge calories={draft.calories} weightG={draft.weight_g} />
 
       <label className="field">
         <span className="field__label">Food</span>
@@ -128,6 +136,13 @@ export function EstimateCard({
         <MacroInput label="Protein" unit="g" value={draft.protein_g * f} onChange={(v) => onChange({ protein_g: v / f })} />
         <MacroInput label="Carbs" unit="g" value={draft.carbs_g * f} onChange={(v) => onChange({ carbs_g: v / f })} />
         <MacroInput label="Fat" unit="g" value={draft.fat_g * f} onChange={(v) => onChange({ fat_g: v / f })} />
+      </div>
+
+      <div className="macros">
+        <MacroInput label="Weight" unit="g" value={draft.weight_g * f} onChange={(v) => onChange({ weight_g: v / f })} />
+        <MacroInput label="Fiber" unit="g" value={draft.fiber_g * f} onChange={(v) => onChange({ fiber_g: v / f })} />
+        <MacroInput label="Sugar" unit="g" value={draft.sugar_g * f} onChange={(v) => onChange({ sugar_g: v / f })} />
+        <MacroInput label="Sodium" unit="mg" value={draft.sodium_mg * f} onChange={(v) => onChange({ sodium_mg: v / f })} />
       </div>
 
       {draft.servings !== 1 && (

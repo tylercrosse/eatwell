@@ -20,6 +20,9 @@ _ENERGY_KCAL = "208"
 _PROTEIN = "203"
 _FAT = "204"
 _CARBS = "205"
+_FIBER = "291"
+_SUGARS = "269"  # total sugars
+_SODIUM = "307"  # milligrams
 
 
 class UsdaError(RuntimeError):
@@ -35,6 +38,9 @@ class FoodMatch:
     carbs_per_100g: float
     fat_per_100g: float
     branded_serving: str | None = None  # e.g. "240 ml"; only present for Branded items
+    fiber_per_100g: float = 0.0
+    sugar_per_100g: float = 0.0
+    sodium_per_100g: float = 0.0  # milligrams
 
 
 def _nutrient_map(food: dict) -> dict[str, float]:
@@ -77,6 +83,9 @@ def _parse_food(food: dict) -> FoodMatch:
         carbs_per_100g=nutrients.get(_CARBS, 0.0),
         fat_per_100g=nutrients.get(_FAT, 0.0),
         branded_serving=_branded_serving(food),
+        fiber_per_100g=nutrients.get(_FIBER, 0.0),
+        sugar_per_100g=nutrients.get(_SUGARS, 0.0),
+        sodium_per_100g=nutrients.get(_SODIUM, 0.0),
     )
 
 

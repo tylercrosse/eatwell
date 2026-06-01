@@ -31,6 +31,14 @@ class FoodEntry(SQLModel, table=True):
     carbs_g: float = 0.0
     fat_g: float = 0.0
 
+    # Extended nutrition (optional; AI-estimated totals for this entry, NULL on legacy
+    # rows). weight_g is the total edible weight and powers the calorie-density indicator
+    # (kcal per 100g); fiber/sugar/sodium enrich the macro breakdown.
+    weight_g: float | None = None
+    fiber_g: float | None = None
+    sugar_g: float | None = None
+    sodium_mg: float | None = None
+
     serving_size: str | None = None
     confidence: float | None = None
     photo_ref: str | None = None  # filename under photos_dir, served at /photos/<ref>
