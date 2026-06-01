@@ -12,7 +12,8 @@ from pydantic import BaseModel
 
 from app import openrouter, storage
 from app.config import Settings
-from app.deps import get_settings
+from app.deps import get_current_user, get_settings
+from app.models import User
 from app.schemas import AnalysisResult
 
 router = APIRouter(tags=["analyze"])
@@ -31,6 +32,7 @@ class TextAnalyzeRequest(BaseModel):
 async def analyze_text(
     payload: TextAnalyzeRequest,
     settings: Settings = Depends(get_settings),
+    user: User = Depends(get_current_user),
 ) -> AnalysisResult:
     desc = payload.description.strip()
     if not desc:
@@ -46,6 +48,7 @@ async def analyze_text(
 async def analyze(
     file: UploadFile = File(...),
     settings: Settings = Depends(get_settings),
+    user: User = Depends(get_current_user),
 ) -> AnalyzeResponse:
     raw = await file.read()
     if not raw:

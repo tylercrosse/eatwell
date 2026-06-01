@@ -1,17 +1,16 @@
 """GET /api/foods/recent — distinct recently-logged foods for fast re-logging.
 
-Lets the client re-log a known food without another AI estimate. Single user in v1:
-no user_id filtering yet (the column stays NULL). When auth lands, add
-Depends(get_current_user) and scope the query by user_id.
+Lets the client re-log a known food without another AI estimate. Scoped to the
+signed-in user's own history via ``user_query``.
 """
 
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
-from sqlmodel import Session, select
+from sqlmodel import Session
 
-from app.deps import get_session
-from app.models import FoodEntry
+from app.deps import get_current_user, get_session, user_query
+from app.models import FoodEntry, User
 from app.schemas import RecentFood
 
 router = APIRouter(tags=["foods"])
@@ -26,12 +25,13 @@ def recent_foods(
     q: str | None = Query(default=None),
     limit: int = Query(default=15, ge=1, le=50),
     session: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
 ) -> list[RecentFood]:
     """Most-recent distinct foods (case-insensitive by name), newest first.
 
     ``q`` filters by a substring of the food name.
     """
-    stmt = select(FoodEntry).order_by(FoodEntry.logged_at.desc())
+    stmt = user_query(FoodEntry, user).order_by(FoodEntry.logged_at.desc())
     if q and q.strip():
         stmt = stmt.where(FoodEntry.food_name.ilike(f"%{q.strip()}%"))
     rows = session.exec(stmt.limit(_SCAN_LIMIT)).all()

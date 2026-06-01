@@ -18,9 +18,10 @@ async function parseError(res: Response): Promise<string> {
   return `Request failed (${res.status})`
 }
 
-/** JSON request helper. Throws ApiError on non-2xx. */
+/** JSON request helper. Throws ApiError on non-2xx. Sends the session cookie. */
 export async function apiJson<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
+    credentials: 'include', // carry the httpOnly session cookie (also across origins)
     headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
     ...init,
   })
@@ -31,7 +32,11 @@ export async function apiJson<T>(path: string, init?: RequestInit): Promise<T> {
 
 /** Multipart upload helper (do NOT set Content-Type; the browser sets the boundary). */
 export async function apiUpload<T>(path: string, form: FormData): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, { method: 'POST', body: form })
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    credentials: 'include',
+    body: form,
+  })
   if (!res.ok) throw new ApiError(res.status, await parseError(res))
   return res.json() as Promise<T>
 }

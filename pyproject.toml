@@ -13,6 +13,9 @@ dependencies = [
     "pydantic-settings>=2.4",
     "pillow>=10.4",
     "pillow-heif>=0.18",
+    "google-auth>=2.53.0",
+    "pyjwt>=2.13.0",
+    "requests>=2.34.2",
 ]
 
 [project.optional-dependencies]

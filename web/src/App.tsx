@@ -1,17 +1,60 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CapturePage } from './pages/CapturePage'
 import { LogPage } from './pages/LogPage'
 import { GoalsPage } from './pages/GoalsPage'
+import { LoginPage } from './components/LoginPage'
+import { getMe, loginWithGoogle, logout } from './api/auth'
+import { ApiError } from './api/client'
 
 type Tab = 'capture' | 'log' | 'goals'
 
 export default function App() {
+  const queryClient = useQueryClient()
   const [tab, setTab] = useState<Tab>('capture')
+  const [loginError, setLoginError] = useState<string | null>(null)
+
+  // 401 here just means "not signed in" — surface the login screen, don't retry.
+  const meQuery = useQuery({ queryKey: ['me'], queryFn: getMe, retry: false })
+
+  const login = useMutation({
+    mutationFn: loginWithGoogle,
+    onMutate: () => setLoginError(null),
+    onSuccess: (user) => queryClient.setQueryData(['me'], user),
+    onError: (e) =>
+      setLoginError(e instanceof ApiError ? e.message : 'Sign-in failed. Please try again.'),
+  })
+
+  const signOut = useMutation({
+    mutationFn: logout,
+    onSuccess: () => queryClient.clear(), // drop the session + all cached user data
+  })
+
+  const onCredential = useCallback((credential: string) => login.mutate(credential), [login])
+
+  if (meQuery.isLoading) {
+    return (
+      <div className="app">
+        <main className="app__main">
+          <p className="muted">Loading…</p>
+        </main>
+      </div>
+    )
+  }
+
+  const me = meQuery.data
+  if (!me) {
+    return <LoginPage onCredential={onCredential} error={loginError} pending={login.isPending} />
+  }
 
   return (
     <div className="app">
-      <header className="app__header">
+      <header className="app__header app__header--row">
         <h1>Calorie Tracker</h1>
+        <button className="app__signout" onClick={() => signOut.mutate()} title={me.email}>
+          {me.picture && <img className="app__avatar" src={me.picture} alt="" referrerPolicy="no-referrer" />}
+          Sign out
+        </button>
       </header>
 
       <main className="app__main">

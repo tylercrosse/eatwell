@@ -41,9 +41,26 @@ class Settings(BaseSettings):
     max_upload_bytes: int = 15 * 1024 * 1024  # 15 MB
     max_image_dimension: int = 1024  # longest side sent to the model (token savings)
 
+    # Auth (Google sign-in). Empty client id -> login can't succeed (verification fails).
+    google_client_id: str = ""
+    # Comma-separated allowlist; only these emails may sign in. Empty -> allow any
+    # Google account that verifies (open — set this in any shared deployment).
+    allowed_emails: str = ""
+    # HMAC secret for our own session JWTs. MUST be set to a long random value in prod.
+    jwt_secret: str = "dev-insecure-change-me"
+    jwt_ttl_seconds: int = 60 * 60 * 24 * 30  # 30 days
+    # Email whose first login adopts pre-auth (user_id IS NULL) rows. Empty -> no backfill.
+    owner_email: str = ""
+    # Send the session cookie only over HTTPS. Keep false for local http dev.
+    cookie_secure: bool = False
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def allowed_email_set(self) -> set[str]:
+        return {e.strip().lower() for e in self.allowed_emails.split(",") if e.strip()}
 
     @property
     def db_url(self) -> str:

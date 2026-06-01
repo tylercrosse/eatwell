@@ -1,7 +1,7 @@
 """CRUD for logged food entries + a per-day summary.
 
-Single user in v1: no user_id filtering yet (the column stays NULL). When auth lands,
-add Depends(get_current_user) and scope each query by user_id.
+Every query is scoped to the signed-in user via ``user_query``; created rows get the
+user's id, and id-addressed rows are ownership-checked before read/update/delete.
 """
 
 from __future__ import annotations
@@ -10,10 +10,10 @@ from datetime import date as date_cls
 from datetime import datetime, time, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlmodel import Session, select
+from sqlmodel import Session
 
-from app.deps import get_session
-from app.models import FoodEntry
+from app.deps import get_current_user, get_session, user_query
+from app.models import FoodEntry, User
 from app.schemas import DaySummary, EntryCreate, EntryRead, EntryUpdate
 
 router = APIRouter(tags=["entries"])
@@ -26,12 +26,24 @@ def _day_bounds(day: date_cls) -> tuple[datetime, datetime]:
     return start, end
 
 
+def _get_owned(entry_id: int, user: User, session: Session) -> FoodEntry:
+    """Fetch an entry by id, 404ing if it's missing OR owned by someone else."""
+    entry = session.get(FoodEntry, entry_id)
+    if entry is None or entry.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Entry not found.")
+    return entry
+
+
 @router.post("/entries", response_model=EntryRead, status_code=201)
-def create_entry(payload: EntryCreate, session: Session = Depends(get_session)) -> FoodEntry:
+def create_entry(
+    payload: EntryCreate,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+) -> FoodEntry:
     data = payload.model_dump()
     if data.get("logged_at") is None:
         data["logged_at"] = datetime.now(timezone.utc)
-    entry = FoodEntry(**data)
+    entry = FoodEntry(**data, user_id=user.id)
     session.add(entry)
     session.commit()
     session.refresh(entry)
@@ -44,8 +56,9 @@ def list_entries(
     limit: int = Query(default=200, le=500),
     offset: int = Query(default=0, ge=0),
     session: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
 ) -> list[FoodEntry]:
-    stmt = select(FoodEntry)
+    stmt = user_query(FoodEntry, user)
     if day is not None:
         start, end = _day_bounds(day)
         stmt = stmt.where(FoodEntry.logged_at >= start, FoodEntry.logged_at <= end)
@@ -57,9 +70,12 @@ def list_entries(
 def day_summary(
     day: date_cls = Query(alias="date"),
     session: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
 ) -> DaySummary:
     start, end = _day_bounds(day)
-    stmt = select(FoodEntry).where(FoodEntry.logged_at >= start, FoodEntry.logged_at <= end)
+    stmt = user_query(FoodEntry, user).where(
+        FoodEntry.logged_at >= start, FoodEntry.logged_at <= end
+    )
     entries = list(session.exec(stmt).all())
     return DaySummary(
         date=day.isoformat(),
@@ -72,11 +88,12 @@ def day_summary(
 
 
 @router.get("/entries/{entry_id}", response_model=EntryRead)
-def get_entry(entry_id: int, session: Session = Depends(get_session)) -> FoodEntry:
-    entry = session.get(FoodEntry, entry_id)
-    if entry is None:
-        raise HTTPException(status_code=404, detail="Entry not found.")
-    return entry
+def get_entry(
+    entry_id: int,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+) -> FoodEntry:
+    return _get_owned(entry_id, user, session)
 
 
 @router.patch("/entries/{entry_id}", response_model=EntryRead)
@@ -84,10 +101,9 @@ def update_entry(
     entry_id: int,
     payload: EntryUpdate,
     session: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
 ) -> FoodEntry:
-    entry = session.get(FoodEntry, entry_id)
-    if entry is None:
-        raise HTTPException(status_code=404, detail="Entry not found.")
+    entry = _get_owned(entry_id, user, session)
     updates = payload.model_dump(exclude_unset=True)
     for field, value in updates.items():
         setattr(entry, field, value)
@@ -99,9 +115,11 @@ def update_entry(
 
 
 @router.delete("/entries/{entry_id}", status_code=204)
-def delete_entry(entry_id: int, session: Session = Depends(get_session)) -> None:
-    entry = session.get(FoodEntry, entry_id)
-    if entry is None:
-        raise HTTPException(status_code=404, detail="Entry not found.")
+def delete_entry(
+    entry_id: int,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+) -> None:
+    entry = _get_owned(entry_id, user, session)
     session.delete(entry)
     session.commit()

@@ -69,6 +69,14 @@ export interface EntryCreate {
   logged_at?: string
 }
 
+// The signed-in account (GET /api/auth/me, POST /api/auth/google).
+export interface AuthUser {
+  id: number
+  email: string
+  name: string | null
+  picture: string | null
+}
+
 // A recently-logged food, returned by GET /api/foods/recent for one-tap re-logging.
 export interface RecentFood {
   food_name: string

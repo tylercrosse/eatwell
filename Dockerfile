@@ -4,6 +4,11 @@ WORKDIR /web
 COPY web/package*.json ./
 RUN npm ci
 COPY web/ ./
+# Vite inlines VITE_* at build time, so the Google client id must be present now (not at
+# runtime). Pass it in: `fly deploy --build-arg VITE_GOOGLE_CLIENT_ID=<id>`. Empty -> the
+# built app shows "sign-in isn't configured".
+ARG VITE_GOOGLE_CLIENT_ID=""
+ENV VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
 RUN npm run build
 
 # --- Stage 2: python runtime serving API + built PWA ---

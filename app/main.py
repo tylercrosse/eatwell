@@ -15,7 +15,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
 from app.db import init_db
-from app.routers import analyze, entries, foods, targets
+from app.routers import analyze, auth, entries, foods, targets
 
 settings = get_settings()
 
@@ -31,10 +31,12 @@ app = FastAPI(title=settings.app_title, lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
+    allow_credentials=True,  # send/receive the session cookie cross-origin (specific origins required)
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+app.include_router(auth.router, prefix="/api")
 app.include_router(analyze.router, prefix="/api")
 app.include_router(entries.router, prefix="/api")
 app.include_router(foods.router, prefix="/api")

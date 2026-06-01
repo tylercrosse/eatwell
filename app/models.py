@@ -11,6 +11,25 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+class User(SQLModel, table=True):
+    """An authenticated account, keyed to a Google identity.
+
+    ``google_sub`` is Google's stable, unique subject id (preferred over email, which can
+    change). Profile fields are refreshed on each login. ``FoodEntry.user_id`` /
+    ``Targets.user_id`` reference ``id`` (no DB-level FK, matching the SQLite-additive style).
+    """
+
+    __tablename__ = "users"
+
+    id: int | None = Field(default=None, primary_key=True)
+    google_sub: str = Field(index=True, unique=True)
+    email: str = Field(index=True)
+    name: str | None = None
+    picture: str | None = None
+
+    created_at: datetime = Field(default_factory=_utcnow)
+
+
 class FoodEntry(SQLModel, table=True):
     """A single logged meal/food.
 
