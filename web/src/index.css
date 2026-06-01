@@ -604,6 +604,70 @@ body {
   background: var(--danger);
 }
 
+/* ---- Calorie density meter (overview) ---- */
+.density-meter {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.density-meter__head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+}
+
+.density-meter__bar {
+  display: flex;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--border);
+}
+
+.density-meter__seg {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.density-meter__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.density-meter__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.density-meter__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* Shared band colors for the meter segments + legend dots. */
+.density-seg--very-low {
+  background: var(--accent);
+}
+.density-seg--low {
+  background: #a3e635;
+}
+.density-seg--medium {
+  background: #fbbf24;
+}
+.density-seg--very-high {
+  background: var(--danger);
+}
+.density-seg--unknown {
+  background: var(--surface-2);
+}
+
 /* ---- Meal sections ---- */
 .meal-section {
   display: flex;

@@ -34,3 +34,32 @@ export const DENSITY_LABELS: Record<DensityBand, string> = {
   medium: 'Medium density',
   'very-high': 'Very high density',
 }
+
+// Bands low → high, for stable ordering in the overview meter + legend.
+export const DENSITY_BANDS: DensityBand[] = ['very-low', 'low', 'medium', 'very-high']
+
+export interface DensityBreakdown {
+  byBand: Record<DensityBand, number> // calories attributed to each band
+  unknown: number // calories from foods with no usable weight (can't be classified)
+  total: number // sum of byBand + unknown
+}
+
+/**
+ * Split a set of foods' calories across density bands — each food's calories land in
+ * the band of its overall density. Foods lacking a weight go to `unknown` (surfaced,
+ * not silently dropped). Accepts any {calories, weight_g} shape (e.g. an Entry).
+ */
+export function densityBreakdown(
+  items: { calories: number; weight_g?: number | null }[],
+): DensityBreakdown {
+  const byBand: Record<DensityBand, number> = { 'very-low': 0, low: 0, medium: 0, 'very-high': 0 }
+  let unknown = 0
+  for (const it of items) {
+    const cals = Number.isFinite(it.calories) ? Math.max(0, it.calories) : 0
+    const d = calorieDensity(it.calories, it.weight_g)
+    if (d) byBand[d.band] += cals
+    else unknown += cals
+  }
+  const total = DENSITY_BANDS.reduce((sum, b) => sum + byBand[b], 0) + unknown
+  return { byBand, unknown, total }
+}

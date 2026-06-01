@@ -6,6 +6,7 @@ import { deleteEntry, getEntries, patchEntry } from '../api/entries'
 import { getTargets } from '../api/targets'
 import { formatDayLabel, localDayKey, shiftDay } from '../lib/date'
 import { sumTotals } from '../lib/totals'
+import { densityBreakdown } from '../lib/density'
 import { groupByMeal } from '../lib/meals'
 import { DEFAULT_TARGETS } from '../lib/targets'
 import type { EntryCreate } from '../types'
@@ -30,6 +31,7 @@ export function LogPage() {
 
   const entries = entriesQuery.data ?? []
   const totals = sumTotals(entries)
+  const density = densityBreakdown(entries)
   const groups = groupByMeal(entries)
   const isToday = day === localDayKey()
 
@@ -50,7 +52,7 @@ export function LogPage() {
         </button>
       </div>
 
-      <EnergySummary totals={totals} targets={targetsQuery.data ?? DEFAULT_TARGETS} />
+      <EnergySummary totals={totals} targets={targetsQuery.data ?? DEFAULT_TARGETS} density={density} />
 
       {entriesQuery.isLoading ? (
         <p className="muted">Loading…</p>

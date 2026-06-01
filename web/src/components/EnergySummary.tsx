@@ -1,15 +1,17 @@
 import type { MacroTotals } from '../lib/totals'
 import { round } from '../lib/totals'
 import { macroGramTargets } from '../lib/targets'
+import { DENSITY_BANDS, type DensityBand, type DensityBreakdown } from '../lib/density'
 import type { Targets } from '../types'
 
 interface Props {
   totals: MacroTotals
   targets: Targets
+  density: DensityBreakdown
 }
 
 /** Calorie rings (Consumed + Remaining) + macro progress bars, against daily targets. */
-export function EnergySummary({ totals, targets }: Props) {
+export function EnergySummary({ totals, targets, density }: Props) {
   const grams = macroGramTargets(targets)
   const target = targets.calorie_target
   const consumed = totals.calories
@@ -40,6 +42,54 @@ export function EnergySummary({ totals, targets }: Props) {
         <MacroBar label="Protein" value={totals.protein_g} target={grams.protein_g} colorVar="--macro-protein" />
         <MacroBar label="Carbs" value={totals.carbs_g} target={grams.carbs_g} colorVar="--macro-carbs" />
         <MacroBar label="Fat" value={totals.fat_g} target={grams.fat_g} colorVar="--macro-fat" />
+      </div>
+
+      <DensityMeter breakdown={density} />
+    </div>
+  )
+}
+
+const DENSITY_SHORT: Record<DensityBand, string> = {
+  'very-low': 'Very low',
+  low: 'Low',
+  medium: 'Medium',
+  'very-high': 'High',
+}
+
+/** Share of the day's calories coming from each density band (stacked bar + legend). */
+function DensityMeter({ breakdown }: { breakdown: DensityBreakdown }) {
+  if (breakdown.total <= 0) return null
+  const pct = (v: number) => (v / breakdown.total) * 100
+
+  // Bands low → high, then an "Unrated" tail for foods without a weight. Drop empties.
+  const segments = [
+    ...DENSITY_BANDS.map((b) => ({ key: b, label: DENSITY_SHORT[b], value: breakdown.byBand[b] })),
+    { key: 'unknown', label: 'Unrated', value: breakdown.unknown },
+  ].filter((s) => s.value > 0)
+
+  return (
+    <div className="density-meter">
+      <div className="density-meter__head">
+        <span className="macro-bar__label">Calorie density</span>
+        <span className="macro-bar__nums">share of calories</span>
+      </div>
+      <div className="density-meter__bar">
+        {segments.map((s) => (
+          <div
+            key={s.key}
+            className={`density-meter__seg density-seg--${s.key}`}
+            style={{ width: `${pct(s.value)}%` }}
+            title={`${s.label}: ${round(pct(s.value))}%`}
+          />
+        ))}
+      </div>
+      <div className="density-meter__legend">
+        {segments.map((s) => (
+          <span key={s.key} className="density-meter__legend-item">
+            <span className={`density-meter__dot density-seg--${s.key}`} />
+            {s.label} {round(pct(s.value))}%
+          </span>
+        ))}
       </div>
     </div>
   )
