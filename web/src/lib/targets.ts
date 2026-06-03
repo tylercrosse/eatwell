@@ -24,3 +24,35 @@ export function macroGramTargets(t: Targets): MacroGramTargets {
     fat_g: (t.calorie_target * t.fat_pct) / 100 / ATWATER.fat,
   }
 }
+
+export type GoalDirection = 'lose' | 'gain' | 'maintain'
+
+/** Direction of the body goal, from goal weight vs current weight (|diff| < 0.1 kg = maintain).
+ *  null when either weight is unknown. */
+export function goalDirection(
+  goalWeightKg: number | null | undefined,
+  currentWeightKg: number | null | undefined,
+): GoalDirection | null {
+  if (goalWeightKg == null || currentWeightKg == null) return null
+  const diff = goalWeightKg - currentWeightKg
+  if (Math.abs(diff) < 0.1) return 'maintain'
+  return diff < 0 ? 'lose' : 'gain'
+}
+
+/** The goal's signed weekly rate (kg/wk; negative = loss). The rate is stored as a positive
+ *  magnitude, so the sign is inferred from the goal direction (goal vs current weight). Falls back
+ *  to the stored value when direction can't be inferred; null when no rate is set. */
+export function signedWeeklyRateKg(t: Targets, currentWeightKg: number | null | undefined): number | null {
+  if (t.weekly_rate_kg == null) return null
+  const mag = Math.abs(t.weekly_rate_kg)
+  switch (goalDirection(t.goal_weight_kg, currentWeightKg)) {
+    case 'lose':
+      return -mag
+    case 'gain':
+      return mag
+    case 'maintain':
+      return 0
+    default:
+      return t.weekly_rate_kg
+  }
+}

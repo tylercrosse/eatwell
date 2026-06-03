@@ -28,3 +28,13 @@ export function round(n: number): number {
 export function round1(n: number): number {
   return Math.round(n * 10) / 10
 }
+
+/** Compact food-weight label: grams under 1 kg, else kg to 1 dp (e.g. "350 g", "1.4 kg"). */
+export function formatFoodWeight(grams: number): string {
+  return grams >= 1000 ? `${round1(grams / 1000)} kg` : `${round(grams)} g`
+}
+
+/** Drink-volume label (1 g ≈ 1 ml): millilitres under 1 L, else litres to 1 dp ("250 ml", "0.5 L"). */
+export function formatDrinkVolume(grams: number): string {
+  return grams >= 1000 ? `${round1(grams / 1000)} L` : `${round(grams)} ml`
+}

@@ -18,6 +18,7 @@ export interface AnalysisResult {
   total_fiber_g?: number | null
   total_sugar_g?: number | null
   total_sodium_mg?: number | null
+  is_beverage?: boolean
   serving_size_estimate: string
   confidence: number
 }
@@ -41,6 +42,7 @@ export interface Entry {
   fiber_g: number | null
   sugar_g: number | null
   sodium_mg: number | null
+  is_beverage: boolean
   serving_size: string | null
   confidence: number | null
   photo_ref: string | null
@@ -60,6 +62,7 @@ export interface EntryCreate {
   fiber_g?: number | null
   sugar_g?: number | null
   sodium_mg?: number | null
+  is_beverage?: boolean
   serving_size?: string | null
   confidence?: number | null
   photo_ref?: string | null
@@ -88,6 +91,7 @@ export interface RecentFood {
   fiber_g?: number | null
   sugar_g?: number | null
   sodium_mg?: number | null
+  is_beverage?: boolean
   serving_size?: string | null
 }
 

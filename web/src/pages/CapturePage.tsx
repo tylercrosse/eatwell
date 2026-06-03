@@ -30,6 +30,7 @@ function draftFromAnalysis(a: AnalysisResult, day: string): Draft {
     fiber_g: a.total_fiber_g ?? 0,
     sugar_g: a.total_sugar_g ?? 0,
     sodium_mg: a.total_sodium_mg ?? 0,
+    is_beverage: a.is_beverage ?? false,
     serving_size: a.serving_size_estimate,
     servings: 1,
     meal: mealFromTime(), // default from the current time; user can override in the card
@@ -50,6 +51,7 @@ function draftFromRecent(food: RecentFood, day: string): Draft {
     fiber_g: food.fiber_g ?? 0,
     sugar_g: food.sugar_g ?? 0,
     sodium_mg: food.sodium_mg ?? 0,
+    is_beverage: food.is_beverage ?? false,
     serving_size: base,
     servings: 1,
     meal: mealFromTime(),
@@ -184,6 +186,7 @@ export function CapturePage({ day, onLogged }: Props) {
       fiber_g: scaledOrNull(draft.fiber_g),
       sugar_g: scaledOrNull(draft.sugar_g),
       sodium_mg: scaledOrNull(draft.sodium_mg),
+      is_beverage: draft.is_beverage,
       serving_size: composeServingSize(draft.serving_size, draft.servings),
       confidence: analysis?.confidence ?? null,
       photo_ref: photoRef,

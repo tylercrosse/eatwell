@@ -59,6 +59,11 @@ class FoodEntry(SQLModel, table=True):
     sugar_g: float | None = None
     sodium_mg: float | None = None
 
+    # True when the entry is primarily a drink (coffee, juice, soda, alcohol, milk, smoothie).
+    # Liquid calories are far less satiating, so the fullness score is capped for beverages and
+    # their weight is shown as drink volume, separate from solid-food weight.
+    is_beverage: bool = Field(default=False)
+
     serving_size: str | None = None
     confidence: float | None = None
     photo_ref: str | None = None  # filename under photos_dir, served at /photos/<ref>

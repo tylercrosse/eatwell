@@ -11,6 +11,9 @@
   --macro-protein: #60a5fa;
   --macro-carbs: #fbbf24;
   --macro-fat: #f472b6;
+  --exp-bmr: #a78bfa;
+  --exp-baseline: #2dd4bf;
+  --exp-exercise: #fb923c;
   --radius: 16px;
 
   color-scheme: dark;
@@ -421,8 +424,8 @@ body {
   color: var(--danger);
 }
 
-/* ---- Calorie density badge ---- */
-.density {
+/* ---- Fullness factor badge ---- */
+.fullness {
   align-self: flex-start;
   display: inline-block;
   font-size: 0.7rem;
@@ -432,24 +435,29 @@ body {
   white-space: nowrap;
 }
 
-.density__value {
+.fullness__value {
   font-weight: 600;
   opacity: 0.85;
 }
 
-.density--very-low {
+/* filling = green/good, low fullness = red — most-filling first. */
+.fullness--very-filling {
   background: rgba(52, 211, 153, 0.16);
   color: var(--accent);
 }
-.density--low {
+.fullness--filling {
   background: rgba(132, 204, 22, 0.16);
   color: #a3e635;
 }
-.density--medium {
+.fullness--moderate {
   background: rgba(251, 191, 36, 0.16);
   color: #fbbf24;
 }
-.density--very-high {
+.fullness--light {
+  background: rgba(251, 146, 60, 0.16);
+  color: #fb923c;
+}
+.fullness--low {
   background: rgba(248, 113, 113, 0.16);
   color: var(--danger);
 }
@@ -571,7 +579,8 @@ body {
 .energy-summary__rings {
   display: flex;
   justify-content: center;
-  gap: 32px;
+  align-items: flex-start;
+  gap: clamp(10px, 4vw, 32px);
 }
 
 .energy-ring {
@@ -583,8 +592,8 @@ body {
 
 .energy-ring__chart {
   position: relative;
-  width: 120px;
-  height: 120px;
+  width: clamp(92px, 26vw, 120px);
+  height: clamp(92px, 26vw, 120px);
 }
 
 .energy-ring__center {
@@ -598,7 +607,7 @@ body {
 }
 
 .energy-ring__value {
-  font-size: 1.6rem;
+  font-size: clamp(1.25rem, 5.5vw, 1.6rem);
   font-weight: 800;
   letter-spacing: -0.02em;
 }
@@ -664,20 +673,20 @@ body {
   background: var(--danger);
 }
 
-/* ---- Calorie density meter (overview) ---- */
-.density-meter {
+/* ---- Fullness meter (overview) ---- */
+.fullness-meter {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.density-meter__head {
+.fullness-meter__head {
   display: flex;
   justify-content: space-between;
   font-size: 0.78rem;
 }
 
-.density-meter__bar {
+.fullness-meter__bar {
   display: flex;
   height: 10px;
   border-radius: 999px;
@@ -685,12 +694,12 @@ body {
   background: var(--border);
 }
 
-.density-meter__seg {
+.fullness-meter__seg {
   height: 100%;
   transition: width 0.3s ease;
 }
 
-.density-meter__legend {
+.fullness-meter__legend {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
@@ -698,34 +707,243 @@ body {
   color: var(--muted);
 }
 
-.density-meter__legend-item {
+.fullness-meter__legend-item {
   display: inline-flex;
   align-items: center;
   gap: 5px;
 }
 
-.density-meter__dot {
+.fullness-meter__dot {
   width: 9px;
   height: 9px;
   border-radius: 50%;
   display: inline-block;
 }
 
-/* Shared band colors for the meter segments + legend dots. */
-.density-seg--very-low {
+/* Shared tier colors for the meter segments + legend dots. */
+.fullness-seg--very-filling {
   background: var(--accent);
 }
-.density-seg--low {
+.fullness-seg--filling {
   background: #a3e635;
 }
-.density-seg--medium {
+.fullness-seg--moderate {
   background: #fbbf24;
 }
-.density-seg--very-high {
+.fullness-seg--light {
+  background: #fb923c;
+}
+.fullness-seg--low {
   background: var(--danger);
 }
-.density-seg--unknown {
+.fullness-seg--unknown {
   background: var(--surface-2);
+}
+
+/* ---- Energy balance line ---- */
+.energy-balance-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.energy-balance {
+  margin: 0;
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.energy-balance__note {
+  margin: 0;
+  text-align: center;
+  font-size: 0.72rem;
+  color: var(--exp-exercise);
+  line-height: 1.4;
+}
+
+.energy-balance__rate {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.energy-balance.is-good .energy-balance__rate {
+  color: var(--accent);
+}
+
+.energy-balance.is-off .energy-balance__rate {
+  color: var(--danger);
+}
+
+.energy-summary__hint {
+  margin: 0;
+  text-align: center;
+  font-size: 0.72rem;
+}
+
+/* ---- Popover (hover/tap detail panels) ---- */
+.popover {
+  position: relative;
+  display: inline-flex;
+}
+
+.popover__trigger {
+  display: inline-flex;
+  border: none;
+  background: none;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+
+/* A bar's whole row is the trigger: full-width, with a hover highlight as the affordance. */
+.energy-summary__bars > .popover {
+  display: block;
+  width: 100%;
+}
+
+.energy-summary__bars > .popover > .popover__trigger {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 4px 0;
+  border-radius: 8px;
+}
+
+.energy-summary__bars > .popover > .popover__trigger:hover {
+  background: var(--surface-2);
+}
+
+.popover__panel {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  min-width: 220px;
+  max-width: min(280px, 86vw);
+  padding: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  cursor: default;
+}
+
+.popover__panel--top {
+  bottom: 100%;
+  margin-bottom: 8px;
+}
+
+.popover__panel--bottom {
+  top: 100%;
+  margin-top: 8px;
+}
+
+/* Transparent bridge over the margin gap so hovering trigger → panel doesn't close it. */
+.popover__panel--top::after,
+.popover__panel--bottom::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 8px;
+}
+.popover__panel--top::after {
+  top: 100%;
+}
+.popover__panel--bottom::after {
+  bottom: 100%;
+}
+
+/* Keep the edge rings' panels (leftmost / rightmost) from overflowing the card. */
+.energy-summary__rings > .popover:first-child .popover__panel {
+  left: 0;
+  transform: none;
+}
+
+.energy-summary__rings > .popover:last-child .popover__panel {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+
+.popover__title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.popover__note {
+  margin: 8px 0 0;
+  font-size: 0.68rem;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.popover__note--warn {
+  color: var(--exp-exercise);
+}
+
+.contrib-table {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.contrib-table__row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  font-size: 0.78rem;
+}
+
+.contrib-table__name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.contrib-table__val,
+.contrib-table__pct {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.contrib-table__pct {
+  min-width: 34px;
+  text-align: right;
+}
+
+.contrib-table__dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+/* Two-column "calc" variant (Expenditure − Consumed = Deficit). */
+.contrib-table--calc .contrib-table__row {
+  grid-template-columns: 1fr auto;
+}
+
+.contrib-table__row--total {
+  margin-top: 2px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+  font-weight: 700;
+}
+
+.contrib-table__row--total .contrib-table__val {
+  color: var(--text);
 }
 
 /* ---- Meal sections ---- */
@@ -740,6 +958,43 @@ body {
   flex-direction: column;
   gap: 2px;
   padding: 0 2px;
+}
+
+.meal-section__title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Food weight (volume) sits at the right edge of the meal's title row. */
+.meal-section__volume {
+  margin-left: auto;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+/* Day-level food/drink volume caption under the fullness meter. */
+.fullness-meter__volume {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+/* Fullness badge + "Drink" override toggle on the estimate card. */
+.estimate__fullness {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.estimate__beverage {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  color: var(--muted);
+  cursor: pointer;
 }
 
 .meal-section__title {

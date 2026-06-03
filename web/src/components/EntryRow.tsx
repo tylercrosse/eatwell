@@ -5,7 +5,7 @@ import { dayKeyOf, formatTime, localDayKey, withDayKey } from '../lib/date'
 import { composeServingSize, parseServingSize } from '../lib/serving'
 import { round } from '../lib/totals'
 import { MacroInput } from './MacroInput'
-import { DensityBadge } from './DensityBadge'
+import { FullnessBadge } from './FullnessBadge'
 import { ServingsStepper } from './ServingsStepper'
 
 /** "Fiber 5g · Sugar 12g · Sodium 400mg" for whichever detail fields are present. */
@@ -178,7 +178,7 @@ export function EntryRow({ entry, saving, onSave, onDelete }: Props) {
   }
 
   const extras = extrasText(entry)
-  const hasDensity = entry.weight_g != null && entry.weight_g > 0
+  const hasFullness = entry.weight_g != null && entry.weight_g > 0
   return (
     <li className="card entry">
       <div className="entry__main">
@@ -190,9 +190,9 @@ export function EntryRow({ entry, saving, onSave, onDelete }: Props) {
         <span className="entry__macros">
           P {round(entry.protein_g)} · C {round(entry.carbs_g)} · F {round(entry.fat_g)}
         </span>
-        {(hasDensity || extras) && (
+        {(hasFullness || extras) && (
           <span className="entry__extras">
-            <DensityBadge calories={entry.calories} weightG={entry.weight_g} variant="compact" />
+            <FullnessBadge food={entry} variant="compact" />
             {extras && <span>{extras}</span>}
           </span>
         )}

@@ -1,5 +1,5 @@
 import { MacroInput } from './MacroInput'
-import { DensityBadge } from './DensityBadge'
+import { FullnessBadge } from './FullnessBadge'
 import { ServingsStepper } from './ServingsStepper'
 import { round } from '../lib/totals'
 import { MEAL_LABELS, MEAL_ORDER } from '../lib/meals'
@@ -14,10 +14,11 @@ export interface Draft {
   protein_g: number
   carbs_g: number
   fat_g: number
-  weight_g: number // total edible weight (powers the density badge); 0 = unknown
+  weight_g: number // total edible weight (powers the fullness badge); 0 = unknown
   fiber_g: number
   sugar_g: number
   sodium_mg: number
+  is_beverage: boolean // a drink (caps fullness; weight counts as drink volume, not food bulk)
   serving_size: string // free-text label describing a single serving
   servings: number // quantity multiplier applied to the baseline macros
   meal: Meal // which meal this entry belongs to
@@ -61,8 +62,18 @@ export function EstimateCard({
 
       {conf && <span className={`conf ${conf.cls}`}>{conf.text}</span>}
 
-      {/* Density is a ratio, so the per-serving baseline gives the same band as the total. */}
-      <DensityBadge calories={draft.calories} weightG={draft.weight_g} />
+      {/* FF is scored per-100g, so the per-serving baseline yields the same tier as the total. */}
+      <div className="estimate__fullness">
+        <FullnessBadge food={draft} />
+        <label className="estimate__beverage">
+          <input
+            type="checkbox"
+            checked={draft.is_beverage}
+            onChange={(e) => onChange({ is_beverage: e.target.checked })}
+          />
+          Drink
+        </label>
+      </div>
 
       <label className="field">
         <span className="field__label">Food</span>

@@ -28,6 +28,8 @@ _ADDED_COLUMNS: dict[str, dict[str, str]] = {
         "fiber_g": "FLOAT",
         "sugar_g": "FLOAT",
         "sodium_mg": "FLOAT",
+        # NOT NULL DEFAULT 0 so existing rows backfill to "not a beverage".
+        "is_beverage": "BOOLEAN NOT NULL DEFAULT 0",
     },
     "targets": {
         "goal_weight_kg": "FLOAT",

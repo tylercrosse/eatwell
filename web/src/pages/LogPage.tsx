@@ -15,8 +15,9 @@ import { getLatestMetric, getMetrics } from '../api/metrics'
 import { getTargets } from '../api/targets'
 import { formatDayLabel, localDayKey, shiftDay } from '../lib/date'
 import { sumTotals } from '../lib/totals'
-import { densityBreakdown } from '../lib/density'
+import { fullnessBreakdown } from '../lib/fullness'
 import { stepsToKcal } from '../lib/activity'
+import { expenditureBreakdown } from '../lib/energy'
 import { groupByMeal } from '../lib/meals'
 import { DEFAULT_TARGETS } from '../lib/targets'
 import type { EntryCreate } from '../types'
@@ -50,7 +51,7 @@ export function LogPage({ day, setDay }: Props) {
 
   const entries = entriesQuery.data ?? []
   const totals = sumTotals(entries)
-  const density = densityBreakdown(entries)
+  const fullness = fullnessBreakdown(entries)
   const groups = groupByMeal(entries)
   const isToday = day === localDayKey()
   const metric = metricQuery.data?.[0]
@@ -59,6 +60,19 @@ export function LogPage({ day, setDay }: Props) {
   // most recent logged weight (you needn't weigh in daily), not just this day's.
   const exerciseKcal = (exerciseQuery.data ?? []).reduce((sum, e) => sum + e.calories, 0)
   const expenditure = exerciseKcal + stepsToKcal(metric?.steps, latestWeightQuery.data?.weight_kg)
+
+  // Full expenditure split (BMR + baseline + exercise) for the 3-ring view; null if the profile is
+  // incomplete, in which case EnergySummary falls back to the Consumed/Remaining view.
+  const targets = targetsQuery.data ?? DEFAULT_TARGETS
+  const expenditureDetail = expenditureBreakdown({
+    weightKg: latestWeightQuery.data?.weight_kg,
+    heightCm: targets.height_cm,
+    birthYear: targets.birth_year,
+    sex: targets.sex,
+    activityFactor: targets.activity_factor,
+    exerciseKcal: expenditure,
+    currentYear: new Date().getFullYear(),
+  })
 
   return (
     <div className="page">
@@ -93,9 +107,13 @@ export function LogPage({ day, setDay }: Props) {
 
       <EnergySummary
         totals={totals}
-        targets={targetsQuery.data ?? DEFAULT_TARGETS}
-        density={density}
+        targets={targets}
+        fullness={fullness}
         expenditure={expenditure}
+        expenditureBreakdown={expenditureDetail}
+        entries={entries}
+        isToday={isToday}
+        currentWeightKg={latestWeightQuery.data?.weight_kg ?? null}
       />
 
       {metric && (metric.weight_kg != null || metric.body_fat_pct != null) && (

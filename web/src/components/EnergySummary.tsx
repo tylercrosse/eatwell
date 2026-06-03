@@ -1,26 +1,150 @@
 import type { MacroTotals } from '../lib/totals'
-import { round } from '../lib/totals'
-import { macroGramTargets } from '../lib/targets'
-import { DENSITY_BANDS, type DensityBand, type DensityBreakdown } from '../lib/density'
+import { round, formatFoodWeight, formatDrinkVolume } from '../lib/totals'
+import { macroGramTargets, signedWeeklyRateKg } from '../lib/targets'
+import { FULLNESS_TIERS, FULLNESS_SHORT, type FullnessBreakdown } from '../lib/fullness'
 import { usePersistentToggle } from '../lib/prefs'
-import type { Targets } from '../types'
+import { useWeightUnit, kgToDisplay } from '../lib/units'
+import {
+  macroEnergy,
+  topContributors,
+  balanceProjection,
+  goalGapKcal,
+  type ContribKey,
+  type Contributor,
+  type MacroEnergy,
+  type ExpenditureBreakdown,
+  type BalanceProjection,
+} from '../lib/energy'
+import { Popover } from './Popover'
+import type { Entry, Targets } from '../types'
 
 interface Props {
   totals: MacroTotals
   targets: Targets
-  density: DensityBreakdown
+  fullness: FullnessBreakdown
   expenditure: number // kcal burned this day (steps + exercise); 0 if none
+  expenditureBreakdown: ExpenditureBreakdown | null // null when the profile is incomplete
+  entries: Entry[]
+  isToday: boolean
+  currentWeightKg: number | null // latest weigh-in; gives the goal rate its lose/gain direction
 }
 
-/** Calorie rings (Consumed + Remaining) + macro progress bars, against daily targets.
- *  When expenditure is logged, a Net/Gross toggle factors burned calories into Remaining. */
-export function EnergySummary({ totals, targets, density, expenditure }: Props) {
+/** Cronometer-inspired daily energy summary: Consumed / Expenditure / Deficit rings with macro and
+ *  per-food breakdown popovers. Falls back to the simpler Consumed/Remaining view when the profile
+ *  is incomplete (no BMR → no expenditure breakdown). */
+export function EnergySummary({ totals, targets, fullness, expenditure, expenditureBreakdown: eb, entries, isToday, currentWeightKg }: Props) {
+  if (!eb) {
+    return <LegacyEnergySummary totals={totals} targets={targets} fullness={fullness} expenditure={expenditure} />
+  }
+
+  const grams = macroGramTargets(targets)
+  const target = targets.calorie_target
+  const consumed = totals.calories
+  const me = macroEnergy(totals)
+  const deficit = eb.total - consumed
+  const surplus = deficit < 0
+  const bp = balanceProjection({
+    expenditureTotal: eb.total,
+    consumed,
+    calorieTarget: target,
+    isToday,
+    goalWeeklyRateKg: signedWeeklyRateKg(targets, currentWeightKg),
+  })
+
+  const consumedSegments = [
+    { value: me.protein, color: 'var(--macro-protein)' },
+    { value: me.carbs, color: 'var(--macro-carbs)' },
+    { value: me.fat, color: 'var(--macro-fat)' },
+  ]
+  const expSegments = [
+    { value: eb.bmr, color: 'var(--exp-bmr)' },
+    { value: eb.baseline, color: 'var(--exp-baseline)' },
+    { value: eb.exercise, color: 'var(--exp-exercise)' },
+  ]
+
+  // Accounting view: energy in (+) and out (−) sum to the balance (+1853 and −3308 → −1455).
+  const consumedValue = `${consumed > 0 ? '+' : ''}${round(consumed)}`
+  const expenditureValue = `${eb.total > 0 ? '−' : ''}${round(eb.total)}`
+  // "Balance" ring: the sign carries direction (+surplus / −deficit); the word lives in the popover.
+  const balanceLabel = `Balance${isToday ? ' (so far)' : ''}`
+  const balanceValue = `${deficit > 0 ? '−' : deficit < 0 ? '+' : ''}${round(Math.abs(deficit))}`
+  // Color the ring by how far the balance is from the goal: green at the goal, red as the gap grows
+  // in either direction (too steep a deficit OR a surplus). Falls back to binary when no goal is set.
+  const deficitColor = balanceRingColor(goalGapKcal(bp))
+
+  return (
+    <div className="card energy-summary">
+      <div className="energy-summary__rings">
+        <Popover label="Calories consumed breakdown" placement="bottom" content={<ConsumedDetail me={me} />}>
+          <SegmentedRing label="Consumed" value={consumedValue} unit="kcal" segments={consumedSegments} />
+        </Popover>
+        <Popover label="Energy expenditure breakdown" placement="bottom" content={<ExpenditureDetail eb={eb} />}>
+          <SegmentedRing label="Expenditure" value={expenditureValue} unit="kcal" segments={expSegments} />
+        </Popover>
+        <Popover
+          label="How the deficit is calculated"
+          placement="bottom"
+          content={
+            <DeficitDetail
+              expenditure={eb.total}
+              consumed={consumed}
+              deficit={deficit}
+              surplus={surplus}
+              isToday={isToday}
+              guidance={balanceGuidance(bp.kcalPerDay)}
+            />
+          }
+        >
+          <Ring
+            label={balanceLabel}
+            value={balanceValue}
+            unit="kcal"
+            fraction={eb.total > 0 ? consumed / eb.total : 0}
+            over={surplus}
+            color={deficitColor}
+          />
+        </Popover>
+      </div>
+
+      <BalanceLine bp={bp} target={target} />
+
+      <div className="energy-summary__bars">
+        <ProgressBar
+          label="Energy"
+          value={consumed}
+          target={target}
+          unit="kcal"
+          colorVar="--muted"
+          contributors={topContributors(entries, 'calories')}
+          contribTitle="Energy (kcal)"
+        />
+        <MacroProgress label="Protein" field="protein_g" value={totals.protein_g} target={grams.protein_g} colorVar="--macro-protein" entries={entries} />
+        <MacroProgress label="Carbs" field="carbs_g" value={totals.carbs_g} target={grams.carbs_g} colorVar="--macro-carbs" entries={entries} />
+        <MacroProgress label="Fat" field="fat_g" value={totals.fat_g} target={grams.fat_g} colorVar="--macro-fat" entries={entries} />
+      </div>
+
+      <FullnessMeter breakdown={fullness} />
+    </div>
+  )
+}
+
+/** The pre-redesign view, shown when there's no expenditure breakdown (incomplete profile). */
+function LegacyEnergySummary({
+  totals,
+  targets,
+  fullness,
+  expenditure,
+}: {
+  totals: MacroTotals
+  targets: Targets
+  fullness: FullnessBreakdown
+  expenditure: number
+}) {
   const [netMode, setNetMode] = usePersistentToggle('net-mode', true)
   const grams = macroGramTargets(targets)
   const target = targets.calorie_target
   const consumed = totals.calories
   const useNet = expenditure > 0 && netMode
-  // Net mode lets burned calories add back to what you can still eat.
   const remaining = useNet ? target - consumed + expenditure : target - consumed
   const consumedFrac = target > 0 ? consumed / target : 0
 
@@ -58,59 +182,266 @@ export function EnergySummary({ totals, targets, density, expenditure }: Props) 
         />
       </div>
 
+      <p className="muted energy-summary__hint">Add your height, age &amp; sex in Goals to see expenditure &amp; deficit.</p>
+
       <div className="energy-summary__bars">
-        <MacroBar label="Protein" value={totals.protein_g} target={grams.protein_g} colorVar="--macro-protein" />
-        <MacroBar label="Carbs" value={totals.carbs_g} target={grams.carbs_g} colorVar="--macro-carbs" />
-        <MacroBar label="Fat" value={totals.fat_g} target={grams.fat_g} colorVar="--macro-fat" />
+        <ProgressBar label="Protein" value={totals.protein_g} target={grams.protein_g} unit="g" colorVar="--macro-protein" />
+        <ProgressBar label="Carbs" value={totals.carbs_g} target={grams.carbs_g} unit="g" colorVar="--macro-carbs" />
+        <ProgressBar label="Fat" value={totals.fat_g} target={grams.fat_g} unit="g" colorVar="--macro-fat" />
       </div>
 
-      <DensityMeter breakdown={density} />
+      <FullnessMeter breakdown={fullness} />
     </div>
   )
 }
 
-const DENSITY_SHORT: Record<DensityBand, string> = {
-  'very-low': 'Very low',
-  low: 'Low',
-  medium: 'Medium',
-  'very-high': 'High',
+function ConsumedDetail({ me }: { me: MacroEnergy }) {
+  const rows = [
+    { label: 'Protein', kcal: me.protein, color: 'var(--macro-protein)' },
+    { label: 'Carbs', kcal: me.carbs, color: 'var(--macro-carbs)' },
+    { label: 'Fat', kcal: me.fat, color: 'var(--macro-fat)' },
+  ]
+  const gap = me.logged > 0 ? Math.abs(me.total - me.logged) / me.logged : 0
+  return (
+    <div>
+      <div className="popover__title">Calories consumed (kcal)</div>
+      <div className="contrib-table">
+        {rows.map((r) => (
+          <div className="contrib-table__row" key={r.label}>
+            <span className="contrib-table__name">
+              <span className="contrib-table__dot" style={{ background: r.color }} />
+              {r.label}
+            </span>
+            <span className="contrib-table__val">{round(r.kcal)}</span>
+            <span className="contrib-table__pct">{me.total > 0 ? round((r.kcal / me.total) * 100) : 0}%</span>
+          </div>
+        ))}
+      </div>
+      {gap > 0.03 && (
+        <p className="popover__note">
+          Macro calories ({round(me.total)}) differ from the logged total ({round(me.logged)}) — fiber, rounding, or
+          unlogged macros.
+        </p>
+      )}
+    </div>
+  )
 }
 
-/** Share of the day's calories coming from each density band (stacked bar + legend). */
-function DensityMeter({ breakdown }: { breakdown: DensityBreakdown }) {
+function ExpenditureDetail({ eb }: { eb: ExpenditureBreakdown }) {
+  const rows = [
+    { label: 'Basal metabolic rate (BMR)', kcal: eb.bmr, color: 'var(--exp-bmr)' },
+    { label: 'Baseline activity', kcal: eb.baseline, color: 'var(--exp-baseline)' },
+    { label: 'Exercise', kcal: eb.exercise, color: 'var(--exp-exercise)' },
+  ]
+  return (
+    <div>
+      <div className="popover__title">Energy expenditure</div>
+      <div className="contrib-table">
+        {rows.map((r) => (
+          <div className="contrib-table__row" key={r.label}>
+            <span className="contrib-table__name">
+              <span className="contrib-table__dot" style={{ background: r.color }} />
+              {r.label}
+            </span>
+            <span className="contrib-table__val">{round(r.kcal)}</span>
+            <span className="contrib-table__pct">{eb.total > 0 ? round((r.kcal / eb.total) * 100) : 0}%</span>
+          </div>
+        ))}
+      </div>
+      {eb.exercise > 0 && <p className="popover__note">Exercise includes step-derived burn.</p>}
+    </div>
+  )
+}
+
+function DeficitDetail({
+  expenditure,
+  consumed,
+  deficit,
+  surplus,
+  isToday,
+  guidance,
+}: {
+  expenditure: number
+  consumed: number
+  deficit: number
+  surplus: boolean
+  isToday: boolean
+  guidance?: string | null
+}) {
+  const word = surplus ? 'Surplus' : 'Deficit'
+  return (
+    <div>
+      <div className="popover__title">
+        {word}
+        {isToday ? ' (so far today)' : ''}
+      </div>
+      <div className="contrib-table contrib-table--calc">
+        <div className="contrib-table__row">
+          <span className="contrib-table__name">Expenditure</span>
+          <span className="contrib-table__val">{round(expenditure)} kcal</span>
+        </div>
+        <div className="contrib-table__row">
+          <span className="contrib-table__name">Consumed</span>
+          <span className="contrib-table__val">−{round(consumed)} kcal</span>
+        </div>
+        <div className="contrib-table__row contrib-table__row--total">
+          <span className="contrib-table__name">{word}</span>
+          <span className="contrib-table__val">{round(Math.abs(deficit))} kcal</span>
+        </div>
+      </div>
+      <p className="popover__note">
+        {surplus
+          ? 'You’ve eaten more than you’ve burned — a surplus tends to add weight.'
+          : `How much more you burned than ate${isToday ? ' so far today' : ''}. This drives the weight projection below.`}
+      </p>
+      {guidance && <p className="popover__note popover__note--warn">{guidance}</p>}
+    </div>
+  )
+}
+
+function ContribTable({ title, rows, unit }: { title: string; rows: Contributor[]; unit: string }) {
+  return (
+    <div>
+      <div className="popover__title">{title}</div>
+      <div className="contrib-table">
+        {rows.map((r, i) => (
+          <div className="contrib-table__row" key={i}>
+            <span className="contrib-table__name">{r.name}</span>
+            <span className="contrib-table__val">
+              {round(r.value)} {unit}
+            </span>
+            <span className="contrib-table__pct">{round(r.pct)}%</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// |daily gap from goal| (kcal) at which the Deficit ring is fully red; 0 → green.
+const BALANCE_RED_KCAL = 600
+// |daily gap from goal| (kcal) beyond which we surface the target-vs-goal mismatch.
+const BALANCE_HINT_KCAL = 150
+
+/** Goal-relative ring color: green (~150° hue) at the goal, ramping through yellow/orange to red
+ *  (0°) as |gap| approaches the red threshold. undefined with no goal (caller uses the binary fallback). */
+function balanceRingColor(gap: number | null): string | undefined {
+  if (gap == null) return undefined
+  const t = Math.min(Math.abs(gap) / BALANCE_RED_KCAL, 1)
+  return `hsl(${Math.round(150 * (1 - t))}, 68%, 55%)`
+}
+
+// Sustained daily balance (kcal) beyond which we surface wellness guidance, per direction.
+const LARGE_DEFICIT_KCAL = 1000
+const LARGE_SURPLUS_KCAL = 700
+
+/** General, hedged guidance when a *sustained* balance is large in either direction; null otherwise.
+ *  Keyed off the projected/realized balance (not the inflated "so far" number). */
+function balanceGuidance(kcalPerDay: number): string | null {
+  if (kcalPerDay <= -LARGE_DEFICIT_KCAL) {
+    return 'Sustained deficits this large can bring low energy, constant hunger, irritability, poor sleep, and loss of muscle along with fat. A smaller deficit is usually easier to sustain.'
+  }
+  if (kcalPerDay >= LARGE_SURPLUS_KCAL) {
+    return 'Surpluses beyond what muscle growth needs are stored as fat (~3,500 kcal ≈ 1 lb) and can spike blood sugar. Trimming the surplus limits fat gain.'
+  }
+  return null
+}
+
+function BalanceLine({ bp, target }: { bp: BalanceProjection; target: number }) {
+  const [unit] = useWeightUnit()
+  const losing = bp.kcalPerDay < 0
+  const verb = losing ? 'lose' : 'gain'
+
+  if (bp.basis === 'actual') {
+    const dayDisplay = kgToDisplay(Math.abs(bp.weeklyKg) / 7, unit)
+    return (
+      <p className="energy-balance">
+        {losing ? 'Deficit' : 'Surplus'} {round(Math.abs(bp.kcalPerDay))} kcal · ≈ {verb} {dayDisplay.toFixed(2)} {unit}{' '}
+        that day
+      </p>
+    )
+  }
+
+  const rate = kgToDisplay(Math.abs(bp.weeklyKg), unit)
+  const gap = goalGapKcal(bp)
+  const recommended = gap != null ? round(target - gap) : null
+  const goalRate = kgToDisplay(Math.abs(bp.goalWeeklyKg ?? 0), unit).toFixed(1)
+  const goalVerb = bp.goalWeeklyKg == null || bp.goalWeeklyKg === 0 ? 'maintain' : bp.goalWeeklyKg < 0 ? 'lose' : 'gain'
+  // On-goal (within tolerance) → green; any larger gap, in either direction → red. Matches the ring.
+  const offGoal = gap != null && Math.abs(gap) > BALANCE_HINT_KCAL
+  const stateClass = gap == null ? '' : offGoal ? ' is-off' : ' is-good'
+  const showMismatch = offGoal && recommended != null
+  return (
+    <div className="energy-balance-block">
+      <p className={`energy-balance${stateClass}`}>
+        On plan (eat {round(target)} kcal): {round(Math.abs(bp.kcalPerDay))} kcal/day {losing ? 'deficit' : 'surplus'} ·{' '}
+        <span className="energy-balance__rate">
+          ≈ {verb} {rate.toFixed(1)} {unit}/wk
+        </span>
+        {bp.goalWeeklyKg != null && bp.goalWeeklyKg !== 0 && (
+          <>
+            {' '}
+            · goal: {goalVerb} {goalRate} {unit}/wk
+          </>
+        )}
+      </p>
+      {showMismatch && (
+        <p className="energy-balance__note">
+          {bp.goalWeeklyKg === 0
+            ? `That ${round(target)} kcal target won't hold your weight — aim to consume ~${recommended} kcal/day total.`
+            : `That ${round(target)} kcal target trends to ${verb} ${rate.toFixed(1)} ${unit}/wk, not your goal to ${goalVerb} ${goalRate} ${unit}/wk — aim to consume ~${recommended} kcal/day total.`}
+        </p>
+      )}
+    </div>
+  )
+}
+
+/** Share of the day's calories coming from each fullness tier (stacked bar + legend), with
+ *  the calorie-weighted average score as a headline. */
+function FullnessMeter({ breakdown }: { breakdown: FullnessBreakdown }) {
   if (breakdown.total <= 0) return null
   const pct = (v: number) => (v / breakdown.total) * 100
 
-  // Bands low → high, then an "Unrated" tail for foods without a weight. Drop empties.
+  // Tiers filling → low, then an "Unrated" tail for foods without a weight. Drop empties.
   const segments = [
-    ...DENSITY_BANDS.map((b) => ({ key: b, label: DENSITY_SHORT[b], value: breakdown.byBand[b] })),
+    ...FULLNESS_TIERS.map((t) => ({ key: t, label: FULLNESS_SHORT[t], value: breakdown.byTier[t] })),
     { key: 'unknown', label: 'Unrated', value: breakdown.unknown },
   ].filter((s) => s.value > 0)
 
+  const avg = breakdown.avgScore
+  // Quantity (volume) alongside the per-calorie quality rating — drinks kept separate from food.
+  const volume = [
+    breakdown.foodWeightG > 0 ? `${formatFoodWeight(breakdown.foodWeightG)} food` : null,
+    breakdown.beverageWeightG > 0 ? `${formatDrinkVolume(breakdown.beverageWeightG)} drinks` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+
   return (
-    <div className="density-meter">
-      <div className="density-meter__head">
-        <span className="macro-bar__label">Calorie density</span>
-        <span className="macro-bar__nums">share of calories</span>
+    <div className="fullness-meter">
+      <div className="fullness-meter__head">
+        <span className="macro-bar__label">Fullness</span>
+        <span className="macro-bar__nums">{avg != null ? `avg ${avg.toFixed(1)}/5` : 'share of calories'}</span>
       </div>
-      <div className="density-meter__bar">
+      <div className="fullness-meter__bar">
         {segments.map((s) => (
           <div
             key={s.key}
-            className={`density-meter__seg density-seg--${s.key}`}
+            className={`fullness-meter__seg fullness-seg--${s.key}`}
             style={{ width: `${pct(s.value)}%` }}
             title={`${s.label}: ${round(pct(s.value))}%`}
           />
         ))}
       </div>
-      <div className="density-meter__legend">
+      <div className="fullness-meter__legend">
         {segments.map((s) => (
-          <span key={s.key} className="density-meter__legend-item">
-            <span className={`density-meter__dot density-seg--${s.key}`} />
+          <span key={s.key} className="fullness-meter__legend-item">
+            <span className={`fullness-meter__dot fullness-seg--${s.key}`} />
             {s.label} {round(pct(s.value))}%
           </span>
         ))}
       </div>
+      {volume && <p className="fullness-meter__volume">{volume}</p>}
     </div>
   )
 }
@@ -121,6 +452,64 @@ const RING_R = (RING_SIZE - RING_STROKE) / 2
 const RING_C = 2 * Math.PI * RING_R
 const RING_CENTER = RING_SIZE / 2
 
+interface Segment {
+  value: number
+  color: string
+}
+
+/** A donut whose arc is split into consecutive macro/expenditure segments. */
+function SegmentedRing({
+  label,
+  value,
+  unit,
+  sub,
+  segments,
+}: {
+  label: string
+  value: number | string
+  unit: string
+  sub?: string
+  segments: Segment[]
+}) {
+  const total = segments.reduce((s, x) => s + Math.max(0, x.value), 0)
+  let offset = 0
+  return (
+    <div className="energy-ring">
+      <div className="energy-ring__chart">
+        <svg width="100%" height="100%" viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
+          <circle cx={RING_CENTER} cy={RING_CENTER} r={RING_R} fill="none" stroke="var(--border)" strokeWidth={RING_STROKE} />
+          {total > 0 &&
+            segments.map((seg, i) => {
+              const dash = (Math.max(0, seg.value) / total) * RING_C
+              const node = (
+                <circle
+                  key={i}
+                  cx={RING_CENTER}
+                  cy={RING_CENTER}
+                  r={RING_R}
+                  fill="none"
+                  stroke={seg.color}
+                  strokeWidth={RING_STROKE}
+                  strokeDasharray={`${dash} ${RING_C - dash}`}
+                  strokeDashoffset={-offset}
+                  transform={`rotate(-90 ${RING_CENTER} ${RING_CENTER})`}
+                />
+              )
+              offset += dash
+              return node
+            })}
+        </svg>
+        <div className="energy-ring__center">
+          <span className="energy-ring__value">{value}</span>
+          <span className="energy-ring__unit">{unit}</span>
+          {sub && <span className="energy-ring__sub">{sub}</span>}
+        </div>
+      </div>
+      <span className="energy-ring__label">{label}</span>
+    </div>
+  )
+}
+
 function Ring({
   label,
   value,
@@ -128,34 +517,29 @@ function Ring({
   sub,
   fraction,
   over,
+  color,
 }: {
   label: string
-  value: number
+  value: number | string
   unit: string
   sub?: string
   fraction: number // 0..1+ ; clamped to the ring for the arc
   over?: boolean
+  color?: string // explicit arc color; falls back to the over/under accent/danger
 }) {
   const clamped = Math.min(Math.max(fraction, 0), 1)
   const dashoffset = RING_C * (1 - clamped)
   return (
     <div className="energy-ring">
       <div className="energy-ring__chart">
-        <svg width={RING_SIZE} height={RING_SIZE} viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
+        <svg width="100%" height="100%" viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
+          <circle cx={RING_CENTER} cy={RING_CENTER} r={RING_R} fill="none" stroke="var(--border)" strokeWidth={RING_STROKE} />
           <circle
             cx={RING_CENTER}
             cy={RING_CENTER}
             r={RING_R}
             fill="none"
-            stroke="var(--border)"
-            strokeWidth={RING_STROKE}
-          />
-          <circle
-            cx={RING_CENTER}
-            cy={RING_CENTER}
-            r={RING_R}
-            fill="none"
-            stroke={over ? 'var(--danger)' : 'var(--accent)'}
+            stroke={color ?? (over ? 'var(--danger)' : 'var(--accent)')}
             strokeWidth={RING_STROKE}
             strokeLinecap="round"
             strokeDasharray={RING_C}
@@ -174,26 +558,61 @@ function Ring({
   )
 }
 
-function MacroBar({
+/** A macro/energy progress bar whose label opens a per-food contributor popover. */
+function MacroProgress({
   label,
+  field,
   value,
   target,
   colorVar,
+  entries,
+}: {
+  label: string
+  field: ContribKey
+  value: number
+  target: number
+  colorVar: string
+  entries: Entry[]
+}) {
+  return (
+    <ProgressBar
+      label={label}
+      value={value}
+      target={target}
+      unit="g"
+      colorVar={colorVar}
+      contributors={topContributors(entries, field)}
+      contribTitle={`${label} (g)`}
+    />
+  )
+}
+
+function ProgressBar({
+  label,
+  value,
+  target,
+  unit,
+  colorVar,
+  contributors,
+  contribTitle,
 }: {
   label: string
   value: number
   target: number
+  unit: string
   colorVar: string
+  contributors?: Contributor[]
+  contribTitle?: string
 }) {
   const frac = target > 0 ? value / target : 0
   const width = Math.min(Math.max(frac, 0), 1) * 100
   const over = frac > 1
-  return (
+  const bar = (
     <div className="macro-bar">
       <div className="macro-bar__head">
         <span className="macro-bar__label">{label}</span>
         <span className="macro-bar__nums">
-          {round(value)} / {round(target)} g · {round(frac * 100)}%
+          {round(value)} / {round(target)} {unit} · {round(frac * 100)}%
         </span>
       </div>
       <div className="macro-bar__track">
@@ -205,4 +624,13 @@ function MacroBar({
       </div>
     </div>
   )
+  // The whole bar is the popover trigger when there are contributions to show.
+  if (contributors && contributors.length > 0) {
+    return (
+      <Popover label={`${label} breakdown`} content={<ContribTable title={contribTitle ?? label} rows={contributors} unit={unit} />}>
+        {bar}
+      </Popover>
+    )
+  }
+  return bar
 }

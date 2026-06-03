@@ -28,8 +28,10 @@ _SYSTEM_PROMPT = (
     "Calories are kcal; protein, carbs and fat are in grams. The macro totals must be the "
     "sum of the per-item values. Also estimate the total edible weight in grams "
     "(total_weight_g) and the totals for fiber and sugar (grams) and sodium (milligrams). "
-    "If you are unsure, still give your best estimate but lower the confidence value "
-    "(0 = guess, 1 = very confident)."
+    "Set is_beverage to true when the item is primarily a drink you sip (coffee, tea, juice, "
+    "soda, alcohol, milk, smoothie, protein shake); false for solid foods and for soups/broths "
+    "eaten as a meal. If you are unsure, still give your best estimate but lower the confidence "
+    "value (0 = guess, 1 = very confident)."
 )
 
 _TEXT_SYSTEM_PROMPT = (
@@ -39,7 +41,9 @@ _TEXT_SYSTEM_PROMPT = (
     "per 100ml). Scale each food to the portion the user described, list each as an item, and "
     "make the macro totals the sum of the per-item values. Also estimate the total edible "
     "weight in grams (total_weight_g) and the totals for fiber and sugar (grams) and sodium "
-    "(milligrams). Calories are kcal; protein, carbs and fat are in grams. Prefer the tool data "
+    "(milligrams). Calories are kcal; protein, carbs and fat are in grams. Set is_beverage to true "
+    "when the item is primarily a drink you sip (coffee, tea, juice, soda, alcohol, milk, smoothie, "
+    "protein shake); false for solid foods and for soups/broths eaten as a meal. Prefer the tool data "
     "over your own guesses; if a search returns nothing useful or the tool is unavailable, fall "
     "back to your best estimate and lower the confidence (0 = guess, 1 = very confident)."
 )

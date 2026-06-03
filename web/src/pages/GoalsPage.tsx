@@ -6,7 +6,7 @@ import { UnitToggle } from '../components/UnitToggle'
 import { getTargets, putTargets } from '../api/targets'
 import { getLatestMetric, getMetrics } from '../api/metrics'
 import { getEntriesRange } from '../api/entries'
-import { DEFAULT_TARGETS, macroGramTargets } from '../lib/targets'
+import { DEFAULT_TARGETS, macroGramTargets, goalDirection } from '../lib/targets'
 import { round, round1 } from '../lib/totals'
 import { cmToFtIn, displayToKg, ftInToCm, kgToDisplay, useWeightUnit } from '../lib/units'
 import { formatFullDay, lastNDays, localDayKey, shiftDay } from '../lib/date'
@@ -76,8 +76,7 @@ function GoalsForm({ initial }: { initial: Targets }) {
   const currentKg = latestMetric?.weight_kg ?? null
   const goalKg = form.goal_weight_kg ?? null
   const diffKg = goalKg != null && currentKg != null ? goalKg - currentKg : null
-  const direction: 'lose' | 'gain' | 'maintain' | null =
-    diffKg == null ? null : Math.abs(diffKg) < 0.1 ? 'maintain' : diffKg < 0 ? 'lose' : 'gain'
+  const direction = goalDirection(goalKg, currentKg)
   const weeks = direction && direction !== 'maintain' && magnitudeKg > 0 ? Math.abs(diffKg ?? 0) / magnitudeKg : null
   const toGoDisplay = diffKg != null ? show(Math.abs(kgToDisplay(diffKg, unit))) : null
 

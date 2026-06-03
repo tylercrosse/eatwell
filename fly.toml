@@ -15,7 +15,7 @@ primary_region = 'sjc'
     VITE_GOOGLE_CLIENT_ID = '1061368975039-gscug66af6koc7ovvkjdd6l4cam7eusa.apps.googleusercontent.com'
 
 [env]
-  CORS_ORIGINS = 'https://calorie-tracker.fly.dev'
+  CORS_ORIGINS = 'https://calorie-tracker-dawn-thunder-2086.fly.dev'
 
 [[mounts]]
   source = 'data'

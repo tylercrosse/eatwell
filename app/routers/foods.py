@@ -54,6 +54,7 @@ def recent_foods(
                 fiber_g=e.fiber_g,
                 sugar_g=e.sugar_g,
                 sodium_mg=e.sodium_mg,
+                is_beverage=e.is_beverage,
                 serving_size=e.serving_size,
             )
         )

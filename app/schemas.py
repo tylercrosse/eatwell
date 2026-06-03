@@ -38,6 +38,8 @@ class AnalysisResult(BaseModel):
     total_fiber_g: float | None = None
     total_sugar_g: float | None = None
     total_sodium_mg: float | None = None
+    # True when this is primarily a drink (coffee, juice, soda, alcohol, milk, smoothie).
+    is_beverage: bool = False
     serving_size_estimate: str
     confidence: float = Field(ge=0.0, le=1.0)
 
@@ -72,6 +74,14 @@ FOOD_ANALYSIS_JSON_SCHEMA: dict = {
         "total_fiber_g": {"type": "number", "description": "grams"},
         "total_sugar_g": {"type": "number", "description": "grams"},
         "total_sodium_mg": {"type": "number", "description": "milligrams"},
+        "is_beverage": {
+            "type": "boolean",
+            "description": (
+                "true if this is primarily a drink you sip — coffee, tea, juice, soda, "
+                "alcohol, milk, smoothie, protein shake. false for solid foods AND for "
+                "soups/broths eaten as a meal (those satiate like food)."
+            ),
+        },
         "serving_size_estimate": {
             "type": "string",
             "description": "e.g. '1 bowl (~300g)'",
@@ -88,6 +98,7 @@ FOOD_ANALYSIS_JSON_SCHEMA: dict = {
         "total_fiber_g",
         "total_sugar_g",
         "total_sodium_mg",
+        "is_beverage",
         "serving_size_estimate",
         "confidence",
     ],
@@ -107,6 +118,7 @@ class EntryCreate(BaseModel):
     fiber_g: float | None = None
     sugar_g: float | None = None
     sodium_mg: float | None = None
+    is_beverage: bool = False
     serving_size: str | None = None
     confidence: float | None = None
     photo_ref: str | None = None
@@ -126,6 +138,7 @@ class EntryUpdate(BaseModel):
     fiber_g: float | None = None
     sugar_g: float | None = None
     sodium_mg: float | None = None
+    is_beverage: bool | None = None
     serving_size: str | None = None
     meal: Meal | None = None
     logged_at: datetime | None = None
@@ -143,6 +156,7 @@ class EntryRead(BaseModel):
     fiber_g: float | None
     sugar_g: float | None
     sodium_mg: float | None
+    is_beverage: bool = False  # default covers legacy rows that predate the column
     serving_size: str | None
     confidence: float | None
     photo_ref: str | None
@@ -164,6 +178,7 @@ class RecentFood(BaseModel):
     fiber_g: float | None = None
     sugar_g: float | None = None
     sodium_mg: float | None = None
+    is_beverage: bool = False
     serving_size: str | None = None
 
 
