@@ -42,3 +42,30 @@ def test_patch_and_delete(client):
 
 def test_delete_missing_404(client):
     assert client.delete("/api/exercise/999").status_code == 404
+
+
+def test_range_aggregates_per_day(client):
+    _make(client, calories=200, date="2026-05-31")
+    _make(client, description="Walk", calories=120, date="2026-05-31")
+    _make(client, description="Swim", calories=350, date="2026-06-01")
+
+    rows = client.get("/api/exercise/range", params={"from": "2026-05-31", "to": "2026-06-01"}).json()
+    assert [r["date"] for r in rows] == ["2026-05-31", "2026-06-01"]  # ascending, sparse
+    assert rows[0]["entry_count"] == 2
+    assert rows[0]["total_calories"] == 320
+    assert rows[1]["total_calories"] == 350
+
+
+def test_range_excludes_days_outside_window(client):
+    _make(client, calories=200, date="2026-05-30")  # before window
+    _make(client, calories=200, date="2026-06-02")  # after window
+    _make(client, calories=99, date="2026-06-01")  # in window
+
+    rows = client.get("/api/exercise/range", params={"from": "2026-05-31", "to": "2026-06-01"}).json()
+    assert [r["date"] for r in rows] == ["2026-06-01"]
+    assert rows[0]["total_calories"] == 99
+
+
+def test_range_empty_when_no_exercise(client):
+    rows = client.get("/api/exercise/range", params={"from": "2026-05-31", "to": "2026-06-01"}).json()
+    assert rows == []

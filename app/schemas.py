@@ -24,6 +24,13 @@ class FoodItem(BaseModel):
     protein_g: float
     carbs_g: float
     fat_g: float
+    # Per-item extended nutrition so each item can become its own entry (M6). Optional here
+    # (older payloads / unit tests may omit them) but required in the strict JSON schema below.
+    weight_g: float | None = None
+    fiber_g: float | None = None
+    sugar_g: float | None = None
+    sodium_mg: float | None = None
+    is_beverage: bool = False
 
 
 class AnalysisResult(BaseModel):
@@ -52,7 +59,13 @@ FOOD_ANALYSIS_JSON_SCHEMA: dict = {
     "properties": {
         "items": {
             "type": "array",
-            "description": "Each distinct food detected in the photo",
+            "description": (
+                "One entry per distinct DISH or DRINK you would log separately. Keep a composite "
+                "dish whole — a salad, sandwich, bowl or stir-fry is ONE item with its combined "
+                "nutrition (do NOT split it into ingredients). Separate only independently-served "
+                "things: each plate/side, and every drink. Example: a plate of fruit + a bowl of "
+                "yogurt + a coffee + a juice → 4 items; a caprese or burrata salad → 1 item."
+            ),
             "items": {
                 "type": "object",
                 "additionalProperties": False,
@@ -62,8 +75,27 @@ FOOD_ANALYSIS_JSON_SCHEMA: dict = {
                     "protein_g": {"type": "number"},
                     "carbs_g": {"type": "number"},
                     "fat_g": {"type": "number"},
+                    "weight_g": {"type": "number", "description": "This item's edible weight in grams"},
+                    "fiber_g": {"type": "number", "description": "grams"},
+                    "sugar_g": {"type": "number", "description": "grams"},
+                    "sodium_mg": {"type": "number", "description": "milligrams"},
+                    "is_beverage": {
+                        "type": "boolean",
+                        "description": "true if this item is a drink you sip (see overall is_beverage)",
+                    },
                 },
-                "required": ["name", "calories", "protein_g", "carbs_g", "fat_g"],
+                "required": [
+                    "name",
+                    "calories",
+                    "protein_g",
+                    "carbs_g",
+                    "fat_g",
+                    "weight_g",
+                    "fiber_g",
+                    "sugar_g",
+                    "sodium_mg",
+                    "is_beverage",
+                ],
             },
         },
         "total_calories": {"type": "number"},
@@ -126,6 +158,12 @@ class EntryCreate(BaseModel):
     items_json: str | None = None
     meal: Meal | None = None
     logged_at: datetime | None = None  # defaults to server now if omitted
+
+
+class EntriesBatchCreate(BaseModel):
+    """Create several entries at once — one capture split into per-item entries (M6)."""
+
+    entries: list[EntryCreate]
 
 
 class EntryUpdate(BaseModel):
@@ -291,6 +329,12 @@ class ExerciseRead(BaseModel):
     calories: float
     duration_min: float | None
     source: str
+
+
+class ExerciseDaySummary(BaseModel):
+    date: str  # YYYY-MM-DD
+    entry_count: int
+    total_calories: float
 
 
 # --- Activity AI estimate --------------------------------------------------

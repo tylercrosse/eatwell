@@ -6,6 +6,11 @@ export interface FoodItem {
   protein_g: number
   carbs_g: number
   fat_g: number
+  weight_g?: number | null
+  fiber_g?: number | null
+  sugar_g?: number | null
+  sodium_mg?: number | null
+  is_beverage?: boolean
 }
 
 export interface AnalysisResult {
@@ -156,6 +161,13 @@ export interface ExerciseCreate {
   duration_min?: number | null
   source?: string
   date?: string
+}
+
+// Per-day exercise-calorie total (GET /api/exercise/range). Sparse — only days with exercise.
+export interface ExerciseDaySummary {
+  date: string
+  entry_count: number
+  total_calories: number
 }
 
 // AI estimate for a free-text activity (POST /api/analyze/activity).

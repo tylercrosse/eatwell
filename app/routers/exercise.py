@@ -14,7 +14,7 @@ from sqlmodel import Session
 
 from app.deps import get_current_user, get_owned, get_session, user_query
 from app.models import ExerciseEntry, User
-from app.schemas import ExerciseCreate, ExerciseRead, ExerciseUpdate
+from app.schemas import ExerciseCreate, ExerciseDaySummary, ExerciseRead, ExerciseUpdate
 
 router = APIRouter(tags=["exercise"])
 
@@ -43,6 +43,32 @@ def list_exercise(
 ) -> list[ExerciseEntry]:
     stmt = user_query(ExerciseEntry, user).where(ExerciseEntry.date == day).order_by(ExerciseEntry.id)
     return list(session.exec(stmt).all())
+
+
+@router.get("/exercise/range", response_model=list[ExerciseDaySummary])
+def exercise_range(
+    start: date_cls = Query(alias="from"),
+    end: date_cls = Query(alias="to"),
+    session: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+) -> list[ExerciseDaySummary]:
+    """Per-day exercise-calorie totals across [from, to] (inclusive). Sparse — only days with
+    logged exercise; the client fills gaps for the chart axis. Defined before /exercise/{id} so
+    the literal 'range' segment isn't parsed as an id."""
+    stmt = user_query(ExerciseEntry, user).where(
+        ExerciseEntry.date >= start, ExerciseEntry.date <= end
+    )
+    by_day: dict[date_cls, list[ExerciseEntry]] = {}
+    for e in session.exec(stmt).all():
+        by_day.setdefault(e.date, []).append(e)
+    return [
+        ExerciseDaySummary(
+            date=day.isoformat(),
+            entry_count=len(group),
+            total_calories=sum(x.calories for x in group),
+        )
+        for day, group in sorted(by_day.items())
+    ]
 
 
 @router.patch("/exercise/{exercise_id}", response_model=ExerciseRead)

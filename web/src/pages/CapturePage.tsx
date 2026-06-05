@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { PhotoCapture } from '../components/PhotoCapture'
-import { EstimateCard, type Draft } from '../components/EstimateCard'
+import { EstimateCard, type CaptureDraft, type ItemDraft } from '../components/EstimateCard'
 import { composeServingSize, parseServingSize } from '../lib/serving'
 import { postEstimate, postEstimateText } from '../api/estimate'
-import { postEntry } from '../api/entries'
+import { postEntries } from '../api/entries'
 import { getRecentFoods } from '../api/foods'
 import { localDateTime, withDayKey } from '../lib/date'
 import { mealFromTime } from '../lib/meals'
 import { ApiError } from '../api/client'
-import type { AnalysisResult, RecentFood } from '../types'
+import type { AnalysisResult, EntryCreate, FoodItem, RecentFood } from '../types'
 
 type Status = 'idle' | 'uploading' | 'review' | 'done' | 'error'
 
@@ -18,52 +18,125 @@ interface Props {
   onLogged: () => void // called after a successful save (host closes the modal)
 }
 
-/** Build the editable, one-serving-baseline draft shown in the review card. */
-function draftFromAnalysis(a: AnalysisResult, day: string): Draft {
+// Client-only id for React keys + merge selection; never sent to the backend.
+let _idSeq = 0
+const newId = () => `item-${_idSeq++}`
+
+function itemFromFoodItem(it: FoodItem): ItemDraft {
   return {
-    food_name: a.items.map((i) => i.name).join(', ') || 'Meal',
-    calories: a.total_calories,
-    protein_g: a.total_protein_g,
-    carbs_g: a.total_carbs_g,
-    fat_g: a.total_fat_g,
-    weight_g: a.total_weight_g ?? 0,
-    fiber_g: a.total_fiber_g ?? 0,
-    sugar_g: a.total_sugar_g ?? 0,
-    sodium_mg: a.total_sodium_mg ?? 0,
-    is_beverage: a.is_beverage ?? false,
-    serving_size: a.serving_size_estimate,
+    id: newId(),
+    food_name: it.name,
+    calories: it.calories,
+    protein_g: it.protein_g,
+    carbs_g: it.carbs_g,
+    fat_g: it.fat_g,
+    weight_g: it.weight_g ?? 0,
+    fiber_g: it.fiber_g ?? 0,
+    sugar_g: it.sugar_g ?? 0,
+    sodium_mg: it.sodium_mg ?? 0,
+    is_beverage: it.is_beverage ?? false,
+    serving_size: '',
     servings: 1,
-    meal: mealFromTime(), // default from the current time; user can override in the card
-    logged_at: withDayKey(localDateTime(), day), // viewed day + now's time; date editable in the card
   }
 }
 
-/** Re-log a recent food: prefill the card from a stored entry, no AI call. */
-function draftFromRecent(food: RecentFood, day: string): Draft {
+/** One editable item-draft per detected food; falls back to a single item from the totals. */
+function draftFromAnalysis(a: AnalysisResult, day: string): CaptureDraft {
+  const items: ItemDraft[] =
+    a.items.length > 0
+      ? a.items.map(itemFromFoodItem)
+      : [
+          {
+            id: newId(),
+            food_name: 'Meal',
+            calories: a.total_calories,
+            protein_g: a.total_protein_g,
+            carbs_g: a.total_carbs_g,
+            fat_g: a.total_fat_g,
+            weight_g: a.total_weight_g ?? 0,
+            fiber_g: a.total_fiber_g ?? 0,
+            sugar_g: a.total_sugar_g ?? 0,
+            sodium_mg: a.total_sodium_mg ?? 0,
+            is_beverage: a.is_beverage ?? false,
+            serving_size: a.serving_size_estimate,
+            servings: 1,
+          },
+        ]
+  // A lone item inherits the overall serving estimate; multi-item rows start without one.
+  if (items.length === 1 && !items[0].serving_size) items[0].serving_size = a.serving_size_estimate
+  return { items, meal: mealFromTime(), logged_at: withDayKey(localDateTime(), day) }
+}
+
+/** Re-log a recent food: one item, no AI call. */
+function draftFromRecent(food: RecentFood, day: string): CaptureDraft {
   const { base } = parseServingSize(food.serving_size ?? null) // strip any "2×" so servings starts at 1
   return {
-    food_name: food.food_name,
-    calories: food.calories,
-    protein_g: food.protein_g,
-    carbs_g: food.carbs_g,
-    fat_g: food.fat_g,
-    weight_g: food.weight_g ?? 0,
-    fiber_g: food.fiber_g ?? 0,
-    sugar_g: food.sugar_g ?? 0,
-    sodium_mg: food.sodium_mg ?? 0,
-    is_beverage: food.is_beverage ?? false,
-    serving_size: base,
-    servings: 1,
+    items: [
+      {
+        id: newId(),
+        food_name: food.food_name,
+        calories: food.calories,
+        protein_g: food.protein_g,
+        carbs_g: food.carbs_g,
+        fat_g: food.fat_g,
+        weight_g: food.weight_g ?? 0,
+        fiber_g: food.fiber_g ?? 0,
+        sugar_g: food.sugar_g ?? 0,
+        sodium_mg: food.sodium_mg ?? 0,
+        is_beverage: food.is_beverage ?? false,
+        serving_size: base,
+        servings: 1,
+      },
+    ],
     meal: mealFromTime(),
     logged_at: withDayKey(localDateTime(), day),
   }
+}
+
+type MacroKey = 'calories' | 'protein_g' | 'carbs_g' | 'fat_g' | 'weight_g' | 'fiber_g' | 'sugar_g' | 'sodium_mg'
+
+/** Merge the selected items into one composite (sums scaled macros; drink only if all are). */
+function mergeItems(items: ItemDraft[], ids: string[]): ItemDraft[] {
+  const idSet = new Set(ids)
+  const chosen = items.filter((i) => idSet.has(i.id))
+  if (chosen.length < 2) return items
+  const sum = (k: MacroKey) => chosen.reduce((acc, i) => acc + i[k] * i.servings, 0)
+  const merged: ItemDraft = {
+    id: newId(),
+    food_name: chosen.map((i) => i.food_name).filter(Boolean).join(' + ') || 'Combined',
+    calories: sum('calories'),
+    protein_g: sum('protein_g'),
+    carbs_g: sum('carbs_g'),
+    fat_g: sum('fat_g'),
+    weight_g: sum('weight_g'),
+    fiber_g: sum('fiber_g'),
+    sugar_g: sum('sugar_g'),
+    sodium_mg: sum('sodium_mg'),
+    is_beverage: chosen.every((i) => i.is_beverage),
+    serving_size: '',
+    servings: 1,
+  }
+  // Insert the merged item where the first selected one was; drop the rest.
+  const out: ItemDraft[] = []
+  let inserted = false
+  for (const i of items) {
+    if (idSet.has(i.id)) {
+      if (!inserted) {
+        out.push(merged)
+        inserted = true
+      }
+    } else {
+      out.push(i)
+    }
+  }
+  return out
 }
 
 export function CapturePage({ day, onLogged }: Props) {
   const queryClient = useQueryClient()
   const [status, setStatus] = useState<Status>('idle')
   const [error, setError] = useState<string | null>(null)
-  const [draft, setDraft] = useState<Draft | null>(null)
+  const [draft, setDraft] = useState<CaptureDraft | null>(null)
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null)
   const [photoRef, setPhotoRef] = useState<string | null>(null)
   const [description, setDescription] = useState('')
@@ -129,9 +202,9 @@ export function CapturePage({ day, onLogged }: Props) {
   const recentQuery = useQuery({ queryKey: ['foods', 'recent'], queryFn: () => getRecentFoods() })
 
   const save = useMutation({
-    mutationFn: postEntry,
+    mutationFn: postEntries,
     onSuccess: () => {
-      // Entry may be logged for any day (not just today) — refresh all day lists + trends.
+      // Entries may be logged for any day (not just today) — refresh all day lists + trends.
       queryClient.invalidateQueries({ queryKey: ['entries'] })
       queryClient.invalidateQueries({ queryKey: ['entries-range'] })
       queryClient.invalidateQueries({ queryKey: ['foods', 'recent'] })
@@ -172,29 +245,37 @@ export function CapturePage({ day, onLogged }: Props) {
     setStatus('review')
   }
 
+  const patchItem = (id: string, patch: Partial<ItemDraft>) =>
+    setDraft((d) => (d ? { ...d, items: d.items.map((i) => (i.id === id ? { ...i, ...patch } : i)) } : d))
+  const removeItem = (id: string) =>
+    setDraft((d) => (d ? { ...d, items: d.items.filter((i) => i.id !== id) } : d))
+  const merge = (ids: string[]) => setDraft((d) => (d ? { ...d, items: mergeItems(d.items, ids) } : d))
+
   function onConfirm() {
-    if (!draft) return
-    const f = draft.servings // baseline macros scaled by the chosen quantity
-    const scaledOrNull = (v: number) => (v > 0 ? v * f : null) // keep unset detail fields null
-    save.mutate({
-      food_name: draft.food_name,
-      calories: draft.calories * f,
-      protein_g: draft.protein_g * f,
-      carbs_g: draft.carbs_g * f,
-      fat_g: draft.fat_g * f,
-      weight_g: scaledOrNull(draft.weight_g),
-      fiber_g: scaledOrNull(draft.fiber_g),
-      sugar_g: scaledOrNull(draft.sugar_g),
-      sodium_mg: scaledOrNull(draft.sodium_mg),
-      is_beverage: draft.is_beverage,
-      serving_size: composeServingSize(draft.serving_size, draft.servings),
-      confidence: analysis?.confidence ?? null,
-      photo_ref: photoRef,
-      items_json: analysis ? JSON.stringify(analysis.items) : null,
-      source: analysis ? 'ai' : 'manual', // recent re-logs have no fresh analysis
-      meal: draft.meal,
-      logged_at: draft.logged_at, // user may have backdated this in the card
+    if (!draft || draft.items.length === 0) return
+    const entries: EntryCreate[] = draft.items.map((item) => {
+      const f = item.servings // baseline macros scaled by the chosen quantity
+      const scaledOrNull = (v: number) => (v > 0 ? v * f : null) // keep unset detail fields null
+      return {
+        food_name: item.food_name,
+        calories: item.calories * f,
+        protein_g: item.protein_g * f,
+        carbs_g: item.carbs_g * f,
+        fat_g: item.fat_g * f,
+        weight_g: scaledOrNull(item.weight_g),
+        fiber_g: scaledOrNull(item.fiber_g),
+        sugar_g: scaledOrNull(item.sugar_g),
+        sodium_mg: scaledOrNull(item.sodium_mg),
+        is_beverage: item.is_beverage,
+        serving_size: composeServingSize(item.serving_size, item.servings),
+        confidence: analysis?.confidence ?? null,
+        photo_ref: photoRef, // the split entries share the one capture photo
+        source: analysis ? 'ai' : 'manual', // recent re-logs have no fresh analysis
+        meal: draft.meal,
+        logged_at: draft.logged_at, // user may have backdated this in the card
+      }
     })
+    save.mutate(entries)
   }
 
   return (
@@ -254,7 +335,11 @@ export function CapturePage({ day, onLogged }: Props) {
           confidence={analysis?.confidence ?? null}
           previewUrl={previewUrl}
           saving={save.isPending}
-          onChange={(patch) => setDraft({ ...draft, ...patch })}
+          onChangeItem={patchItem}
+          onRemoveItem={removeItem}
+          onMerge={merge}
+          onChangeMeal={(meal) => setDraft((d) => (d ? { ...d, meal } : d))}
+          onChangeDate={(logged_at) => setDraft((d) => (d ? { ...d, logged_at } : d))}
           onConfirm={onConfirm}
           onCancel={reset}
         />

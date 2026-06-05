@@ -8,8 +8,9 @@ The app is a calorie tracker: FastAPI + SQLModel + SQLite on the backend (custom
 SPA with a plain-CSS dark theme and a tab-based shell ([web/src/App.tsx](web/src/App.tsx)).
 
 Shipped so far: photo/text → AI estimate → reviewable entry; entries CRUD + per-day summary + meal
-grouping; extended nutrition (weight/fiber/sugar/sodium) + calorie-density indicator; recent-food quick
-re-log; **Google-OAuth multi-user (allowlist, per-user scoping)**; **weight/body-fat logging + body
+grouping; extended nutrition (weight/fiber/sugar/sodium) + a **Fullness Factor (satiety) score** with a
+food/drink volume readout and a drink-aware cap (replaced the original calorie-density indicator); recent-food
+quick re-log; **Google-OAuth multi-user (allowlist, per-user scoping)**; **weight/body-fat logging + body
 goals**; **Recharts trends**; calorie/macro targets; editable entry dates.
 
 **Decisions:** quick wins first → auth → health metrics/charts → activity; auth via **Google OAuth +
@@ -27,6 +28,8 @@ with a gross/net toggle**; charts via **Recharts**.
 | M3 Health metrics & insights | 🚧 (3.1 + 3.2 done; 3.3 deferred) |
 | M4 Activity & expenditure | ⬜ |
 | M5 IA & navigation | ⬜ (new) |
+| M6 Per-item entries (split captures) | ✅ (live-classification tuning pending) |
+| M7 Trends: expenditure line + balance weight prediction | ⬜ (new) |
 
 ---
 
@@ -40,12 +43,18 @@ the analysis JSON schema + `FoodEntry` + entry schemas ([app/schemas.py](app/sch
 USDA grounding (fiber `291`, sugars `269`, sodium `307`) updated; editable inputs in
 [EstimateCard](web/src/components/EstimateCard.tsx) + [EntryRow](web/src/components/EntryRow.tsx).
 
-### 1.3 Calorie-density indicator — ✅
+### 1.3 Calorie-density indicator → **Fullness Factor** — ✅ (superseded)
 
-[web/src/lib/density.ts](web/src/lib/density.ts) (`calorieDensity` + bands), color-coded
-[DensityBadge](web/src/components/DensityBadge.tsx) on entries + the estimate card, and a day-level
-**calorie-density mix** stacked bar in [EnergySummary](web/src/components/EnergySummary.tsx) (richer than
-the originally-planned single "day-average" number).
+Originally shipped as `density.ts` + `DensityBadge` (kcal/100g bands). **Replaced** by a **Fullness Factor**
+(satiety) score — a per-100g cubic FF that folds in protein/fiber/fat, not just energy density:
+[web/src/lib/fullness.ts](web/src/lib/fullness.ts) (`fullnessFactor` + tiers + `fullnessBreakdown`), color-coded
+[FullnessBadge](web/src/components/FullnessBadge.tsx) on entries + estimate card, a per-meal fullness pill
+([MealSection](web/src/components/MealSection.tsx)), and a day-level fullness meter (tier mix + calorie-weighted
+average) in [EnergySummary](web/src/components/EnergySummary.tsx). Added a **food-vs-drink volume** readout
+(per meal + per day) and an AI **`is_beverage`** flag (`FoodEntry` column + analysis schema + prompts) that
+**caps drinks** at the lowest tier (liquid calories barely satiate) and counts their mass as drink volume, not
+food bulk. `density.ts` / `DensityBadge` deleted. M6 (below) makes this fully effective by splitting multi-food
+captures into per-item entries.
 
 ### 1.4 Recent / favorite foods + quick re-log — 🚧
 
@@ -157,6 +166,197 @@ The "Add" flow should act on **the day you're looking at**, not a separate "toda
 - **Net-calorie integration:** [EnergySummary](web/src/components/EnergySummary.tsx) gains a gross/net
   toggle — `remaining = target − (intake − expenditure)`; thread per-day expenditure into
   [LogPage](web/src/pages/LogPage.tsx). **Effort:** M–L.
+
+---
+
+## Milestone 6 — Per-item entries (split multi-food captures) — ✅
+
+**Shipped:** per-item nutrition + dish/drink granularity in the analysis schema & prompts (6.1); a
+`POST /api/entries/batch` endpoint (6.2); and a per-item review card — each detected item is its own row
+(name + fullness badge + Drink toggle + macro editor), defaulting to separate entries with a **Combine** action
+to merge a composite dish, saved in one batch (6.3). Backend tests added; build/lint/pytest green. Remaining:
+tuning the model's split granularity against real photos (only verifiable live).
+
+### Context — what shipped & the gap
+
+This session replaced **1.3's calorie-density indicator** with a **Fullness Factor** (satiety) score and built on
+it: per-food + per-meal + per-day fullness ([web/src/lib/fullness.ts](web/src/lib/fullness.ts),
+[FullnessBadge](web/src/components/FullnessBadge.tsx), the day meter in
+[EnergySummary](web/src/components/EnergySummary.tsx)), a food-vs-drink **volume** readout, and an AI
+**`is_beverage`** flag that caps drinks (liquid calories barely satiate) and counts their mass as drink volume
+rather than food bulk.
+
+Those features are **per-entry**, but the capture flow collapses a multi-food photo/description into **one** entry:
+the model returns `items[]` (per-food macros) yet [draftFromAnalysis](web/src/pages/CapturePage.tsx) joins the
+names and sums the totals. A breakfast of fruit + yogurt + coffee + juice becomes a single row, which (a) can't
+carry a meaningful `is_beverage` — it's part food, part drink, (b) blends four foods into one fullness score (FF
+rates *one* food), and (c) dumps all weight into one volume bucket. It also hurts plain tracking: you can't
+edit/delete/re-log one food, and Recent foods shows the blob.
+
+**Decision:** the review card shows each detected item as its own row; **default to separate entries**, with the
+option to **merge** selected rows into a composite (e.g. keep "rice + curry" together). Each saved entry is then
+atomic, so the fullness/beverage/volume features work as-is with no further change.
+
+**Granularity = dish/drink, not ingredient.** A composite dish stays ONE item: a *burrata salad with tomatoes* logs
+as one "burrata salad" (not burrata + greens + tomatoes), because you eat it as a unit and its blended-plate
+fullness is the honest number. Only independently-served things separate — the plate of food, the coffee, the
+juice. The prompt (6.1) must define this boundary explicitly. **Asymmetry to design around:** merging an
+over-split is trivial (Combine; the per-item data exists), but splitting an *under*-split isn't (no per-piece
+nutrition to divide), so bias the prompt toward reliably separating distinct dishes/drinks while keeping each dish
+whole. Over-splitting is recoverable in the card; under-splitting (lumping the tray) is the failure we're fixing.
+
+### 6.1 Per-item nutrition (backend) — S
+
+Each `items[]` element today is only `{name, calories, protein_g, carbs_g, fat_g}`. Extend it — and the strict
+`FOOD_ANALYSIS_JSON_SCHEMA` (every new property must also be added to the item's `required`) — with per-item
+`weight_g`, `fiber_g`, `sugar_g`, `sodium_mg`, `is_beverage` in [schemas.py](app/schemas.py). Update both prompts
+(`_SYSTEM_PROMPT`, `_TEXT_SYSTEM_PROMPT`) in [openrouter.py](app/openrouter.py) to estimate these per item. Keep the
+`total_*` fields (sanity check + single-item shortcut). A real per-item `weight_g` is what makes the split
+trustworthy — it avoids a proportional-by-calories hack (a 240 g coffee has almost no calories).
+
+The prompts must also **define the item boundary** (see Granularity above): one item per distinct dish or drink you
+would log separately — keep a composite dish whole (a salad, sandwich, bowl, stir-fry is ONE item with combined
+nutrition), and separate only independently-served things (each plate/side and every drink). Bias toward separating
+distinct dishes/drinks reliably rather than splitting a dish into ingredients. Include a worked example in the
+prompt (e.g. "fruit plate + yogurt + coffee + juice → 4 items; caprese/burrata salad → 1 item").
+
+### 6.2 Batch create endpoint (backend) — S
+
+`POST /api/entries/batch` taking `{entries: EntryCreate[]}`, inserting in one transaction and returning
+`EntryRead[]` — atomic, one round-trip, one cache invalidation. Scope/own each row to the user exactly like
+[create_entry](app/routers/entries.py). Mirror existing tests in [test_entries.py](tests/test_entries.py).
+
+### 6.3 Review card → per-item rows (frontend) — L (the bulk)
+
+[draftFromAnalysis](web/src/pages/CapturePage.tsx) returns a **list** of item-drafts (one per `items[]`), each an
+editable mini-draft (name, macros, weight, fiber/sugar/sodium, `is_beverage`, servings).
+[EstimateCard](web/src/components/EstimateCard.tsx) becomes a multi-row editor: per row a macro editor +
+[FullnessBadge](web/src/components/FullnessBadge.tsx) + "Drink" toggle + a select checkbox; shared meal/date/photo
+for the capture. A **Combine** action merges selected rows into one composite item (sum macros/weight; join names;
+`is_beverage` only if every merged item is a drink). Save posts the non-merged rows as separate entries via 6.2
+(shared `photo_ref`, `meal`, `logged_at`; per-entry `items_json`). Single-item captures and recent re-logs
+([draftFromRecent](web/src/pages/CapturePage.tsx)) stay one row — no forced list chrome. Files:
+[types/index.ts](web/src/types/index.ts) (extended `FoodItem` + batch type), [api/entries.ts](web/src/api/entries.ts)
+(batch post), CapturePage, EstimateCard, [index.css](web/src/index.css).
+
+### Edge cases / decisions
+
+- **Single item** → one entry, no list chrome (unchanged feel).
+- **Servings** become per-row (each item scaled independently).
+- **Merge** `is_beverage` = true only if every merged item is a drink; else false.
+- **Photo** shared across the split entries (no per-entry crop); deleting one entry leaves the shared photo (no
+  photo GC today anyway).
+- **Existing rows** unaffected — already individual DB rows; only the *creation* path changes.
+- **Out of scope:** re-classifying `is_beverage` on an already-saved entry (an edit-row toggle) — separate small task.
+
+### Verification (M6)
+
+- Backend: `pytest` — per-item parsing in [test_analyze.py](tests/test_analyze.py) /
+  [test_analyze_text.py](tests/test_analyze_text.py); batch insert + user-scoping in
+  [test_entries.py](tests/test_entries.py).
+- Frontend: `npm run build` (`tsc -b && vite build`) + `eslint`. Manual: photo of food + drinks → review shows N
+  rows → save → N entries, each with its own fullness tier, drink cap, and food/drink volume; try **Combine** on two.
+
+### Dependency
+
+Builds on the shipped fullness / `is_beverage` work. **Sequence:** 6.1 → 6.2 → 6.3.
+
+---
+
+## Milestone 7 — Trends: expenditure line + energy-balance weight prediction — ⬜ (new)
+
+### Context — the gap
+
+Trends (3.2) plots consumed calories and weight, and activity/expenditure has shipped (exercise CRUD,
+[`expenditureBreakdown`](web/src/lib/energy.ts), [`balanceProjection`](web/src/lib/energy.ts)) — but
+**expenditure never made it onto the Trends charts**. It's only shown for "today" in
+[EnergySummary](web/src/components/EnergySummary.tsx). This surfaces expenditure across the range and uses
+the daily **intake − expenditure** balance to predict weight change, so the modeled trajectory can be read
+against the actual scale.
+
+**Decisions (this session):** show expenditure **both** as a line on the calories chart *and* as a dedicated
+energy-balance chart with net bars; predict weight via a **cumulative-balance predicted-weight line overlaid
+on the weight chart** (anchored at the first logged weight; `Δkg = Σ(consumed − expenditure) / 7700`), so the
+model is compared against actual weigh-ins rather than projected on its own.
+
+All math reuses existing helpers — no new formulas: [`expenditureBreakdown`](web/src/lib/energy.ts),
+[`stepsToKcal`](web/src/lib/activity.ts), `KCAL_PER_KG` (7700, [tdee.ts](web/src/lib/tdee.ts)). The dashed
+goal-pace projection (commit `26125e2`, [TrendsPage](web/src/pages/TrendsPage.tsx)) is the rendering template.
+
+### 7.1 Per-day exercise totals endpoint (backend) — S
+
+No range endpoint for exercise exists (only `GET /exercise?date=`, one day). Add
+`GET /api/exercise/range?from&to` mirroring [`entries_range`](app/routers/entries.py): group `ExerciseEntry`
+rows by `date`, sum `calories`, return a sparse `list[ExerciseDaySummary]` (`{date, total_calories,
+entry_count}`). New `ExerciseDaySummary` schema in [schemas.py](app/schemas.py); route in
+[exercise.py](app/routers/exercise.py) (place above the `/exercise/{id}` PATCH/DELETE for clarity). Client:
+`getExerciseRange(from, to)` in [api/exercise.ts](web/src/api/exercise.ts); `ExerciseDaySummary` type in
+[types/index.ts](web/src/types/index.ts). Add tests mirroring [test_entries.py](tests/test_entries.py).
+
+### 7.2 Per-day expenditure series (frontend) — M
+
+In [TrendsPage](web/src/pages/TrendsPage.tsx) add an `exercise-range` query and a shared `expenditureByDay`
+memo (consumed by 7.3/7.4/7.5):
+
+- **Weight per day:** forward-fill the last known `weight_kg` ≤ that day (fall back to earliest logged) —
+  BMR needs a weight every day but weigh-ins are sparse.
+- **Exercise per day:** `exerciseRange[day].total_calories + stepsToKcal(metric.steps, weightForDay)`.
+- **Total:** `expenditureBreakdown({ weightKg, heightCm, birthYear, sex, activityFactor, exerciseKcal,
+  currentYear: new Date().getFullYear() }).total`. Returns `null` on incomplete profile → expenditure
+  features hide and the charts degrade to today's behavior.
+
+Same baseline+exercise additive caveat as EnergySummary — no change.
+
+### 7.3 Expenditure line on the calories chart (frontend) — S
+
+Add `expenditure` to each `calData` row; render `<Line dataKey="expenditure" name="Expenditure" .../>` on the
+existing `ComposedChart` (new `burn: '#fb923c'` color), gated on profile completeness. The gap between the
+stacked-bar top (consumed) and the line is the day's deficit/surplus at a glance.
+
+### 7.4 Energy-balance chart (frontend) — M
+
+New chart card after the calories chart: `net = consumed − expenditure` per day as bars colored by sign
+(deficit green / surplus red via per-point `<Cell>`), a zero `ReferenceLine`, and a cumulative-net line.
+Header readout: total net kcal over the range and `≈ kg` via `KCAL_PER_KG`. Empty state when profile is
+incomplete.
+
+### 7.5 Predicted-weight line vs actual (frontend) — M
+
+Add `predWeight` to `weightData.rows`:
+
+- Anchor at the first logged weight in range (`anchorKg`, `anchorDate`).
+- Walk the axis accumulating `dailyNet = consumed − expenditure` **only on days with logged intake**
+  (`entry_count > 0`) — never treat an unlogged day as a giant deficit; forward-fill the predicted value
+  across gaps and `connectNulls`.
+- `predWeight(day) = round1(kgToDisplay(anchorKg + cumNet / KCAL_PER_KG, unit))`.
+- Render `<Line yAxisId="w" dataKey="predWeight" name="Predicted (balance)" stroke={COLORS.burn}
+  strokeDasharray="2 3" .../>`. Visually distinct from the dashed-purple "Goal pace" (target rate) — this is
+  the *actual-intake* model; divergence from `weight`/`trend` exposes TDEE or logging error.
+
+### Edge cases / decisions
+
+- **Incomplete profile** (no height / birth year / sex) → expenditure line, balance chart, and predicted
+  line all hidden; existing charts unchanged.
+- **Unlogged-intake days** excluded from the prediction (and shown as gaps in net bars), so a missed day
+  doesn't fabricate a huge deficit.
+- **Weight forward-filled** for BMR only; body-fat untouched.
+- **Double-count** (high activity factor + logged exercise) — unchanged from today; GoalsPage already advises
+  keeping activity at "Sedentary."
+- **Units:** kcal always; weight via the existing `kgToDisplay` + kg/lb toggle.
+
+### Verification (M7)
+
+- **Backend:** `pytest` — `/exercise/range` per-day grouping, user scoping, and empty-range, mirroring
+  [test_entries.py](tests/test_entries.py).
+- **Frontend / e2e:** `tsc -b && vite build` + `eslint`. Run `uvicorn` + `vite dev`, log a few days of food +
+  exercise + weights, open Trends → expenditure line tracks on the calories chart; energy-balance chart shows
+  green/red net bars + cumulative line; weight chart shows the dashed "Predicted (balance)" line near the
+  actual trend. Toggle kg/lb and the 7/30/90 range.
+
+### Dependency
+
+Builds on shipped 3.1 (weight), 3.2 (Trends/Recharts), and activity/expenditure
+(`expenditureBreakdown`, exercise CRUD). **Sequence:** 7.1 → 7.2 → (7.3 ∥ 7.4 ∥ 7.5).
 
 ---
 

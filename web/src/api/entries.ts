@@ -18,6 +18,11 @@ export function postEntry(entry: EntryCreate): Promise<Entry> {
   return apiJson<Entry>('/entries', { method: 'POST', body: JSON.stringify(entry) })
 }
 
+/** Create several entries in one request — a capture split into per-item entries. */
+export function postEntries(entries: EntryCreate[]): Promise<Entry[]> {
+  return apiJson<Entry[]>('/entries/batch', { method: 'POST', body: JSON.stringify({ entries }) })
+}
+
 export function patchEntry(id: number, patch: Partial<EntryCreate>): Promise<Entry> {
   return apiJson<Entry>(`/entries/${id}`, { method: 'PATCH', body: JSON.stringify(patch) })
 }

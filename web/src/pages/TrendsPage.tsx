@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import {
   Bar,
   CartesianGrid,
+  Cell,
   ComposedChart,
   Legend,
   Line,
@@ -15,9 +16,13 @@ import {
 } from 'recharts'
 import { UnitToggle } from '../components/UnitToggle'
 import { getEntriesRange } from '../api/entries'
+import { getExerciseRange } from '../api/exercise'
 import { getMetrics } from '../api/metrics'
 import { getTargets } from '../api/targets'
 import { ATWATER } from '../lib/targets'
+import { expenditureBreakdown } from '../lib/energy'
+import { stepsToKcal } from '../lib/activity'
+import { KCAL_PER_KG } from '../lib/tdee'
 import { ema, movingAverage } from '../lib/stats'
 import { daysBetween, formatShortDay, lastNDays } from '../lib/date'
 import { kgToDisplay, useWeightUnit } from '../lib/units'
@@ -33,6 +38,9 @@ const COLORS = {
   fat: '#f472b6',
   accent: '#34d399',
   goal: '#a78bfa',
+  burn: '#fb923c', // expenditure + the energy-balance predicted-weight line
+  deficit: '#34d399', // net < 0 (losing) — green
+  surplus: '#f87171', // net > 0 (gaining) — red
   muted: '#94a3b8',
   grid: '#334155',
 }
@@ -50,6 +58,12 @@ function activeDayKey(state: unknown, data: ReadonlyArray<{ dayKey: string }>): 
   return typeof n === 'number' && Number.isInteger(n) && n >= 0 && n < data.length ? data[n].dayKey : undefined
 }
 
+/** Signed, thousands-grouped number for the energy-balance readout (e.g. "+1,200", "−320"). */
+function signed(n: number): string {
+  const r = Math.round(n)
+  return `${r > 0 ? '+' : r < 0 ? '−' : ''}${Math.abs(r).toLocaleString()}`
+}
+
 interface Props {
   goToDay: (day: string) => void // open a specific day on the Log tab
 }
@@ -57,6 +71,7 @@ interface Props {
 export function TrendsPage({ goToDay }: Props) {
   const [unit, setUnit] = useWeightUnit()
   const [days, setDays] = useState<number>(30)
+  const currentYear = new Date().getFullYear()
 
   const axis = useMemo(() => lastNDays(days), [days])
   const from = axis[0]
@@ -66,16 +81,57 @@ export function TrendsPage({ goToDay }: Props) {
     queryKey: ['entries-range', from, to],
     queryFn: () => getEntriesRange(from, to),
   })
+  const exerciseQuery = useQuery({
+    queryKey: ['exercise-range', from, to],
+    queryFn: () => getExerciseRange(from, to),
+  })
   const metricsQuery = useQuery({ queryKey: ['metrics', from, to], queryFn: () => getMetrics(from, to) })
   const targetsQuery = useQuery({ queryKey: ['targets'], queryFn: getTargets })
 
-  // Calories per day, split by macro contribution (kcal), with a 7-day total-calorie average.
+  // Per-day total energy expenditure (BMR + baseline activity + exercise + step burn), keyed by day.
+  // Weight is forward-filled across the axis (BMR needs a weight every day, but weigh-ins are sparse);
+  // before the first weigh-in we back-fill the earliest one. `available` is false when the profile is
+  // incomplete (no height/birth-year/sex) — the expenditure-derived features then stay hidden.
+  const expenditure = useMemo(() => {
+    const t = targetsQuery.data
+    const metrics = metricsQuery.data ?? []
+    const exByDate = new Map((exerciseQuery.data ?? []).map((d) => [d.date, d.total_calories]))
+    const metricByDate = new Map(metrics.map((m) => [m.date, m]))
+    const loggedWeights = metrics.filter((m) => m.weight_kg != null)
+
+    const byDay = new Map<string, number>()
+    let available = false
+    let carriedWeight = loggedWeights.length ? (loggedWeights[0].weight_kg as number) : null
+    for (const dk of axis) {
+      const m = metricByDate.get(dk)
+      if (m?.weight_kg != null) carriedWeight = m.weight_kg
+      const exerciseKcal = (exByDate.get(dk) ?? 0) + stepsToKcal(m?.steps, carriedWeight)
+      const b = expenditureBreakdown({
+        weightKg: carriedWeight,
+        heightCm: t?.height_cm,
+        birthYear: t?.birth_year,
+        sex: t?.sex,
+        activityFactor: t?.activity_factor,
+        exerciseKcal,
+        currentYear,
+      })
+      if (b) {
+        byDay.set(dk, b.total)
+        available = true
+      }
+    }
+    return { byDay, available }
+  }, [targetsQuery.data, metricsQuery.data, exerciseQuery.data, axis, currentYear])
+
+  // Calories per day, split by macro contribution (kcal), with a 7-day total-calorie average and
+  // (when the profile is complete) an expenditure line — the gap above the bars is the day's balance.
   const calData = useMemo(() => {
     const byDate = new Map((entriesQuery.data ?? []).map((d) => [d.date, d]))
     const totals = axis.map((day) => byDate.get(day)?.total_calories ?? 0)
     const ma = movingAverage(totals, MA_WINDOW)
     return axis.map((day, i) => {
       const d = byDate.get(day)
+      const exp = expenditure.byDay.get(day)
       return {
         dayKey: day,
         date: formatShortDay(day),
@@ -83,13 +139,48 @@ export function TrendsPage({ goToDay }: Props) {
         Carbs: Math.round((d?.total_carbs_g ?? 0) * ATWATER.carbs),
         Fat: Math.round((d?.total_fat_g ?? 0) * ATWATER.fat),
         avg: ma[i] == null ? null : Math.round(ma[i] as number),
+        expenditure: exp == null ? null : Math.round(exp),
       }
     })
-  }, [entriesQuery.data, axis])
+  }, [entriesQuery.data, axis, expenditure])
 
-  // Weight + body-fat on the same daily axis as the calories chart. Actuals + EMA trend,
-  // plus a dashed goal-pace projection drawn forward from the LAST logged weight at the goal
-  // rate (clamped at the goal); body fat glides to its goal over the weight-goal timeline.
+  // Daily net energy (consumed − expenditure) + a running cumulative, for the energy-balance chart.
+  // Only days with logged intake count — an unlogged day is a gap, never a phantom full-day deficit.
+  const balanceData = useMemo(() => {
+    const byDate = new Map((entriesQuery.data ?? []).map((d) => [d.date, d]))
+    const rows: { dayKey: string; date: string; net: number | null; cumNet: number | null }[] = []
+    let cum = 0
+    let netKcal = 0
+    let started = false
+    for (const dk of axis) {
+      const d = byDate.get(dk)
+      const exp = expenditure.byDay.get(dk)
+      let net: number | null = null
+      if (d != null && d.entry_count > 0 && exp != null) {
+        net = d.total_calories - exp
+        cum += net
+        netKcal += net
+        started = true
+      }
+      rows.push({
+        dayKey: dk,
+        date: formatShortDay(dk),
+        net: net == null ? null : Math.round(net),
+        cumNet: started ? Math.round(cum) : null,
+      })
+    }
+    return {
+      rows,
+      netKcal,
+      predictedKg: round1(kgToDisplay(netKcal / KCAL_PER_KG, unit)),
+      hasData: expenditure.available && rows.some((r) => r.net != null),
+    }
+  }, [entriesQuery.data, axis, expenditure, unit])
+
+  // Weight + body-fat on the same daily axis as the calories chart. Actuals + EMA trend, a dashed
+  // goal-pace projection drawn forward from the LAST logged weight at the goal rate (clamped at the
+  // goal; body fat glides to its goal over the same timeline), and a dashed "Predicted (balance)"
+  // line: anchored at the FIRST logged weight, each logged-intake day adds (consumed − expenditure)/7700.
   const weightData = useMemo(() => {
     const metrics = metricsQuery.data ?? []
     const byDate = new Map(metrics.map((m) => [m.date, m]))
@@ -114,7 +205,25 @@ export function TrendsPage({ goToDay }: Props) {
     const bfDaily =
       dir !== 0 && goalBf != null && currentBf != null && daysToGoal > 0 ? (goalBf - currentBf) / daysToGoal : null
 
-    const rows = axis.map((dk) => {
+    // Predicted-weight (energy balance): anchor at the first logged weigh-in in range.
+    const entriesByDate = new Map((entriesQuery.data ?? []).map((d) => [d.date, d]))
+    const first = logged.length ? logged[0] : null
+    const predAnchorKg = first?.weight_kg ?? null
+    const predAnchorDate = first?.date ?? null
+    const hasPrediction = expenditure.available && predAnchorKg != null && predAnchorDate != null
+    type WeightRow = {
+      dayKey: string
+      date: string
+      weight: number | null
+      trend: number | null
+      bodyFat: number | null
+      projWeight: number | null
+      projBodyFat: number | null
+      predWeight: number | null
+    }
+    const rows: WeightRow[] = []
+    let predCum = 0 // cumulative net kcal since the anchor weigh-in
+    for (const dk of axis) {
       const m = byDate.get(dk)
       let projWeight: number | null = null
       if (dir !== 0 && currentKg != null && goalKg != null && anchorWeightDate != null && dk >= anchorWeightDate) {
@@ -126,7 +235,16 @@ export function TrendsPage({ goToDay }: Props) {
         const raw = currentBf + bfDaily * daysBetween(anchorBfDate, dk)
         projBodyFat = round1(bfDaily < 0 ? Math.max(goalBf, raw) : Math.min(goalBf, raw))
       }
-      return {
+      let predWeight: number | null = null
+      if (hasPrediction && predAnchorDate != null && dk >= predAnchorDate) {
+        const d = entriesByDate.get(dk)
+        const exp = expenditure.byDay.get(dk)
+        if (dk > predAnchorDate && d != null && d.entry_count > 0 && exp != null) {
+          predCum += d.total_calories - exp
+        }
+        predWeight = round1(kgToDisplay((predAnchorKg as number) + predCum / KCAL_PER_KG, unit))
+      }
+      rows.push({
         dayKey: dk,
         date: formatShortDay(dk),
         weight: m?.weight_kg == null ? null : round1(kgToDisplay(m.weight_kg, unit)),
@@ -134,10 +252,11 @@ export function TrendsPage({ goToDay }: Props) {
         bodyFat: m?.body_fat_pct ?? null,
         projWeight,
         projBodyFat,
-      }
-    })
-    return { rows, hasProjection: dir !== 0 }
-  }, [metricsQuery.data, targetsQuery.data, unit, axis])
+        predWeight,
+      })
+    }
+    return { rows, hasProjection: dir !== 0, hasPrediction }
+  }, [metricsQuery.data, targetsQuery.data, entriesQuery.data, expenditure, unit, axis])
 
   const hasEntries = (entriesQuery.data?.length ?? 0) > 0
   const hasWeight = (metricsQuery.data ?? []).some((r) => r.weight_kg != null)
@@ -184,6 +303,9 @@ export function TrendsPage({ goToDay }: Props) {
               <Bar dataKey="Carbs" stackId="m" fill={COLORS.carbs} />
               <Bar dataKey="Fat" stackId="m" fill={COLORS.fat} radius={[3, 3, 0, 0]} />
               <Line dataKey="avg" name={`${MA_WINDOW}-day avg`} stroke={COLORS.accent} strokeWidth={2} dot={false} connectNulls />
+              {expenditure.available && (
+                <Line dataKey="expenditure" name="Expenditure" stroke={COLORS.burn} strokeWidth={2} dot={false} connectNulls />
+              )}
               {target ? (
                 <ReferenceLine
                   y={target}
@@ -196,6 +318,46 @@ export function TrendsPage({ goToDay }: Props) {
           </ResponsiveContainer>
         ) : (
           <p className="muted chart-card__empty">No entries in this range yet.</p>
+        )}
+      </div>
+
+      <div className="card chart-card">
+        <h3 className="chart-card__title">Energy balance</h3>
+        {balanceData.hasData ? (
+          <>
+            <p className="chart-card__readout">
+              Net <strong>{signed(balanceData.netKcal)} kcal</strong> over {days}d ·{' '}
+              <strong>≈ {signed(balanceData.predictedKg)} {unit}</strong> expected
+            </p>
+            <ResponsiveContainer width="100%" height={200}>
+              <ComposedChart
+                data={balanceData.rows}
+                margin={{ top: 8, right: 8, bottom: 0, left: 0 }}
+                onClick={(state) => {
+                  const dk = activeDayKey(state, balanceData.rows)
+                  if (dk) goToDay(dk)
+                }}
+              >
+                <CartesianGrid stroke={COLORS.grid} strokeOpacity={0.4} vertical={false} />
+                <XAxis dataKey="date" tick={AXIS_TICK} tickLine={false} axisLine={{ stroke: COLORS.grid }} minTickGap={24} />
+                <YAxis yAxisId="net" tick={AXIS_TICK} tickLine={false} axisLine={false} width={52} />
+                <YAxis yAxisId="cum" orientation="right" tick={AXIS_TICK} tickLine={false} axisLine={false} width={52} />
+                <Tooltip {...TOOLTIP} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <ReferenceLine yAxisId="net" y={0} stroke={COLORS.muted} />
+                <Bar yAxisId="net" dataKey="net" name="Net (kcal)">
+                  {balanceData.rows.map((r) => (
+                    <Cell key={r.dayKey} fill={(r.net ?? 0) < 0 ? COLORS.deficit : COLORS.surplus} />
+                  ))}
+                </Bar>
+                <Line yAxisId="cum" dataKey="cumNet" name="Cumulative" stroke={COLORS.goal} strokeWidth={2} dot={false} connectNulls />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </>
+        ) : (
+          <p className="muted chart-card__empty">
+            Add your profile (height, age, sex) plus food and exercise to see your energy balance.
+          </p>
         )}
       </div>
 
@@ -219,6 +381,9 @@ export function TrendsPage({ goToDay }: Props) {
               <Legend wrapperStyle={{ fontSize: 11 }} />
               <Line yAxisId="w" dataKey="weight" name={`Weight (${unit})`} stroke={COLORS.muted} strokeWidth={1} dot={{ r: 2 }} connectNulls />
               <Line yAxisId="w" dataKey="trend" name="Trend" stroke={COLORS.accent} strokeWidth={2.5} dot={false} connectNulls />
+              {weightData.hasPrediction && (
+                <Line yAxisId="w" dataKey="predWeight" name="Predicted (balance)" stroke={COLORS.burn} strokeWidth={2} strokeDasharray="2 3" dot={false} connectNulls />
+              )}
               {weightData.hasProjection && (
                 <Line yAxisId="w" dataKey="projWeight" name="Goal pace" stroke={COLORS.goal} strokeWidth={2} strokeDasharray="5 4" dot={false} connectNulls />
               )}

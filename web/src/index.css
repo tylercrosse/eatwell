@@ -981,13 +981,7 @@ body {
   color: var(--muted);
 }
 
-/* Fullness badge + "Drink" override toggle on the estimate card. */
-.estimate__fullness {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
+/* "Drink" override toggle (estimate card + per-item rows). */
 .estimate__beverage {
   display: inline-flex;
   align-items: center;
@@ -995,6 +989,86 @@ body {
   font-size: 0.78rem;
   color: var(--muted);
   cursor: pointer;
+}
+
+/* Per-item review rows (a multi-food capture splits into separate entries). */
+.estimate__hint {
+  margin: 0;
+  font-size: 0.78rem;
+}
+
+.estimate__items {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.estimate__combine {
+  align-self: flex-start;
+}
+
+.item-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.item-edit__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.item-edit__select {
+  flex: none;
+}
+
+.item-edit__name {
+  flex: 1;
+  min-width: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.item-edit__btn {
+  flex: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.item-edit__remove {
+  color: var(--danger);
+  line-height: 1;
+}
+
+.item-edit__summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.item-edit__detail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .meal-section__title {
@@ -1118,6 +1192,17 @@ body {
 .chart-card__empty {
   text-align: center;
   padding: 24px 0;
+}
+
+.chart-card__readout {
+  margin: -6px 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.chart-card__readout strong {
+  color: var(--text, inherit);
+  font-weight: 600;
 }
 
 /* ---- Day nav ---- */

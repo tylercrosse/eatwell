@@ -132,6 +132,36 @@ def test_patch_logged_at_moves_entry_to_another_day(client):
     assert [e["id"] for e in moved] == [created["id"]]
 
 
+def test_is_beverage_round_trips(client):
+    drink = _make(client, food_name="Latte", is_beverage=True)
+    assert drink["is_beverage"] is True
+    assert client.get(f"/api/entries/{drink['id']}").json()["is_beverage"] is True
+    # Defaults to False when omitted.
+    assert _make(client, food_name="Toast")["is_beverage"] is False
+
+
+def test_batch_creates_per_item_entries(client):
+    payload = {
+        "entries": [
+            {"food_name": "Greek yogurt", "calories": 150, "weight_g": 200, "logged_at": "2026-05-31T08:30:00"},
+            {"food_name": "Coffee", "calories": 5, "weight_g": 240, "is_beverage": True, "logged_at": "2026-05-31T08:30:00"},
+            {"food_name": "Orange juice", "calories": 110, "weight_g": 250, "is_beverage": True, "logged_at": "2026-05-31T08:30:00"},
+        ]
+    }
+    r = client.post("/api/entries/batch", json=payload)
+    assert r.status_code == 201, r.text
+    rows = r.json()
+    assert [row["food_name"] for row in rows] == ["Greek yogurt", "Coffee", "Orange juice"]
+    assert [row["is_beverage"] for row in rows] == [False, True, True]
+    # All three landed in the day's list.
+    listed = client.get("/api/entries", params={"date": "2026-05-31"}).json()
+    assert len(listed) == 3
+
+
+def test_batch_rejects_empty(client):
+    assert client.post("/api/entries/batch", json={"entries": []}).status_code == 400
+
+
 def test_range_aggregates_per_day(client):
     _make(client, calories=200, logged_at="2026-05-31T08:00:00")
     _make(client, food_name="Rice", calories=300, logged_at="2026-05-31T12:00:00")

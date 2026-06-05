@@ -9,12 +9,12 @@ from __future__ import annotations
 from datetime import date as date_cls
 from datetime import datetime, time, timezone
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session
 
 from app.deps import get_current_user, get_owned, get_session, user_query
 from app.models import FoodEntry, User
-from app.schemas import DaySummary, EntryCreate, EntryRead, EntryUpdate
+from app.schemas import DaySummary, EntriesBatchCreate, EntryCreate, EntryRead, EntryUpdate
 
 router = APIRouter(tags=["entries"])
 
@@ -40,6 +40,33 @@ def create_entry(
     session.commit()
     session.refresh(entry)
     return entry
+
+
+@router.post("/entries/batch", response_model=list[EntryRead], status_code=201)
+def create_entries(
+    payload: EntriesBatchCreate,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+) -> list[FoodEntry]:
+    """Create several entries in one transaction — a capture split into per-item entries (M6).
+
+    Defined before /entries/{id} so the literal 'batch' segment isn't parsed as an id.
+    """
+    if not payload.entries:
+        raise HTTPException(status_code=400, detail="No entries provided.")
+    now = datetime.now(timezone.utc)
+    created: list[FoodEntry] = []
+    for item in payload.entries:
+        data = item.model_dump()
+        if data.get("logged_at") is None:
+            data["logged_at"] = now
+        entry = FoodEntry(**data, user_id=user.id)
+        session.add(entry)
+        created.append(entry)
+    session.commit()
+    for entry in created:
+        session.refresh(entry)
+    return created
 
 
 @router.get("/entries", response_model=list[EntryRead])

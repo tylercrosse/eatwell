@@ -22,30 +22,35 @@ from app.schemas import (
     AnalysisResult,
 )
 
+_ITEM_GRANULARITY = (
+    "Make one item per distinct DISH or DRINK the person would log separately. Keep a composite "
+    "dish whole — a salad, sandwich, bowl or stir-fry is ONE item with combined nutrition; do NOT "
+    "split it into its ingredients. Separate only independently-served things: each plate/side, and "
+    "every drink. E.g. a plate of fruit + a bowl of yogurt + a coffee + a juice → 4 items; a caprese "
+    "or burrata salad → 1 item."
+)
+
+_PER_ITEM_FIELDS = (
+    "For EACH item give its own calories (kcal), protein/carbs/fat (grams), edible weight_g (grams), "
+    "fiber_g/sugar_g (grams), sodium_mg (milligrams), and is_beverage (true only for a drink you sip "
+    "— coffee, tea, juice, soda, alcohol, milk, smoothie, protein shake; false for solid foods and for "
+    "soups/broths eaten as a meal). The total_* fields must be the sum of the per-item values, and the "
+    "overall is_beverage is true only if every item is a drink."
+)
+
 _SYSTEM_PROMPT = (
-    "You are a nutrition estimator. Given a food photo, identify each distinct food, "
-    "estimate its serving size and macros, and return ONLY data matching the schema. "
-    "Calories are kcal; protein, carbs and fat are in grams. The macro totals must be the "
-    "sum of the per-item values. Also estimate the total edible weight in grams "
-    "(total_weight_g) and the totals for fiber and sugar (grams) and sodium (milligrams). "
-    "Set is_beverage to true when the item is primarily a drink you sip (coffee, tea, juice, "
-    "soda, alcohol, milk, smoothie, protein shake); false for solid foods and for soups/broths "
-    "eaten as a meal. If you are unsure, still give your best estimate but lower the confidence "
-    "value (0 = guess, 1 = very confident)."
+    "You are a nutrition estimator. Given a food photo, identify the foods and return ONLY data "
+    "matching the schema. " + _ITEM_GRANULARITY + " " + _PER_ITEM_FIELDS + " If you are unsure, still "
+    "give your best estimate but lower the confidence value (0 = guess, 1 = very confident)."
 )
 
 _TEXT_SYSTEM_PROMPT = (
     "You are a nutrition estimator. The user describes one or more foods in plain text "
     "(e.g. 'small gelato' or '12 oz iced latte'). Use the search_foods tool to look up "
-    "grounded nutrition data for each distinct food. The tool returns macros PER 100g (or "
-    "per 100ml). Scale each food to the portion the user described, list each as an item, and "
-    "make the macro totals the sum of the per-item values. Also estimate the total edible "
-    "weight in grams (total_weight_g) and the totals for fiber and sugar (grams) and sodium "
-    "(milligrams). Calories are kcal; protein, carbs and fat are in grams. Set is_beverage to true "
-    "when the item is primarily a drink you sip (coffee, tea, juice, soda, alcohol, milk, smoothie, "
-    "protein shake); false for solid foods and for soups/broths eaten as a meal. Prefer the tool data "
-    "over your own guesses; if a search returns nothing useful or the tool is unavailable, fall "
-    "back to your best estimate and lower the confidence (0 = guess, 1 = very confident)."
+    "grounded nutrition data for each distinct food, and scale it to the portion described. "
+    "The tool returns macros PER 100g (or per 100ml). " + _ITEM_GRANULARITY + " " + _PER_ITEM_FIELDS +
+    " Prefer the tool data over your own guesses; if a search returns nothing useful or the tool is "
+    "unavailable, fall back to your best estimate and lower the confidence (0 = guess, 1 = very confident)."
 )
 
 # OpenAI-style function tool the text estimator may call to ground each food.
