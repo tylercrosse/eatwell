@@ -98,6 +98,27 @@ export interface RecentFood {
   sodium_mg?: number | null
   is_beverage?: boolean
   serving_size?: string | null
+  times_logged?: number | null // all-time log count for this name (frecency sort only)
+}
+
+// A packaged food resolved from a scanned barcode (GET /api/foods/barcode/{code}).
+// Macros are for ONE serving; the review card defaults servings to 1. Resolved US-first
+// via USDA's Branded dataset, then Open Food Facts.
+export interface BarcodeFood {
+  barcode: string
+  name: string
+  brand?: string | null
+  source: string // "usda" | "openfoodfacts"
+  calories: number
+  protein_g: number
+  carbs_g: number
+  fat_g: number
+  weight_g?: number | null
+  fiber_g: number
+  sugar_g: number
+  sodium_mg: number
+  is_beverage: boolean
+  serving_size: string
 }
 
 export interface DaySummary {

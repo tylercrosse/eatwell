@@ -88,7 +88,7 @@ export default function App() {
           className={`tabbar__btn ${tab === 'trends' ? 'is-active' : ''}`}
           onClick={() => setTab('trends')}
         >
-          <span className="tabbar__icon">📈</span>
+          <span className="tabbar__icon">📉</span>
           Trends
         </button>
         <button

@@ -30,6 +30,7 @@ export interface CaptureDraft {
   items: ItemDraft[]
   meal: Meal
   logged_at: string // local datetime; the date is editable (to backfill a past day)
+  source?: string // entry provenance: 'ai' | 'manual' | 'barcode' (defaults to manual)
 }
 
 interface Props {
@@ -105,6 +106,7 @@ function ItemEditor({ item, single, selected, onToggleSelect, onChange, onRemove
           {round(item.calories * f)} kcal · P {round(item.protein_g * f)} · C {round(item.carbs_g * f)} · F{' '}
           {round(item.fat_g * f)}
         </span>
+        {item.calories * f <= 0 && <span className="input-warn">Needs calories</span>}
         <FullnessBadge food={item} variant="compact" />
         <label className="estimate__beverage">
           <input type="checkbox" checked={item.is_beverage} onChange={(e) => onChange({ is_beverage: e.target.checked })} />
@@ -164,6 +166,8 @@ export function EstimateCard({
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const items = draft.items
   const single = items.length === 1
+  // Each item becomes its own entry, so every one needs calories before we can commit.
+  const allHaveCalories = items.every((i) => i.calories * i.servings > 0)
 
   const toggle = (id: string) =>
     setSelected((prev) => {
@@ -239,11 +243,15 @@ export function EstimateCard({
         />
       </label>
 
+      {items.length > 0 && !allHaveCalories && (
+        <p className="input-warn">{single ? 'Calories must be greater than 0.' : 'Every item needs calories greater than 0.'}</p>
+      )}
+
       <div className="estimate__actions">
         <button className="btn btn--ghost" onClick={onCancel} disabled={saving}>
           Discard
         </button>
-        <button className="btn btn--primary" onClick={onConfirm} disabled={saving || items.length === 0}>
+        <button className="btn btn--primary" onClick={onConfirm} disabled={saving || items.length === 0 || !allHaveCalories}>
           {saving ? 'Saving…' : `Add ${single ? '' : `${items.length} `}to log`}
         </button>
       </div>

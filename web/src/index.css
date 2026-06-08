@@ -290,6 +290,81 @@ body {
   border-color: var(--accent);
 }
 
+/* ---- Barcode scan ---- */
+.capture-scan {
+  width: 100%;
+  max-width: 320px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.capture-scan__icon {
+  flex: none;
+}
+
+.scanner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 360px;
+  margin: 0 auto;
+}
+
+.scanner__viewport {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: #000;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.scanner__video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* A framing reticle with a dimmed surround to guide aim at the barcode. */
+.scanner__reticle {
+  position: absolute;
+  inset: 26% 12%;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  border-radius: 10px;
+  box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.28);
+}
+
+.scanner__hint {
+  text-align: center;
+  font-size: 0.85rem;
+}
+
+.scanner__manual {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.scanner__manual input {
+  flex: 1;
+  min-width: 0;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.scanner__manual input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 /* ---- Recent foods (quick re-log) ---- */
 .capture-recent {
   display: flex;
@@ -313,24 +388,56 @@ body {
   gap: 8px;
 }
 
+.capture-recent__search {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 9px 12px;
+  color: var(--text);
+  font-size: 0.9rem;
+  width: 100%;
+}
+
+.capture-recent__search:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.capture-recent__empty {
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-align: center;
+  padding: 6px 0;
+}
+
 .recent-chip {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   width: 100%;
-  text-align: left;
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 12px;
-  padding: 10px 14px;
+  padding: 8px 10px 8px 14px;
+}
+
+.recent-chip:focus-within {
+  border-color: var(--accent);
+}
+
+.recent-chip__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0;
   color: var(--text);
   font-size: 0.9rem;
   cursor: pointer;
-}
-
-.recent-chip:active {
-  border-color: var(--accent);
 }
 
 .recent-chip__name {
@@ -340,11 +447,56 @@ body {
   white-space: nowrap;
 }
 
+.recent-chip__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+/* Frequency stands apart from the muted meta: accent color + weight + a repeat glyph. */
+.recent-chip__freq {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+  color: var(--accent);
+  font-weight: 700;
+}
+
 .recent-chip__cal {
   flex: none;
   color: var(--accent);
   font-weight: 700;
   font-size: 0.82rem;
+}
+
+.recent-chip__quick {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--accent);
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.recent-chip__quick:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--surface-2);
+}
+
+.recent-chip__quick:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .capture-loading {
@@ -495,6 +647,19 @@ body {
   border-color: var(--accent);
 }
 
+/* Hide native number spinners so the absolutely-positioned unit label (.macro-input__unit)
+ * doesn't overlap them — Firefox renders the spin buttons at the right edge. */
+.macro-input input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.macro-input input[type='number']::-webkit-outer-spin-button,
+.macro-input input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 .servings {
   display: flex;
   align-items: center;
@@ -526,6 +691,13 @@ body {
   margin: -4px 0 0;
   font-size: 0.76rem;
   color: var(--muted);
+}
+
+/* Inline validation note shown when a field blocks save (e.g. calories must be > 0). */
+.input-warn {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--danger);
 }
 
 .macros {
@@ -1203,6 +1375,76 @@ body {
 .chart-card__readout strong {
   color: var(--text, inherit);
   font-weight: 600;
+}
+
+.chart-card__note {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+/* ---- Goal progress (progress track) ---- */
+.goal-key__swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
+/* A · progress track — fill on the metric's own start→goal scale */
+.goal-tracks {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.goal-track__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+
+.goal-track__label {
+  font-weight: 600;
+}
+
+.goal-track__pct {
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-align: right;
+}
+
+.goal-track__rail {
+  position: relative;
+  height: 10px;
+  border-radius: 6px;
+  background: var(--border);
+}
+
+.goal-track__fill {
+  height: 100%;
+  border-radius: 6px;
+  background: var(--accent);
+}
+
+.goal-track__marker {
+  position: absolute;
+  top: 50%;
+  width: 3px;
+  height: 18px;
+  border-radius: 2px;
+  transform: translate(-1.5px, -50%);
+}
+
+.goal-track__scale {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 0.75rem;
+  color: var(--muted);
 }
 
 /* ---- Day nav ---- */

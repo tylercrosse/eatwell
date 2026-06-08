@@ -7,11 +7,17 @@ The app is a calorie tracker: FastAPI + SQLModel + SQLite on the backend (custom
 ([app/openrouter.py](app/openrouter.py), [app/usda.py](app/usda.py)), and a React 19 + Vite + React Query
 SPA with a plain-CSS dark theme and a tab-based shell ([web/src/App.tsx](web/src/App.tsx)).
 
-Shipped so far: photo/text → AI estimate → reviewable entry; entries CRUD + per-day summary + meal
-grouping; extended nutrition (weight/fiber/sugar/sodium) + a **Fullness Factor (satiety) score** with a
-food/drink volume readout and a drink-aware cap (replaced the original calorie-density indicator); recent-food
-quick re-log; **Google-OAuth multi-user (allowlist, per-user scoping)**; **weight/body-fat logging + body
-goals**; **Recharts trends**; calorie/macro targets; editable entry dates.
+Shipped so far: photo/text → AI estimate → reviewable entry, now **split into per-item entries**;
+entries CRUD + per-day summary + meal grouping; extended nutrition (weight/fiber/sugar/sodium) + a
+**Fullness Factor (satiety) score** with a food/drink volume readout and a drink-aware cap (replaced the
+original calorie-density indicator); recent-food quick re-log (search + frecency + quick-add) and
+**barcode scanning**; **Google-OAuth multi-user (allowlist, per-user scoping)**; **weight/body-fat logging
++ body goals**; **Recharts trends**; calorie/macro targets; editable entry dates; **activity/exercise
+logging + expenditure** (manual + free-text AI estimate + steps→kcal) with a **net/gross energy toggle**;
+**TDEE/BMR target recommender** (basic + adaptive); a **folded-in "Add" flow** (capture lives on the Log
+page; tabs are Log / Trends / Goals) with a **calendar day-picker** and **click-a-Trends-value → open that
+day**; and Trends charts for **expenditure, energy balance, predicted weight, a weight forecast, and goal
+progress**.
 
 **Decisions:** quick wins first → auth → health metrics/charts → activity; auth via **Google OAuth +
 email allowlist** (closed access, no public signup); expenditure shown as **net = intake − expenditure
@@ -23,13 +29,13 @@ with a gross/net toggle**; charts via **Recharts**.
 
 | Milestone | Status |
 | --- | --- |
-| M1 Quick wins | ✅ (1.4 saved-foods/meals pending) |
+| M1 Quick wins | ✅ (1.4r a/b/d/e/f + barcode shipped; 1.4r c/g + 1.4 saved-foods/meals pending) |
 | M2 Multi-user auth | ✅ |
-| M3 Health metrics & insights | 🚧 (3.1 + 3.2 done; 3.3 deferred) |
-| M4 Activity & expenditure | ⬜ |
-| M5 IA & navigation | ⬜ (new) |
+| M3 Health metrics & insights | ✅ (3.1 + 3.2 + 3.3 all shipped) |
+| M4 IA & navigation | ✅ |
+| M5 Activity & expenditure | ✅ |
 | M6 Per-item entries (split captures) | ✅ (live-classification tuning pending) |
-| M7 Trends: expenditure line + balance weight prediction | ⬜ (new) |
+| M7 Trends: expenditure line + balance weight prediction | ✅ (+ weight-forecast & goal-progress, beyond original plan) |
 
 ---
 
@@ -63,6 +69,67 @@ captures into per-item entries.
 - **v2 (saved foods):** ⬜ `SavedFood` table + `/api/foods` CRUD + ⭐ toggle.
 - **v3 (saved meals/combos):** ⬜ stretch.
 
+#### 1.4r — Recent-list quality & UX follow-ups — 🚧
+
+**Shipped this session:** a (search), b (frecency), d (quick-add), e (richer chips), f (remember serving) —
+the Findability + Faster-re-log set. **Remaining:** c (meal context, deprioritized) and g (smarter dedup).
+
+**Context — why.** v1 shipped a *pure-recency* list: [foods.py](app/routers/foods.py) scans the last 500 entries
+(`_SCAN_LIMIT`), sorts `logged_at DESC`, dedupes case-insensitively by `food_name` (latest wins), and returns 15.
+The capture UI ([CapturePage](web/src/pages/CapturePage.tsx)) calls `getRecentFoods()` with **no query** and renders
+chips of **name + kcal** only; tapping routes through `draftFromRecent` → review card with `servings` reset to 1.
+Three weaknesses follow: (a) a daily staple drops off the list once 15 *other* distinct foods are logged after it —
+and the 500-row scan cap means true frequency is never counted; (b) **search exists on the backend but is unused**;
+(c) dedup is exact-name, so naming drift fragments a food into several chips. These items refine v1; **v2 (⭐ pin)**
+and **v3 (saved meal combos)** above remain the answer for "force this to the top" and "log my usual breakfast."
+
+Ranked by ROI (highest first):
+
+- **1.4r.a Wire up search / typeahead — S (top quick win, frontend-only).** The `q` substring filter already exists
+  ([foods.py](app/routers/foods.py) `ilike`) and `getRecentFoods(q)` already accepts it
+  ([api/foods.ts](web/src/api/foods.ts)) — [CapturePage](web/src/pages/CapturePage.tsx) just never passes one. Add a
+  debounced search input above the chips, fold `q` into the query key (`['foods','recent', q]`). Lets the user reach
+  *any* prior food, not only the top 15. No backend change.
+  → ✅ **Shipped:** 250ms-debounced search input; `placeholderData: keepPreviousData` avoids flicker; limit widened
+  to 30 while a search is active; the section (and its box) stays visible on an empty result so it can be edited.
+- **1.4r.b Frecency ranking — M (biggest quality gain).** Replace the Python scan/dedup ([foods.py](app/routers/foods.py))
+  with a SQL aggregate: `GROUP BY lower(food_name)` → `COUNT(*)` (frequency) + `MAX(logged_at)` (recency), score
+  `= count × recencyDecay(days_since_last)`. Removes the 500-row cap (true all-time frequency) and surfaces staples.
+  Carry the latest row's macros/serving as today. Add `sort=frecency|recent` so "most recent" stays available.
+  → ✅ **Shipped** (pragmatic variant, no window functions): collapse the scan window to the latest row per name
+  (candidate set + macros/serving), then a separate all-time `GROUP BY lower(trim(name))` `COUNT(*)` supplies true
+  frequency; `score = count × 0.5 ** (days_since_last / 14)` anchored at the newest entry (deterministic, testable).
+  `sort` defaults to `recent` (back-compat — existing tests unchanged); the frontend requests `frecency`, which also
+  returns `times_logged`. A food not logged within the scan window stays hidden (acceptable: it's genuinely stale).
+- **1.4r.c Meal / time-of-day context — M.** Capture is launched for a specific meal (the M4 action bar will pass it).
+  Boost foods historically logged at that meal / time window so breakfast shows breakfast foods first. Backend: a
+  `meal=` filter or per-food meal distribution; frontend passes the current meal. Builds on 1.4r.b's aggregate.
+- **1.4r.d Quick-add without review — S.** `onPickRecent` ([CapturePage](web/src/pages/CapturePage.tsx)) always routes
+  to the [EstimateCard](web/src/components/EstimateCard.tsx) review state. Add a one-tap "quick log" (a ✓ on the chip /
+  long-press) that posts directly (servings 1, current meal/day) via the existing `postEntry` path, skipping review.
+  → ✅ **Shipped:** a ✓ button on each chip posts immediately (with the remembered serving, viewed day, inferred
+  meal) by reusing the existing batch-save path, then closes the capture; tapping the chip body still opens review.
+- **1.4r.e Richer chips — S.** Chips show only name + kcal. Add a compact second line: macros or a
+  [FullnessBadge](web/src/components/FullnessBadge.tsx), a "logged N×" count (from 1.4r.b), and/or last-logged relative
+  time — to disambiguate similar names. Keep it compact.
+  → ✅ **Shipped:** second line = compact [FullnessBadge](web/src/components/FullnessBadge.tsx) + protein grams +
+  `N×` count (when >1). Serving/last-logged omitted to stay compact; serving is restored on tap (1.4r.f) anyway.
+- **1.4r.f Remember typical serving — S.** `draftFromRecent` resets `servings` to 1 and parses base via
+  `parseServingSize` ([serving.ts](web/src/lib/serving.ts)); prefill the food's most-common (or last) servings instead.
+  → ✅ **Shipped:** `draftFromRecent` divides the stored *total* macros by the parsed servings to recover the
+  per-serving baseline, then restores that multiplier — so "2× 1 bowl" re-opens as 2 servings with no double-count.
+- **1.4r.g Smarter normalization / dedup — S (careful).** Dedup is exact case-insensitive name, so "Greek yogurt",
+  "greek yogurt bowl", "Greek Yogurt (1 cup)" fragment. Normalize more before grouping (trim trailing
+  parentheticals / serving suffixes / punctuation) — conservatively, to avoid merging genuinely different foods.
+  Pairs with 1.4r.b's GROUP BY key.
+
+**Remaining:** 1.4r.c (meal context — deprioritized) and 1.4r.g (smarter dedup; current dedup kept conservative at
+case-insensitive trimmed name). Both are independent follow-ups.
+**Verification (done for a/b/d/e/f):** backend `pytest` green (91 passing) — frecency ordering, `times_logged`, and
+`sort` validation added to [test_foods.py](tests/test_foods.py); frontend `tsc -b && vite build` + `eslint` clean.
+Manual to spot-check live: log a staple across several days plus a fresh one-off → staple still ranks first; type in
+the search box → reaches an older food; tap a chip → serving is remembered; press ✓ → logs and closes without review.
+
 ---
 
 ## Milestone 2 — Multi-user via Google OAuth + allowlist — ✅
@@ -76,7 +143,7 @@ build-time `VITE_GOOGLE_CLIENT_ID` (threaded through the [Dockerfile](Dockerfile
 
 ---
 
-## Milestone 3 — Health metrics & insights — 🚧
+## Milestone 3 — Health metrics & insights — ✅
 
 ### 3.1 Weight & body-fat logging + goals — ✅
 
@@ -92,12 +159,13 @@ body-goals UI on [GoalsPage](web/src/pages/GoalsPage.tsx).
 7-day moving-average line + target reference line; weight + body-fat lines with an EMA-smoothed weight
 trend ([web/src/lib/stats.ts](web/src/lib/stats.ts)); a 7/30/90-day range selector.
 
-### 3.3 TDEE/BMR + adaptive target recommender — ⏸ Deferred (stretch, killer)
+### 3.3 TDEE/BMR + adaptive target recommender — ✅ (basic + adaptive)
 
-Add `height_cm`, `age`/`birth_year`, `sex` to the profile → Mifflin-St Jeor BMR × activity = TDEE; suggest
-a calorie target for a chosen weekly rate. Adaptive version infers real TDEE from the trailing weight trend
-vs intake. The `weekly_rate_kg` goal (shipped in 3.1) is the hook this builds on. Depends on 3.1 + 3.2.
-**Effort:** M (basic) → L (adaptive).
+`height_cm`, `birth_year`, `sex`, `activity_factor` added to the profile/`Targets`; Mifflin-St Jeor BMR ×
+activity = TDEE in [tdee.ts](web/src/lib/tdee.ts); [GoalsPage](web/src/pages/GoalsPage.tsx) recommends a
+calorie target for the chosen `weekly_rate_kg` (rate signed by the goal direction), and the **adaptive**
+variant infers real TDEE from the trailing 28-day weight trend vs intake. The same `expenditureBreakdown`
+([energy.ts](web/src/lib/energy.ts)) feeds the Log-page net energy and the M7 Trends charts.
 
 ### Shipped beyond the original M3 plan
 
@@ -110,14 +178,22 @@ vs intake. The `weekly_rate_kg` goal (shipped in 3.1) is the hook this builds on
 
 ---
 
-## Milestone 4 — Information architecture & navigation — ⬜ (new)
+## Milestone 4 — Information architecture & navigation — ✅
 
 Inspiration: Cronometer's per-day action bar (FOOD / EXERCISE / BIOMETRIC / NOTE / FAST) + a single day log
 that mixes biometrics and food. We adopt the *idea* (add anything to the day you're viewing) but keep our
 simpler surface — only the types we support (food, biometric; exercise lands in M4). We don't plan to add
 notes/fasting for now.
 
-### 4.1 Fold "Add" into the Log page; add Food + Biometric on the viewed day
+### 4.1 Fold "Add" into the Log page; add Food + Biometric on the viewed day — ✅
+
+→ **Shipped:** the `capture` tab is gone — [App.tsx](web/src/App.tsx) tabs are **Log / Trends / Goals**.
+[LogPage](web/src/pages/LogPage.tsx) has an action bar (**🍎 Food / 🏃 Exercise / ⚖️ Weight**) that opens the
+relevant editor in a [Modal](web/src/components/Modal.tsx) bound to the **viewed day**: Food → the capture
+flow ([CapturePage](web/src/pages/CapturePage.tsx)), Exercise → [AddExercise](web/src/components/AddExercise.tsx)
+(M5), Weight → the extracted [MetricEditor](web/src/components/MetricEditor.tsx) (shared by add + edit). The
+Trends weight quick-log card was removed; Trends is view-only. (Exercise on the day exceeded the original plan,
+which only listed Food + Biometric.)
 
 The "Add" flow should act on **the day you're looking at**, not a separate "today"-only tab.
 
@@ -134,7 +210,12 @@ The "Add" flow should act on **the day you're looking at**, not a separate "toda
   view-only charts. Backfilling = navigate to the day on Log and add (pairs with 5.2's day picker).
 - **Effort:** M — mostly relocating existing components + a modal/sheet shell + dropping a tab.
 
-### 4.2 Navigation
+### 4.2 Navigation — ✅
+
+→ **Shipped:** a [DayPicker](web/src/components/DayPicker.tsx) month-grid popover opens from
+`.day-nav__label` and marks days with data; clicking a Trends bar/point calls `goToDay(dayKey)`, which was
+lifted to [App.tsx](web/src/App.tsx) (sets `tab='log'` + the day) and threaded into
+[TrendsPage](web/src/pages/TrendsPage.tsx). React Router was not adopted (still optional — see refactor notes).
 
 - **Calendar day-picker:** clicking `.day-nav__label` on [LogPage](web/src/pages/LogPage.tsx) opens a month
   calendar to jump to any day, with **days that have entries visually marked**.
@@ -151,21 +232,25 @@ The "Add" flow should act on **the day you're looking at**, not a separate "toda
 
 ---
 
-## Milestone 5 — Activity & expenditure — ⬜
+## Milestone 5 — Activity & expenditure — ✅
 
-- **Model:** daily `Expenditure` row (`user_id`, `date`, `steps`, `steps_kcal`, `exercise_kcal`, `note`).
-- **4.1 Steps → calories:** `kcal ≈ steps × weight_kg × k`. Needs latest `BodyMetric` weight (depends on 3.1).
-- **4.2 Exercise logging:**
-  - Add as option to Log page
-  - Manual: kcal + description.
-  - **Free-text AI estimate** ("30 min easy lifting"): add `analyze_activity_text` + `POST /api/analyze/activity`,
-    mirroring `analyze_food_text` in [app/openrouter.py](app/openrouter.py) exactly (system prompt with MET
-    tables → kcal + duration). High-reuse.
-  - Double-count guard: optionally subtract step-derived kcal overlapping a logged workout — advanced; v1
-    leaves it to the user.
-- **Net-calorie integration:** [EnergySummary](web/src/components/EnergySummary.tsx) gains a gross/net
-  toggle — `remaining = target − (intake − expenditure)`; thread per-day expenditure into
-  [LogPage](web/src/pages/LogPage.tsx). **Effort:** M–L.
+→ **Shipped** (model landed differently than the original sketch: no single `Expenditure` row — instead
+**steps live on `BodyMetric`** and **workouts are their own `ExerciseEntry` table**, which made per-workout
+edit/delete and the M7 range endpoint natural).
+
+- **Model:** ✅ `ExerciseEntry` (`user_id`, `date`, `name`, `calories`, …) with CRUD + `GET /exercise/range`
+  ([exercise.py](app/routers/exercise.py)); `steps` added to `BodyMetric`.
+- **Steps → calories:** ✅ `stepsToKcal` ([activity.ts](web/src/lib/activity.ts)) using the latest weigh-in
+  weight (depends on 3.1); step count entered on the metric/weight editor.
+- **Exercise logging:** ✅ an Exercise action on the Log page → [AddExercise](web/src/components/AddExercise.tsx)
+  (manual kcal + name) and a per-day [ExerciseSection](web/src/components/ExerciseSection.tsx). **Free-text AI
+  estimate** shipped: `analyze_activity_text` + `POST /api/analyze/activity` (MET-table system prompt → kcal +
+  name; [openrouter.py](app/openrouter.py), [analyze.py](app/routers/analyze.py)). Double-count guard left to
+  the user as planned (GoalsPage advises keeping the activity factor at "Sedentary").
+- **Net-calorie integration:** ✅ [EnergySummary](web/src/components/EnergySummary.tsx) has a persistent
+  **net/gross toggle** (`net-mode`) built on `expenditureBreakdown` (BMR + activity + exercise + step burn);
+  per-day expenditure is threaded through [LogPage](web/src/pages/LogPage.tsx).
+- **Tests:** [test_exercise.py](tests/test_exercise.py), [test_analyze_activity.py](tests/test_analyze_activity.py).
 
 ---
 
@@ -263,7 +348,25 @@ Builds on the shipped fullness / `is_beverage` work. **Sequence:** 6.1 → 6.2 �
 
 ---
 
-## Milestone 7 — Trends: expenditure line + energy-balance weight prediction — ⬜ (new)
+## Milestone 7 — Trends: expenditure line + energy-balance weight prediction — ✅
+
+→ **Shipped (7.1–7.5):** the `GET /exercise/range` endpoint (7.1, [exercise.py](app/routers/exercise.py)); a
+shared per-day `expenditure` memo (7.2); an **expenditure line** on the calories chart (7.3); an
+**Energy-balance chart** with sign-colored net bars + a cumulative line and a `≈ kg` readout (7.4); and a
+**Predicted-weight line** on the weight chart (7.5), all in [TrendsPage](web/src/pages/TrendsPage.tsx) gated on
+profile completeness. Backend tests: [test_exercise.py](tests/test_exercise.py).
+
+**Beyond the original plan (also shipped):**
+
+- **Weight-forecast chart** — a dedicated card that extends the axis past→future to the goal-pace finish date,
+  drawing actuals + EMA trend, the **Goal-pace** projection, and a **Predicted** line extrapolated at the recent
+  average daily balance, with a readout of both ETAs (target-rate date vs recent-intake date).
+- **Goal-progress tracks** — [GoalProgress](web/src/components/GoalProgress.tsx): per-metric (weight / body fat)
+  progress bars on the metric's own scale with a predicted-pace marker, range-independent.
+- **Robustness/polish:** weigh-ins now load on a fixed 2-year lookback (not the range selector) so the latest
+  weight is always available; the predicted line/goal progress anchor at the window-start weight; synced chart
+  cursors (`syncId`); padded weight y-domains; a tight calorie y-domain; shared `CHART_COLORS`
+  ([colors.ts](web/src/lib/colors.ts), see refactor notes).
 
 ### Context — the gap
 
@@ -362,8 +465,14 @@ Builds on shipped 3.1 (weight), 3.2 (Trends/Recharts), and activity/expenditure
 
 ## Backlog — additional ideas, unsequenced — ⬜
 
-- **Barcode scanning** ⭐ — PWA camera + `@zxing/browser` → barcode → **Open Food Facts** (free, no key) →
-  exact packaged-food macros prefilled into a draft. Best accuracy/speed for packaged foods. (M)
+- **Barcode scanning** ⭐ — ✅ **Shipped.** Camera scan via `@zxing/browser` (UPC/EAN only, lazy-loaded chunk +
+  manual-entry fallback for blocked/absent cameras) in [BarcodeScanner](web/src/components/BarcodeScanner.tsx), wired as
+  a "Scan a barcode" action on the capture flow ([CapturePage](web/src/pages/CapturePage.tsx) → `draftFromBarcode` →
+  single-item [EstimateCard](web/src/components/EstimateCard.tsx)). Backend `GET /api/foods/barcode/{code}`
+  ([foods.py](app/routers/foods.py)) backed by [barcode.py](app/barcode.py): **US-first** — USDA FoodData Central
+  *Branded* by GTIN/UPC (reuses the existing key, per-100g→per-serving via `app.usda` helpers), falling back to **Open
+  Food Facts** (worldwide, no key) for international items + US gaps and on a USDA outage. Per-serving macros prefill the
+  draft; entries tagged `source='barcode'`. Tests: [test_barcode.py](tests/test_barcode.py).
 - **Data export** — `GET /api/export` (CSV/JSON of entries + metrics). Cheap, valuable for a health log. (S)
 - **Water tracking** — per-day counter. (S)
 - **Weekly view + log search/filter** — beyond the day-by-day nav (partly addressed by 5.2's day picker). (S–M)
@@ -378,30 +487,40 @@ Builds on shipped 3.1 (weight), 3.2 (Trends/Recharts), and activity/expenditure
 
 - **M2 (auth) — ✅ done.** Real `current_user` dependency + single `user_query` scoping helper landed in
   [app/deps.py](app/deps.py); no router hand-writes the user_id filter.
-- **Navigation — now scoped as M5.2.** The cross-tab "go to day" need finally forces lifting the selected
-  day to App (or a context). Reassess React Router then (deep links / browser back) — still optional.
+- **Navigation — ✅ done (M4.2).** `goToDay(dayKey)` lifted to [App.tsx](web/src/App.tsx) (sets `tab` + day);
+  the cross-tab "go to day" works from Trends. React Router still not adopted (deep links / browser back remain
+  optional).
 - **Opportunistic:** ✅ GoalsPage `setState`-in-effect fixed (query-wrapper + form-from-props); ✅ the 3.2
-  range endpoint reuses day-summary aggregation. ⬜ Still pending: delete the unused
-  `DailyTotals`/`EntryList` components.
+  range endpoint reuses day-summary aggregation; ✅ unused `DailyTotals`/`EntryList` components deleted.
+- **Numeric inputs — ✅.** [useNumericDraft](web/src/lib/useNumericDraft.ts) hook extracted (transient
+  empty/partial field while focused, commit-on-valid, re-sync on blur), shared by the macro/serving/number
+  inputs ([MacroInput](web/src/components/MacroInput.tsx), [ServingsStepper](web/src/components/ServingsStepper.tsx),
+  [NumberField](web/src/components/NumberField.tsx)).
+- **Chart colors — ✅.** [CHART_COLORS](web/src/lib/colors.ts) palette extracted and mapped by *concept*
+  (Recharts SVG attrs can't read CSS `var()`), so every chart reads consistently and the M7 additions reuse it.
 
 ---
 
 ## Dependency summary
 
 ```text
-1.1/1.2 (nutrition) ──> 1.3 (density)           [done]
-2 (auth) ── foundational, before 3/4            [done]
-3.1 (weight) ──> 3.2 charts, 3.3 TDEE, 4.1 steps→kcal
-5.2 (lift `day` to App) ──> Trends value → day navigation
+1.1/1.2 (nutrition) ──> 1.3 (density→fullness)              [done]
+2 (auth) ── foundational, before 3/4/5                      [done]
+3.1 (weight) ──> 3.2 charts ──> 3.3 TDEE ──> M5 steps→kcal  [done]
+M4.2 (lift `day` to App) ──> Trends value → day navigation  [done]
+M5 (activity/expenditure) ──> M7 (expenditure on Trends)    [done]
+remaining: M1 1.4 v2/v3 (saved foods/meals), 1.4r c/g; backlog extras (export, water, …)
 ```
 
 ---
 
 ## Verification (per feature)
 
-- **Backend:** `pytest` (63 passing). Per feature, mirror existing tests — [test_entries.py](tests/test_entries.py),
-  [test_targets.py](tests/test_targets.py), [test_metrics.py](tests/test_metrics.py),
-  [test_auth.py](tests/test_auth.py), [test_analyze_text.py](tests/test_analyze_text.py); add a
+- **Backend:** `pytest` (**104 passing** as of this pass). Per feature, mirror existing tests —
+  [test_entries.py](tests/test_entries.py), [test_targets.py](tests/test_targets.py),
+  [test_metrics.py](tests/test_metrics.py), [test_auth.py](tests/test_auth.py),
+  [test_analyze_text.py](tests/test_analyze_text.py), [test_exercise.py](tests/test_exercise.py),
+  [test_analyze_activity.py](tests/test_analyze_activity.py), [test_barcode.py](tests/test_barcode.py); add a
   [test_migration.py](tests/test_migration.py)-style test per new column.
 - **Frontend / e2e:** `tsc -b && vite build` + `eslint`; run backend (`uvicorn`) + `vite dev` and walk each
   flow.

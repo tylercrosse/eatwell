@@ -218,6 +218,30 @@ class RecentFood(BaseModel):
     sodium_mg: float | None = None
     is_beverage: bool = False
     serving_size: str | None = None
+    times_logged: int | None = None  # all-time log count for this name (frecency sort only)
+
+
+class BarcodeFood(BaseModel):
+    """A packaged food resolved from a scanned barcode, ready to prefill a review draft.
+
+    Macros are for ONE serving (the package's serving size); the review card defaults
+    ``servings`` to 1. Resolved US-first via USDA's Branded dataset, then Open Food Facts.
+    """
+
+    barcode: str
+    name: str
+    brand: str | None = None
+    source: str  # "usda" | "openfoodfacts" — which database answered
+    calories: float
+    protein_g: float
+    carbs_g: float
+    fat_g: float
+    weight_g: float | None = None  # serving weight in grams (powers the fullness badge)
+    fiber_g: float = 0.0
+    sugar_g: float = 0.0
+    sodium_mg: float = 0.0
+    is_beverage: bool = False
+    serving_size: str  # human label, e.g. "1 bar (30 g)"
 
 
 class DaySummary(BaseModel):

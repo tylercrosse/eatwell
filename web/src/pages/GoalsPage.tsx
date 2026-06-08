@@ -51,6 +51,7 @@ function GoalsForm({ initial }: { initial: Targets }) {
 
   const pctTotal = form.protein_pct + form.carbs_pct + form.fat_pct
   const pctOk = Math.abs(pctTotal - 100) < 0.5
+  const calorieOk = form.calorie_target > 0
   const grams = macroGramTargets(form)
 
   function set(patch: Partial<Targets>) {
@@ -111,6 +112,7 @@ function GoalsForm({ initial }: { initial: Targets }) {
       <div className="card goals">
         <h2 className="goals__heading">Daily targets</h2>
         <MacroInput label="Calories" unit="kcal" value={form.calorie_target} onChange={(v) => set({ calorie_target: v })} />
+        {!calorieOk && <p className="input-warn">Calorie target must be greater than 0.</p>}
         <div className="goals__split">
           <span className="field__label">Macro split (% of calories)</span>
           <div className="macros">
@@ -234,7 +236,7 @@ function GoalsForm({ initial }: { initial: Targets }) {
 
       {save.isError && <p className="error-text">Couldn't save targets. Try again.</p>}
 
-      <button className="btn btn--primary" disabled={!pctOk || save.isPending} onClick={() => save.mutate(form)}>
+      <button className="btn btn--primary" disabled={!pctOk || !calorieOk || save.isPending} onClick={() => save.mutate(form)}>
         {save.isPending ? 'Saving…' : save.isSuccess ? 'Saved ✓' : 'Save goals'}
       </button>
     </div>

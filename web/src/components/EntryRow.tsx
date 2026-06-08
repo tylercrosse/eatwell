@@ -96,6 +96,7 @@ export function EntryRow({ entry, saving, onSave, onDelete }: Props) {
 
   if (editing) {
     const f = form.servings // always >= SERVINGS_MIN, so safe to divide by
+    const caloriesOk = form.calories * f > 0 // an entry with no calories isn't worth logging
     return (
       <li className="card entry entry--editing">
         <div className="entry-edit">
@@ -164,11 +165,13 @@ export function EntryRow({ entry, saving, onSave, onDelete }: Props) {
             </p>
           )}
 
+          {!caloriesOk && <p className="input-warn">Calories must be greater than 0.</p>}
+
           <div className="estimate__actions">
             <button className="btn btn--ghost" onClick={() => setEditing(false)} disabled={saving}>
               Cancel
             </button>
-            <button className="btn btn--primary" onClick={save} disabled={saving}>
+            <button className="btn btn--primary" onClick={save} disabled={saving || !caloriesOk}>
               {saving ? 'Saving…' : 'Save'}
             </button>
           </div>

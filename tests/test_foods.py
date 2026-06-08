@@ -50,3 +50,38 @@ def test_recent_foods_carries_nutrition(client):
     recent = client.get("/api/foods/recent").json()
     assert recent[0]["weight_g"] == 250
     assert recent[0]["fiber_g"] == 6
+
+
+def test_recent_foods_frecency_ranks_staple_above_fresh_oneoff(client):
+    # A staple logged on four days, then a single fresh one-off logged later the same day.
+    for day in ("28", "29", "30", "31"):
+        _log(client, "Coffee", logged_at=f"2026-05-{day}T08:00:00")
+    _log(client, "Cake", logged_at="2026-05-31T20:00:00")  # newer, but logged once
+
+    by_recent = client.get("/api/foods/recent", params={"sort": "recent"}).json()
+    assert by_recent[0]["food_name"] == "Cake"  # pure recency → newest first
+
+    by_frecency = client.get("/api/foods/recent", params={"sort": "frecency"}).json()
+    assert by_frecency[0]["food_name"] == "Coffee"  # frequency wins over a fresher one-off
+    coffee = next(f for f in by_frecency if f["food_name"] == "Coffee")
+    assert coffee["times_logged"] == 4
+    cake = next(f for f in by_frecency if f["food_name"] == "Cake")
+    assert cake["times_logged"] == 1
+
+
+def test_recent_foods_frecency_counts_all_time_case_insensitive(client):
+    _log(client, "Eggs", logged_at="2026-05-30T08:00:00")
+    _log(client, "eggs", logged_at="2026-05-31T08:00:00")  # same food, different case
+    recent = client.get("/api/foods/recent", params={"sort": "frecency"}).json()
+    assert len(recent) == 1
+    assert recent[0]["times_logged"] == 2  # both casings counted as one food
+
+
+def test_recent_foods_sort_rejects_unknown(client):
+    assert client.get("/api/foods/recent", params={"sort": "bogus"}).status_code == 422
+
+
+def test_recent_foods_recent_sort_omits_times_logged(client):
+    _log(client, "Toast")
+    recent = client.get("/api/foods/recent", params={"sort": "recent"}).json()
+    assert recent[0]["times_logged"] is None  # count only computed for frecency

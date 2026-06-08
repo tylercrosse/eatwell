@@ -9,6 +9,7 @@ import {
   topContributors,
   balanceProjection,
   goalGapKcal,
+  balanceColor,
   type ContribKey,
   type Contributor,
   type MacroEnergy,
@@ -70,7 +71,7 @@ export function EnergySummary({ totals, targets, fullness, expenditure, expendit
   const balanceValue = `${deficit > 0 ? '−' : deficit < 0 ? '+' : ''}${round(Math.abs(deficit))}`
   // Color the ring by how far the balance is from the goal: green at the goal, red as the gap grows
   // in either direction (too steep a deficit OR a surplus). Falls back to binary when no goal is set.
-  const deficitColor = balanceRingColor(goalGapKcal(bp))
+  const deficitColor = balanceColor(goalGapKcal(bp)) ?? undefined
 
   return (
     <div className="card energy-summary">
@@ -318,18 +319,8 @@ function ContribTable({ title, rows, unit }: { title: string; rows: Contributor[
   )
 }
 
-// |daily gap from goal| (kcal) at which the Deficit ring is fully red; 0 → green.
-const BALANCE_RED_KCAL = 600
 // |daily gap from goal| (kcal) beyond which we surface the target-vs-goal mismatch.
 const BALANCE_HINT_KCAL = 150
-
-/** Goal-relative ring color: green (~150° hue) at the goal, ramping through yellow/orange to red
- *  (0°) as |gap| approaches the red threshold. undefined with no goal (caller uses the binary fallback). */
-function balanceRingColor(gap: number | null): string | undefined {
-  if (gap == null) return undefined
-  const t = Math.min(Math.abs(gap) / BALANCE_RED_KCAL, 1)
-  return `hsl(${Math.round(150 * (1 - t))}, 68%, 55%)`
-}
 
 // Sustained daily balance (kcal) beyond which we surface wellness guidance, per direction.
 const LARGE_DEFICIT_KCAL = 1000

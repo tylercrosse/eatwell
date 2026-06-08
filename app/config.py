@@ -28,6 +28,12 @@ class Settings(BaseSettings):
     usda_base_url: str = "https://api.nal.usda.gov/fdc/v1"
     usda_search_page_size: int = 5
 
+    # Open Food Facts — barcode lookup fallback (worldwide, no key). USDA's Branded
+    # dataset is tried first (US-authoritative); OFF covers international items + US gaps.
+    off_base_url: str = "https://world.openfoodfacts.org"
+    # OFF asks API clients to send a descriptive User-Agent identifying the app.
+    off_user_agent: str = "CalorieTracker/1.0 (barcode lookup)"
+
     # Storage
     db_path: Path = Path("data/app.db")
     photos_dir: Path = Path("data/photos")

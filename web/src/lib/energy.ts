@@ -124,3 +124,18 @@ export function goalGapKcal(bp: BalanceProjection): number | null {
   const goalKcal = (bp.goalWeeklyKg * KCAL_PER_KG) / 7
   return bp.kcalPerDay - goalKcal
 }
+
+// |daily gap from the goal balance| (kcal) at which a balance reads fully "off" (red); 0 → on-goal (green).
+export const BALANCE_RED_KCAL = 600
+
+/**
+ * Goal-relative balance color: green (~150° hue) at the goal, ramping through yellow/orange to red
+ * (0°) as |gapKcal| approaches `BALANCE_RED_KCAL`. Shared by the Log page's Balance ring and the
+ * Trends energy-balance bars so the two read the same. Returns null when there's no goal to measure
+ * against (`gapKcal == null`) — the caller picks a fallback.
+ */
+export function balanceColor(gapKcal: number | null): string | null {
+  if (gapKcal == null) return null
+  const t = Math.min(Math.abs(gapKcal) / BALANCE_RED_KCAL, 1)
+  return `hsl(${Math.round(150 * (1 - t))}, 68%, 55%)`
+}
