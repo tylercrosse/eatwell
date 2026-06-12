@@ -712,6 +712,12 @@ body {
   gap: 6px;
 }
 
+/* Stepper fields carry ± buttons, so they claim the full grid row instead of sharing a 2-up
+ * column — otherwise the buttons squeeze the input too narrow on phones. */
+.macro-input--stepper {
+  grid-column: 1 / -1;
+}
+
 .macro-input__label {
   font-size: 0.78rem;
   color: var(--muted);
@@ -719,9 +725,22 @@ body {
 }
 
 .macro-input__field {
-  position: relative;
   display: flex;
   align-items: center;
+  gap: 8px;
+}
+
+/* Wraps the input + its overlaid unit so the unit positions against the input's edge — not the
+ * whole row — which keeps it correct when the ± stepper buttons flank the input. */
+.macro-input__control {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.macro-input__field > .btn--icon {
+  flex: none;
 }
 
 .macro-input__unit {

@@ -111,14 +111,14 @@ function GoalsForm({ initial }: { initial: Targets }) {
     <div className="page">
       <div className="card goals">
         <h2 className="goals__heading">Daily targets</h2>
-        <MacroInput label="Calories" unit="kcal" value={form.calorie_target} onChange={(v) => set({ calorie_target: v })} />
+        <MacroInput label="Calories" unit="kcal" stepper step={10} value={form.calorie_target} onChange={(v) => set({ calorie_target: v })} />
         {!calorieOk && <p className="input-warn">Calorie target must be greater than 0.</p>}
         <div className="goals__split">
           <span className="field__label">Macro split (% of calories)</span>
           <div className="macros">
-            <MacroInput label="Protein" unit="%" value={form.protein_pct} onChange={(v) => set({ protein_pct: v })} />
-            <MacroInput label="Carbs" unit="%" value={form.carbs_pct} onChange={(v) => set({ carbs_pct: v })} />
-            <MacroInput label="Fat" unit="%" value={form.fat_pct} onChange={(v) => set({ fat_pct: v })} />
+            <MacroInput label="Protein" unit="%" stepper value={form.protein_pct} onChange={(v) => set({ protein_pct: v })} />
+            <MacroInput label="Carbs" unit="%" stepper value={form.carbs_pct} onChange={(v) => set({ carbs_pct: v })} />
+            <MacroInput label="Fat" unit="%" stepper value={form.fat_pct} onChange={(v) => set({ fat_pct: v })} />
           </div>
           <p className={`goals__total ${pctOk ? '' : 'goals__total--bad'}`}>
             Total: {round(pctTotal)}%{pctOk ? '' : ' — must add up to 100%'}
@@ -144,11 +144,12 @@ function GoalsForm({ initial }: { initial: Targets }) {
             label="Goal weight"
             unit={unit}
             min={0}
+            stepper
             value={show(form.goal_weight_kg == null ? null : kgToDisplay(form.goal_weight_kg, unit))}
             onChange={setGoalWeight}
           />
-          <NumberField label="Goal body fat" unit="%" min={0} value={show(form.goal_body_fat_pct ?? null)} onChange={(v) => set({ goal_body_fat_pct: v })} />
-          <NumberField label="Rate" unit={`${unit}/wk`} min={0} value={rateMagDisplay} onChange={onRate} />
+          <NumberField label="Goal body fat" unit="%" min={0} stepper value={show(form.goal_body_fat_pct ?? null)} onChange={(v) => set({ goal_body_fat_pct: v })} />
+          <NumberField label="Rate" unit={`${unit}/wk`} min={0} step={0.1} stepper value={rateMagDisplay} onChange={onRate} />
         </div>
         {planLine && <p className="goals__plan">{planLine}</p>}
       </div>
