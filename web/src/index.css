@@ -16,6 +16,8 @@
   --macro-protein: #60a5fa;
   --macro-carbs: #fbbf24;
   --macro-fat: #f472b6;
+  --macro-fiber: #d2b48c; /* tan — fiber (a positive fullness driver); distinct from the macro hues */
+  --energy: #8b7cf6; /* the day's Energy/calorie total bar (sum of the macros) */
   --exp-bmr: #a78bfa;
   --exp-baseline: #2dd4bf;
   --exp-exercise: #fb923c;
@@ -51,6 +53,8 @@
   --macro-protein: #2563eb;
   --macro-carbs: #d97706;
   --macro-fat: #db2777;
+  --macro-fiber: #9a7b4f;
+  --energy: #4f46e5;
   --exp-bmr: #7c3aed;
   --exp-baseline: #0d9488;
   --exp-exercise: #ea580c;
@@ -80,6 +84,8 @@
   --macro-protein: #58a6ff;
   --macro-carbs: #d29922;
   --macro-fat: #db61a2;
+  --macro-fiber: #cda869;
+  --energy: #8b7cf6;
   --exp-bmr: #a371f7;
   --exp-baseline: #39c5cf;
   --exp-exercise: #f0883e;
@@ -109,6 +115,8 @@
   --macro-protein: #268bd2;
   --macro-carbs: #b58900;
   --macro-fat: #d33682;
+  --macro-fiber: #af8b5e;
+  --energy: #6c71c4;
   --exp-bmr: #6c71c4;
   --exp-baseline: #2aa198;
   --exp-exercise: #cb4b16;
@@ -138,6 +146,8 @@
   --macro-protein: #83a598;
   --macro-carbs: #fabd2f;
   --macro-fat: #d3869b;
+  --macro-fiber: #bdae93;
+  --energy: #b16286;
   --exp-bmr: #b16286;
   --exp-baseline: #8ec07c;
   --exp-exercise: #fe8019;
@@ -179,11 +189,6 @@ body {
 
 .app__header {
   padding: calc(env(safe-area-inset-top) + 14px) 20px 12px;
-  position: sticky;
-  top: 0;
-  background: color-mix(in srgb, var(--bg) 85%, transparent);
-  backdrop-filter: blur(10px);
-  z-index: 5;
 }
 
 .app__header h1 {
@@ -254,7 +259,8 @@ body {
 .app__main {
   flex: 1;
   padding: 16px;
-  padding-bottom: 96px; /* clear the tab bar */
+  /* Reserve room for the fixed tab bar, including the home-indicator safe area it adds. */
+  padding-bottom: calc(env(safe-area-inset-bottom) + 70px);
 }
 
 .page {
@@ -272,7 +278,7 @@ body {
   display: flex;
   justify-content: center;
   gap: 8px;
-  padding: 8px 8px calc(env(safe-area-inset-bottom) + 8px);
+  padding: 4px 8px calc(env(safe-area-inset-bottom) + 4px);
   background: color-mix(in srgb, var(--bg) 92%, transparent);
   backdrop-filter: blur(10px);
   border-top: 1px solid var(--border);
@@ -285,7 +291,7 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  padding: 8px;
+  padding: 4px 6px;
   border: none;
   background: none;
   color: var(--muted);
@@ -299,7 +305,7 @@ body {
 }
 
 .tabbar__icon {
-  font-size: 1.3rem;
+  font-size: 1.1rem;
 }
 
 /* ---- Cards ---- */
@@ -837,6 +843,10 @@ body {
   gap: 10px;
 }
 
+.macros--single {
+  grid-template-columns: 1fr;
+}
+
 .macro-input {
   display: flex;
   flex-direction: column;
@@ -850,9 +860,19 @@ body {
 }
 
 .macro-input__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   font-size: 0.78rem;
   color: var(--muted);
   font-weight: 600;
+}
+
+.macro-input__label-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
 }
 
 .macro-input__field {
@@ -993,6 +1013,20 @@ body {
 
 .macro-bar__fill.is-over {
   background: var(--danger);
+}
+
+/* Macro composition bar (stacked protein/fat/carbs by calories) — used on meal headers + entry rows. */
+.macro-comp {
+  display: flex;
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+
+.macro-comp__seg {
+  height: 100%;
 }
 
 /* ---- Fullness meter (overview) ---- */
@@ -1234,6 +1268,30 @@ body {
   text-overflow: ellipsis;
 }
 
+.contrib-table__name--detail {
+  align-items: center;
+  gap: 6px;
+  white-space: normal;
+}
+
+.contrib-table__text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.contrib-table__detail {
+  display: block;
+  max-width: 100%;
+  color: var(--muted);
+  font-size: 0.68rem;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .contrib-table__val,
 .contrib-table__pct {
   color: var(--muted);
@@ -1253,7 +1311,8 @@ body {
 }
 
 /* Two-column "calc" variant (Expenditure − Consumed = Deficit). */
-.contrib-table--calc .contrib-table__row {
+.contrib-table--calc .contrib-table__row,
+.contrib-table--terms .contrib-table__row {
   grid-template-columns: 1fr auto;
 }
 
@@ -1282,6 +1341,14 @@ body {
   padding: 0 2px;
 }
 
+.meal-section__header .macro-comp {
+  margin-top: 5px;
+}
+
+.meal-section__nutrition {
+  margin-top: 1px;
+}
+
 .meal-section__title-row {
   display: flex;
   align-items: center;
@@ -1301,6 +1368,13 @@ body {
   margin: 0;
   font-size: 0.72rem;
   color: var(--muted);
+}
+
+.fullness-meter__rel {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text);
 }
 
 /* "Drink" override toggle (estimate card + per-item rows). */
@@ -1599,6 +1673,13 @@ body {
   line-height: 1.4;
 }
 
+.guide-food__nutrition {
+  display: flex;
+  align-items: center;
+  gap: 5px 10px;
+  flex-wrap: wrap;
+}
+
 .guide-food__why {
   margin: 0;
 }
@@ -1672,9 +1753,9 @@ body {
 }
 
 .guide-role-badge--fiber {
-  background: color-mix(in srgb, var(--macro-carbs) 14%, transparent);
-  border-color: color-mix(in srgb, var(--macro-carbs) 28%, transparent);
-  color: var(--macro-carbs);
+  background: color-mix(in srgb, var(--macro-fiber) 14%, transparent);
+  border-color: color-mix(in srgb, var(--macro-fiber) 28%, transparent);
+  color: var(--macro-fiber);
 }
 
 .guide-role-badge--addon {
@@ -2016,6 +2097,13 @@ body {
   line-height: 1.35;
 }
 
+.choice-row__nutrition {
+  display: flex;
+  align-items: center;
+  gap: 5px 10px;
+  flex-wrap: wrap;
+}
+
 .choice-row__desc,
 .choice-row__why {
   margin: 0;
@@ -2228,7 +2316,7 @@ body {
   color: var(--muted);
 }
 
-.entry__extras {
+.entry__signals {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -2236,6 +2324,48 @@ body {
   margin-top: 3px;
   font-size: 0.72rem;
   color: var(--muted);
+}
+
+.entry__details {
+  color: var(--muted);
+}
+
+.nutrition-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px 10px;
+  flex-wrap: wrap;
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+
+.entry__main > .nutrition-legend {
+  margin-top: 3px;
+}
+
+.nutrition-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.nutrition-legend__dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.nutrition-legend__value {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.entry__main .macro-comp {
+  margin-top: 5px;
+  max-width: 240px;
 }
 
 .entry__right {

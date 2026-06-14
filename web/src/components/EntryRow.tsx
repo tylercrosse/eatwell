@@ -5,14 +5,15 @@ import { dayKeyOf, formatTime, localDayKey, withDayKey } from '../lib/date'
 import { composeServingSize, parseServingSize } from '../lib/serving'
 import { round } from '../lib/totals'
 import { isBeverageForFullness } from '../lib/fullness'
-import { MacroInput } from './MacroInput'
+import { MacroEditorFields } from './MacroEditorFields'
+import { MacroBar } from './MacroBar'
 import { FullnessBadge } from './FullnessBadge'
+import { NutritionLegend } from './NutritionLegend'
 import { ServingsStepper } from './ServingsStepper'
 
-/** "Fiber 5g · Sugar 12g · Sodium 400mg" for whichever detail fields are present. */
-function extrasText(e: Entry): string {
+/** Secondary nutrients that do not share the macro/fiber color language. */
+function detailNutrients(e: Entry): string {
   const parts: string[] = []
-  if (e.fiber_g != null) parts.push(`Fiber ${round(e.fiber_g)}g`)
   if (e.sugar_g != null) parts.push(`Sugar ${round(e.sugar_g)}g`)
   if (e.sodium_mg != null) parts.push(`Sodium ${round(e.sodium_mg)}mg`)
   return parts.join(' · ')
@@ -23,6 +24,7 @@ interface Props {
   saving: boolean
   onSave: (id: number, patch: Partial<EntryCreate>) => void
   onDelete: (id: number) => void
+  cohort?: number[] // recent-food FF scores, for the badge's "more filling than X%" explainer
 }
 
 interface EditForm {
@@ -67,7 +69,7 @@ function formFromEntry(e: Entry): EditForm {
 }
 
 /** One logged entry: a compact display row that expands into an edit form. */
-export function EntryRow({ entry, saving, onSave, onDelete }: Props) {
+export function EntryRow({ entry, saving, onSave, onDelete, cohort }: Props) {
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState<EditForm>(() => formFromEntry(entry))
 
@@ -157,24 +159,12 @@ export function EntryRow({ entry, saving, onSave, onDelete }: Props) {
             Drink
           </label>
 
-          <div className="macros">
-            <MacroInput label="Calories" unit="kcal" value={form.calories * f} onChange={(v) => setForm({ ...form, calories: v / f })} />
-            <MacroInput label="Protein" unit="g" value={form.protein_g * f} onChange={(v) => setForm({ ...form, protein_g: v / f })} />
-            <MacroInput label="Carbs" unit="g" value={form.carbs_g * f} onChange={(v) => setForm({ ...form, carbs_g: v / f })} />
-            <MacroInput label="Fat" unit="g" value={form.fat_g * f} onChange={(v) => setForm({ ...form, fat_g: v / f })} />
-          </div>
-
-          <div className="macros">
-            <MacroInput label="Weight" unit="g" value={form.weight_g * f} onChange={(v) => setForm({ ...form, weight_g: v / f })} />
-            <MacroInput label="Fiber" unit="g" value={form.fiber_g * f} onChange={(v) => setForm({ ...form, fiber_g: v / f })} />
-            <MacroInput label="Sugar" unit="g" value={form.sugar_g * f} onChange={(v) => setForm({ ...form, sugar_g: v / f })} />
-            <MacroInput label="Sodium" unit="mg" value={form.sodium_mg * f} onChange={(v) => setForm({ ...form, sodium_mg: v / f })} />
-          </div>
+          <MacroEditorFields values={form} servings={f} onChange={(patch) => setForm({ ...form, ...patch })} />
 
           {form.servings !== 1 && (
             <p className="per-serving-hint">
-              Per serving: {round(form.calories)} kcal · P {round(form.protein_g)} · C{' '}
-              {round(form.carbs_g)} · F {round(form.fat_g)}
+              Per serving: {round(form.calories)} kcal · Protein {round(form.protein_g)}g · Fat {round(form.fat_g)}g ·
+              Carbs {round(form.carbs_g)}g · Fiber {round(form.fiber_g)}g
             </p>
           )}
 
@@ -193,7 +183,7 @@ export function EntryRow({ entry, saving, onSave, onDelete }: Props) {
     )
   }
 
-  const extras = extrasText(entry)
+  const details = detailNutrients(entry)
   const hasFullness = entry.weight_g != null && entry.weight_g > 0
   return (
     <li className="card entry">
@@ -203,13 +193,12 @@ export function EntryRow({ entry, saving, onSave, onDelete }: Props) {
           {formatTime(entry.logged_at)}
           {entry.serving_size ? ` · ${entry.serving_size}` : ''}
         </span>
-        <span className="entry__macros">
-          P {round(entry.protein_g)} · C {round(entry.carbs_g)} · F {round(entry.fat_g)}
-        </span>
-        {(hasFullness || extras) && (
-          <span className="entry__extras">
-            <FullnessBadge food={entry} variant="compact" />
-            {extras && <span>{extras}</span>}
+        <MacroBar protein_g={entry.protein_g} carbs_g={entry.carbs_g} fat_g={entry.fat_g} />
+        <NutritionLegend food={entry} />
+        {(hasFullness || details) && (
+          <span className="entry__signals">
+            <FullnessBadge food={entry} variant="compact" explain cohort={cohort} />
+            {details && <span className="entry__details">{details}</span>}
           </span>
         )}
       </div>

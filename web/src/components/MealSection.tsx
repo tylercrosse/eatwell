@@ -4,17 +4,20 @@ import { MEAL_LABELS } from '../lib/meals'
 import { round, formatFoodWeight, formatDrinkVolume } from '../lib/totals'
 import { fullnessBreakdown } from '../lib/fullness'
 import { EntryRow } from './EntryRow'
+import { MacroBar } from './MacroBar'
 import { FullnessPill } from './FullnessBadge'
+import { NutritionLegend } from './NutritionLegend'
 
 interface Props {
   group: MealGroup
   savingId: number | null // id of the entry currently being saved, if any
   onSave: (id: number, patch: Partial<EntryCreate>) => void
   onDelete: (id: number) => void
+  cohort?: number[] // recent-food FF scores, threaded to each row's fullness explainer
 }
 
 /** One meal's section: a header with subtotals + its entry rows. */
-export function MealSection({ group, savingId, onSave, onDelete }: Props) {
+export function MealSection({ group, savingId, onSave, onDelete, cohort }: Props) {
   if (group.entries.length === 0) return null // empty meals are hidden
   const { totals } = group
   // Calorie-weighted fullness + food weight / drink volume across the meal's items.
@@ -39,10 +42,9 @@ export function MealSection({ group, savingId, onSave, onDelete }: Props) {
             </span>
           )}
         </div>
-        <span className="meal-section__totals">
-          {round(totals.calories)} kcal · P {round(totals.protein_g)} · C {round(totals.carbs_g)} · F{' '}
-          {round(totals.fat_g)}
-        </span>
+        <span className="meal-section__totals">{round(totals.calories)} kcal</span>
+        <NutritionLegend food={totals} className="meal-section__nutrition" />
+        <MacroBar protein_g={totals.protein_g} carbs_g={totals.carbs_g} fat_g={totals.fat_g} />
       </header>
 
       <ul className="entry-list">
@@ -53,6 +55,7 @@ export function MealSection({ group, savingId, onSave, onDelete }: Props) {
             saving={savingId === e.id}
             onSave={onSave}
             onDelete={onDelete}
+            cohort={cohort}
           />
         ))}
       </ul>

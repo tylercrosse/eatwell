@@ -4,6 +4,7 @@ export interface MacroTotals {
   calories: number
   protein_g: number
   carbs_g: number
+  fiber_g: number
   fat_g: number
 }
 
@@ -14,9 +15,10 @@ export function sumTotals(entries: Entry[]): MacroTotals {
       calories: acc.calories + e.calories,
       protein_g: acc.protein_g + e.protein_g,
       carbs_g: acc.carbs_g + e.carbs_g,
+      fiber_g: acc.fiber_g + (e.fiber_g ?? 0),
       fat_g: acc.fat_g + e.fat_g,
     }),
-    { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0 },
+    { calories: 0, protein_g: 0, carbs_g: 0, fiber_g: 0, fat_g: 0 },
   )
 }
 

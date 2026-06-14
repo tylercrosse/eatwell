@@ -12,12 +12,13 @@ entries CRUD + per-day summary + meal grouping; extended nutrition (weight/fiber
 **Fullness Factor (satiety) score** with a food/drink volume readout and a drink-aware cap (replaced the
 original calorie-density indicator); recent-food quick re-log (search + frecency + quick-add) and
 **barcode scanning**; **Google-OAuth multi-user (allowlist, per-user scoping)**; **weight/body-fat logging
+
 + body goals**; **Recharts trends**; calorie/macro targets; editable entry dates; **activity/exercise
-logging + expenditure** (manual + free-text AI estimate + steps→kcal) with a **net/gross energy toggle**;
-**TDEE/BMR target recommender** (basic + adaptive); a **folded-in "Add" flow** (capture lives on the Log
-page; tabs are Log / Trends / Goals) with a **calendar day-picker** and **click-a-Trends-value → open that
-day**; and Trends charts for **expenditure, energy balance, predicted weight, a weight forecast, and goal
-progress**.
+  logging + expenditure** (manual + free-text AI estimate + steps→kcal) with a **net/gross energy toggle**;
+  **TDEE/BMR target recommender** (basic + adaptive); a **folded-in "Add" flow** (capture lives on the Log
+  page; tabs are Log / Trends / Goals) with a **calendar day-picker** and **click-a-Trends-value → open that
+  day**; and Trends charts for **expenditure, energy balance, predicted weight, a weight forecast, and goal
+  progress**.
 
 **Decisions:** quick wins first → auth → health metrics/charts → activity; auth via **Google OAuth +
 email allowlist** (closed access, no public signup); expenditure shown as **net = intake − expenditure
@@ -27,21 +28,21 @@ with a gross/net toggle**; charts via **Recharts**.
 
 ✅ Done · 🚧 Partial · ⏸ Deferred · ⬜ Not started
 
-| Milestone | Status |
-| --- | --- |
-| M1 Quick wins | ✅ (1.4r a/b/d/e/f + barcode shipped; 1.4r c/g + 1.4 saved-foods/meals pending) |
-| M2 Multi-user auth | ✅ |
-| M3 Health metrics & insights | ✅ (3.1 + 3.2 + 3.3 all shipped) |
-| M4 IA & navigation | ✅ |
-| M5 Activity & expenditure | ✅ |
-| M6 Per-item entries (split captures) | ✅ (live-classification tuning pending) |
-| M7 Trends: expenditure line + balance weight prediction | ✅ (+ weight-forecast & goal-progress, beyond original plan) |
-| M8 Food Guide + Menu scanner | 🚧 in flight (uncommitted working tree) |
-| M9 UI theming (5 themes) + Settings menu | ✅ (+ System picks a dark variant) |
-| M10 IA pass: unified nutrition/fullness + FF transparency | ⬜ |
-| M11 Meal photos & visual identity | ⬜ |
-| M12 Conversational meal/restaurant assistant & recipes | ⬜ |
-| M13 Cost & taste optimization dimensions | ⬜ |
+| Milestone                                                 | Status                                                                          |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| M1 Quick wins                                             | ✅ (1.4r a/b/d/e/f + barcode shipped; 1.4r c/g + 1.4 saved-foods/meals pending) |
+| M2 Multi-user auth                                        | ✅                                                                              |
+| M3 Health metrics & insights                              | ✅ (3.1 + 3.2 + 3.3 all shipped)                                                |
+| M4 IA & navigation                                        | ✅                                                                              |
+| M5 Activity & expenditure                                 | ✅                                                                              |
+| M6 Per-item entries (split captures)                      | ✅ (live-classification tuning pending)                                         |
+| M7 Trends: expenditure line + balance weight prediction   | ✅ (+ weight-forecast & goal-progress, beyond original plan)                    |
+| M8 Food Guide + Menu scanner                              | ✅                                                                              |
+| M9 UI theming (5 themes) + Settings menu                  | ✅ (+ System picks a dark variant)                                              |
+| M10 IA pass: unified nutrition/fullness + FF transparency | ⬜                                                                              |
+| M11 Meal photos & visual identity                         | ⬜                                                                              |
+| M12 Conversational meal/restaurant assistant & recipes    | ⬜                                                                              |
+| M13 Cost & taste optimization dimensions                  | ⬜                                                                              |
 
 ---
 
@@ -396,8 +397,7 @@ goal-pace projection (commit `26125e2`, [TrendsPage](web/src/pages/TrendsPage.ts
 
 No range endpoint for exercise exists (only `GET /exercise?date=`, one day). Add
 `GET /api/exercise/range?from&to` mirroring [`entries_range`](app/routers/entries.py): group `ExerciseEntry`
-rows by `date`, sum `calories`, return a sparse `list[ExerciseDaySummary]` (`{date, total_calories,
-entry_count}`). New `ExerciseDaySummary` schema in [schemas.py](app/schemas.py); route in
+rows by `date`, sum `calories`, return a sparse `list[ExerciseDaySummary]` (`{date, total_calories, entry_count}`). New `ExerciseDaySummary` schema in [schemas.py](app/schemas.py); route in
 [exercise.py](app/routers/exercise.py) (place above the `/exercise/{id}` PATCH/DELETE for clarity). Client:
 `getExerciseRange(from, to)` in [api/exercise.ts](web/src/api/exercise.ts); `ExerciseDaySummary` type in
 [types/index.ts](web/src/types/index.ts). Add tests mirroring [test_entries.py](tests/test_entries.py).
@@ -410,8 +410,7 @@ memo (consumed by 7.3/7.4/7.5):
 - **Weight per day:** forward-fill the last known `weight_kg` ≤ that day (fall back to earliest logged) —
   BMR needs a weight every day but weigh-ins are sparse.
 - **Exercise per day:** `exerciseRange[day].total_calories + stepsToKcal(metric.steps, weightForDay)`.
-- **Total:** `expenditureBreakdown({ weightKg, heightCm, birthYear, sex, activityFactor, exerciseKcal,
-  currentYear: new Date().getFullYear() }).total`. Returns `null` on incomplete profile → expenditure
+- **Total:** `expenditureBreakdown({ weightKg, heightCm, birthYear, sex, activityFactor, exerciseKcal, currentYear: new Date().getFullYear() }).total`. Returns `null` on incomplete profile → expenditure
   features hide and the charts degrade to today's behavior.
 
 Same baseline+exercise additive caveat as EnergySummary — no change.
@@ -438,8 +437,7 @@ Add `predWeight` to `weightData.rows`:
   (`entry_count > 0`) — never treat an unlogged day as a giant deficit; forward-fill the predicted value
   across gaps and `connectNulls`.
 - `predWeight(day) = round1(kgToDisplay(anchorKg + cumNet / KCAL_PER_KG, unit))`.
-- Render `<Line yAxisId="w" dataKey="predWeight" name="Predicted (balance)" stroke={COLORS.burn}
-  strokeDasharray="2 3" .../>`. Visually distinct from the dashed-purple "Goal pace" (target rate) — this is
+- Render `<Line yAxisId="w" dataKey="predWeight" name="Predicted (balance)" stroke={COLORS.burn} strokeDasharray="2 3" .../>`. Visually distinct from the dashed-purple "Goal pace" (target rate) — this is
   the *actual-intake* model; divergence from `weight`/`trend` exposes TDEE or logging error.
 
 ### Edge cases / decisions
@@ -469,7 +467,7 @@ Builds on shipped 3.1 (weight), 3.2 (Trends/Recharts), and activity/expenditure
 
 ---
 
-## Milestone 8 — Food Guide + Menu scanner — 🚧 In flight (uncommitted)
+## Milestone 8 — Food Guide + Menu scanner — ✅
 
 Being built in the working tree right now (not yet committed). Documented briefly here because the
 requested **M12 (chat/recipes)** and **M13 (cost)** build directly on it.
@@ -505,8 +503,7 @@ a per-item **`price`** (feeds M13).
 → **Shipped (9.1–9.5):** all five themes — **Light, Dark (slate), Black (GitHub), Cool (Solarized), Warm
 (Gruvbox)** — plus **System**. Token architecture in [index.css](web/src/index.css): `:root` is the dark
 base; each theme overrides the tokens via `:root[data-theme='…']`. Every hard-coded color was routed through
-tokens (tints via `color-mix()` so they adapt per theme; new tokens `--bg-deep / --on-accent / --overlay /
---shadow / --reticle` + a `--fullness-*` 5-tier ramp); only the camera letterbox stays intentionally black.
+tokens (tints via `color-mix()` so they adapt per theme; new tokens `--bg-deep / --on-accent / --overlay / --shadow / --reticle` + a `--fullness-*` 5-tier ramp); only the camera letterbox stays intentionally black.
 A **Settings** sheet ([SettingsMenu](web/src/components/SettingsMenu.tsx)) opens from a header gear
 ([App.tsx](web/src/App.tsx)) with swatch previews; `usePersistentChoice` added to
 [prefs.ts](web/src/lib/prefs.ts). Charts are theme-aware via a palette-per-theme in
@@ -517,9 +514,10 @@ inline bootstrap in [index.html](web/index.html) applies the saved theme + iOS `
 **Beyond the original plan:** **System resolves to a user-chosen dark variant** at night (a "Dark variant for
 System" sub-picker; persisted as `theme-system-dark`, honored by the bootstrap too) — light has one option so
 it isn't configurable yet. The theme module was split into [theme.ts](web/src/lib/theme.ts) (types/hooks/context)
+
 + [ThemeProvider.tsx](web/src/lib/ThemeProvider.tsx) (provider); `resolved` is derived during render via
-`useSyncExternalStore` (no setState-in-effect). User-facing labels (Black/Cool/Warm) are decoupled from the
-stable ids (`github-dark` etc.) that key storage/CSS/palettes.
+  `useSyncExternalStore` (no setState-in-effect). User-facing labels (Black/Cool/Warm) are decoupled from the
+  stable ids (`github-dark` etc.) that key storage/CSS/palettes.
 
 **Follow-up (ties into M10):** the palettes were authored against the *current* token set. When M10.1 adds the
 new fiber/satiety hues, those tokens must be added to all five `[data-theme]` blocks + the five chart palettes.
@@ -527,8 +525,7 @@ new fiber/satiety hues, those tokens must be added to all five `[data-theme]` bl
 Requested: theme the UI — **Light, Dark (current), GitHub dark, Solarized dark, Gruvbox dark**.
 
 **Context — today.** Every color is a CSS custom property in a single `:root` block
-([index.css](web/src/index.css)): `--bg / --surface / --surface-2 / --border / --text / --muted /
---accent / --accent-strong / --danger`, the macro colors, the expenditure colors, and `color-scheme: dark`.
+([index.css](web/src/index.css)): `--bg / --surface / --surface-2 / --border / --text / --muted / --accent / --accent-strong / --danger`, the macro colors, the expenditure colors, and `color-scheme: dark`.
 The one hard-coupled exception: **chart colors are duplicated as hex literals in
 [CHART_COLORS](web/src/lib/colors.ts)** because Recharts writes `fill`/`stroke` as SVG presentation
 attributes that can't read `var()`. So a theme has **two surfaces to drive**: the CSS variables and the
@@ -609,6 +606,7 @@ number, and which colors mean what? No single answer today.
   without being more truthful, and would forfeit the grounding in the reverse-engineered nutritiondata formula.
   The real issue is that FF is the wrong *headline* for most decisions. Fix the framing with **one headline per
   context**:
+
   - **Per individual food** (entry row, recent chip, ingredient): keep FF, but present it **relative to the
     user's own logged foods** — "more filling than ~80% of what you eat" — alongside the tier label and the 10.2
     explainer. Relative position is motivating and *movable*; an absolute `2.3/5` is neither.
@@ -651,7 +649,6 @@ Requested: **see photos of meals, or icons** — research how other calorie apps
 - **Yazio / Lifesum** — friendly category **illustrations/icons** when there's no photo, for a lighter feel.
 - **Takeaway:** two complementary directions — (a) **real thumbnails** where we already have them, and
   (b) **category icons/emoji** so every row (text, barcode, recent re-log) still gets a visual identity.
-
 - **11.1 Thumbnails on entry rows — S–M.** Show a small `photo_ref` thumbnail on
   [EntryRow](web/src/components/EntryRow.tsx) when present; tap → full image in a
   [Modal](web/src/components/Modal.tsx). Needs a **resized variant** (a `?w=96` handled by the static layer, or

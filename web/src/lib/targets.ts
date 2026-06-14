@@ -2,6 +2,7 @@ import type { Targets } from '../types'
 
 // kcal per gram (Atwater factors). Used to turn a % split into gram targets.
 export const ATWATER = { protein: 4, carbs: 4, fat: 9 } as const
+export const FIBER_G_PER_1000_KCAL = 14
 
 export const DEFAULT_TARGETS: Targets = {
   calorie_target: 2000,
@@ -23,6 +24,11 @@ export function macroGramTargets(t: Targets): MacroGramTargets {
     carbs_g: (t.calorie_target * t.carbs_pct) / 100 / ATWATER.carbs,
     fat_g: (t.calorie_target * t.fat_pct) / 100 / ATWATER.fat,
   }
+}
+
+/** Daily fiber goal derived from the calorie target: 14 g per 1,000 kcal. */
+export function fiberGramTarget(t: Targets): number {
+  return (t.calorie_target / 1000) * FIBER_G_PER_1000_KCAL
 }
 
 export type GoalDirection = 'lose' | 'gain' | 'maintain'

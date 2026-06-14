@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { MacroInput } from './MacroInput'
+import { MacroEditorFields } from './MacroEditorFields'
 import { FullnessBadge } from './FullnessBadge'
+import { NutritionLegend } from './NutritionLegend'
 import { ServingsStepper } from './ServingsStepper'
 import { round } from '../lib/totals'
 import { MEAL_LABELS, MEAL_ORDER } from '../lib/meals'
@@ -102,10 +103,15 @@ function ItemEditor({ item, single, selected, onToggleSelect, onChange, onRemove
       </div>
 
       <div className="item-edit__summary">
-        <span>
-          {round(item.calories * f)} kcal · P {round(item.protein_g * f)} · C {round(item.carbs_g * f)} · F{' '}
-          {round(item.fat_g * f)}
-        </span>
+        <span>{round(item.calories * f)} kcal</span>
+        <NutritionLegend
+          food={{
+            fat_g: item.fat_g * f,
+            protein_g: item.protein_g * f,
+            carbs_g: item.carbs_g * f,
+            fiber_g: item.fiber_g * f,
+          }}
+        />
         {item.calories * f <= 0 && <span className="input-warn">Needs calories</span>}
         <FullnessBadge food={item} variant="compact" />
         <label className="estimate__beverage">
@@ -128,19 +134,7 @@ function ItemEditor({ item, single, selected, onToggleSelect, onChange, onRemove
 
           <ServingsStepper value={item.servings} onChange={(v) => onChange({ servings: v })} />
 
-          <div className="macros">
-            <MacroInput label="Calories" unit="kcal" value={item.calories * f} onChange={(v) => onChange({ calories: v / f })} />
-            <MacroInput label="Protein" unit="g" value={item.protein_g * f} onChange={(v) => onChange({ protein_g: v / f })} />
-            <MacroInput label="Carbs" unit="g" value={item.carbs_g * f} onChange={(v) => onChange({ carbs_g: v / f })} />
-            <MacroInput label="Fat" unit="g" value={item.fat_g * f} onChange={(v) => onChange({ fat_g: v / f })} />
-          </div>
-
-          <div className="macros">
-            <MacroInput label="Weight" unit="g" value={item.weight_g * f} onChange={(v) => onChange({ weight_g: v / f })} />
-            <MacroInput label="Fiber" unit="g" value={item.fiber_g * f} onChange={(v) => onChange({ fiber_g: v / f })} />
-            <MacroInput label="Sugar" unit="g" value={item.sugar_g * f} onChange={(v) => onChange({ sugar_g: v / f })} />
-            <MacroInput label="Sodium" unit="mg" value={item.sodium_mg * f} onChange={(v) => onChange({ sodium_mg: v / f })} />
-          </div>
+          <MacroEditorFields values={item} servings={f} onChange={onChange} />
         </div>
       )}
     </div>

@@ -1,7 +1,8 @@
 import type { MacroTotals } from '../lib/totals'
 import { round, formatFoodWeight, formatDrinkVolume } from '../lib/totals'
-import { macroGramTargets, signedWeeklyRateKg } from '../lib/targets'
-import { FULLNESS_TIERS, FULLNESS_SHORT, type FullnessBreakdown } from '../lib/fullness'
+import { fiberGramTarget, macroGramTargets, signedWeeklyRateKg } from '../lib/targets'
+import { FULLNESS_TIERS, FULLNESS_SHORT, fullnessPercentile, type FullnessBreakdown } from '../lib/fullness'
+import { cssVar, MACRO_ORDER, NUTRIENT_ORDER, NUTRITION_DISPLAY, type MacroKey } from '../lib/nutritionDisplay'
 import { usePersistentToggle } from '../lib/prefs'
 import { useWeightUnit, kgToDisplay } from '../lib/units'
 import {
@@ -19,10 +20,13 @@ import {
 import { Popover } from './Popover'
 import type { Entry, Targets } from '../types'
 
+const macroEnergyValue = (me: MacroEnergy, key: MacroKey) => me[key]
+
 interface Props {
   totals: MacroTotals
   targets: Targets
   fullness: FullnessBreakdown
+  fullnessCohort?: number[] // recent-food FF scores, for the day's relative-fullness read
   expenditure: number // kcal burned this day (steps + exercise); 0 if none
   expenditureBreakdown: ExpenditureBreakdown | null // null when the profile is incomplete
   entries: Entry[]
@@ -33,12 +37,13 @@ interface Props {
 /** Cronometer-inspired daily energy summary: Consumed / Expenditure / Deficit rings with macro and
  *  per-food breakdown popovers. Falls back to the simpler Consumed/Remaining view when the profile
  *  is incomplete (no BMR → no expenditure breakdown). */
-export function EnergySummary({ totals, targets, fullness, expenditure, expenditureBreakdown: eb, entries, isToday, currentWeightKg }: Props) {
+export function EnergySummary({ totals, targets, fullness, fullnessCohort, expenditure, expenditureBreakdown: eb, entries, isToday, currentWeightKg }: Props) {
   if (!eb) {
-    return <LegacyEnergySummary totals={totals} targets={targets} fullness={fullness} expenditure={expenditure} />
+    return <LegacyEnergySummary totals={totals} targets={targets} fullness={fullness} fullnessCohort={fullnessCohort} expenditure={expenditure} />
   }
 
   const grams = macroGramTargets(targets)
+  const fiberTarget = fiberGramTarget(targets)
   const target = targets.calorie_target
   const consumed = totals.calories
   const me = macroEnergy(totals)
@@ -52,11 +57,10 @@ export function EnergySummary({ totals, targets, fullness, expenditure, expendit
     goalWeeklyRateKg: signedWeeklyRateKg(targets, currentWeightKg),
   })
 
-  const consumedSegments = [
-    { value: me.protein, color: 'var(--macro-protein)' },
-    { value: me.carbs, color: 'var(--macro-carbs)' },
-    { value: me.fat, color: 'var(--macro-fat)' },
-  ]
+  const consumedSegments = MACRO_ORDER.map((key) => ({
+    value: macroEnergyValue(me, key),
+    color: cssVar(NUTRITION_DISPLAY[key].colorVar),
+  }))
   const expSegments = [
     { value: eb.bmr, color: 'var(--exp-bmr)' },
     { value: eb.baseline, color: 'var(--exp-baseline)' },
@@ -115,16 +119,29 @@ export function EnergySummary({ totals, targets, fullness, expenditure, expendit
           value={consumed}
           target={target}
           unit="kcal"
-          colorVar="--muted"
+          colorVar="--energy"
           contributors={topContributors(entries, 'calories')}
           contribTitle="Energy (kcal)"
         />
-        <MacroProgress label="Protein" field="protein_g" value={totals.protein_g} target={grams.protein_g} colorVar="--macro-protein" entries={entries} />
-        <MacroProgress label="Carbs" field="carbs_g" value={totals.carbs_g} target={grams.carbs_g} colorVar="--macro-carbs" entries={entries} />
-        <MacroProgress label="Fat" field="fat_g" value={totals.fat_g} target={grams.fat_g} colorVar="--macro-fat" entries={entries} />
+        {NUTRIENT_ORDER.map((key) => {
+          const display = NUTRITION_DISPLAY[key]
+          const field = display.field as ContribKey
+          const targetValue = key === 'fiber' ? fiberTarget : grams[display.field as keyof typeof grams]
+          return (
+            <MacroProgress
+              key={key}
+              label={display.label}
+              field={field}
+              value={totals[field]}
+              target={targetValue}
+              colorVar={display.colorVar}
+              entries={entries}
+            />
+          )
+        })}
       </div>
 
-      <FullnessMeter breakdown={fullness} />
+      <FullnessMeter breakdown={fullness} cohort={fullnessCohort} />
     </div>
   )
 }
@@ -134,15 +151,18 @@ function LegacyEnergySummary({
   totals,
   targets,
   fullness,
+  fullnessCohort,
   expenditure,
 }: {
   totals: MacroTotals
   targets: Targets
   fullness: FullnessBreakdown
+  fullnessCohort?: number[]
   expenditure: number
 }) {
   const [netMode, setNetMode] = usePersistentToggle('net-mode', true)
   const grams = macroGramTargets(targets)
+  const fiberTarget = fiberGramTarget(targets)
   const target = targets.calorie_target
   const consumed = totals.calories
   const useNet = expenditure > 0 && netMode
@@ -186,22 +206,33 @@ function LegacyEnergySummary({
       <p className="muted energy-summary__hint">Add your height, age &amp; sex in Goals to see expenditure &amp; deficit.</p>
 
       <div className="energy-summary__bars">
-        <ProgressBar label="Protein" value={totals.protein_g} target={grams.protein_g} unit="g" colorVar="--macro-protein" />
-        <ProgressBar label="Carbs" value={totals.carbs_g} target={grams.carbs_g} unit="g" colorVar="--macro-carbs" />
-        <ProgressBar label="Fat" value={totals.fat_g} target={grams.fat_g} unit="g" colorVar="--macro-fat" />
+        {NUTRIENT_ORDER.map((key) => {
+          const display = NUTRITION_DISPLAY[key]
+          const field = display.field as keyof MacroTotals
+          return (
+            <ProgressBar
+              key={key}
+              label={display.label}
+              value={totals[field]}
+              target={key === 'fiber' ? fiberTarget : grams[display.field as keyof typeof grams]}
+              unit="g"
+              colorVar={display.colorVar}
+            />
+          )
+        })}
       </div>
 
-      <FullnessMeter breakdown={fullness} />
+      <FullnessMeter breakdown={fullness} cohort={fullnessCohort} />
     </div>
   )
 }
 
 function ConsumedDetail({ me }: { me: MacroEnergy }) {
-  const rows = [
-    { label: 'Protein', kcal: me.protein, color: 'var(--macro-protein)' },
-    { label: 'Carbs', kcal: me.carbs, color: 'var(--macro-carbs)' },
-    { label: 'Fat', kcal: me.fat, color: 'var(--macro-fat)' },
-  ]
+  const rows = MACRO_ORDER.map((key) => ({
+    label: NUTRITION_DISPLAY[key].label,
+    kcal: macroEnergyValue(me, key),
+    color: cssVar(NUTRITION_DISPLAY[key].colorVar),
+  }))
   const gap = me.logged > 0 ? Math.abs(me.total - me.logged) / me.logged : 0
   return (
     <div>
@@ -389,9 +420,11 @@ function BalanceLine({ bp, target }: { bp: BalanceProjection; target: number }) 
 
 /** Share of the day's calories coming from each fullness tier (stacked bar + legend), with
  *  the calorie-weighted average score as a headline. */
-function FullnessMeter({ breakdown }: { breakdown: FullnessBreakdown }) {
+function FullnessMeter({ breakdown, cohort }: { breakdown: FullnessBreakdown; cohort?: number[] }) {
   if (breakdown.total <= 0) return null
   const pct = (v: number) => (v / breakdown.total) * 100
+  // Relative read: where today's calorie-weighted average lands vs your usual foods.
+  const rel = breakdown.avgScore != null && cohort && cohort.length > 0 ? fullnessPercentile(breakdown.avgScore, cohort) : null
 
   // Tiers filling → low, then an "Unrated" tail for foods without a weight. Drop empties.
   const segments = [
@@ -432,6 +465,7 @@ function FullnessMeter({ breakdown }: { breakdown: FullnessBreakdown }) {
           </span>
         ))}
       </div>
+      {rel != null && <p className="fullness-meter__rel">More filling than {rel}% of your recent foods</p>}
       {volume && <p className="fullness-meter__volume">{volume}</p>}
     </div>
   )

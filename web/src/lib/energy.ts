@@ -60,7 +60,7 @@ export function macroEnergy(t: MacroTotals): MacroEnergy {
 
 // ---- Per-food contributions (for the detail popovers) ----
 
-export type ContribKey = 'calories' | 'protein_g' | 'carbs_g' | 'fat_g'
+export type ContribKey = 'calories' | 'protein_g' | 'carbs_g' | 'fiber_g' | 'fat_g'
 
 export interface Contributor {
   name: string
@@ -71,12 +71,16 @@ export interface Contributor {
 /** Top foods by a numeric field, sorted desc, with each one's % of the day's total for that field.
  *  Entries with a non-positive value are dropped. */
 export function topContributors(entries: Entry[], key: ContribKey, limit = 8): Contributor[] {
-  const total = entries.reduce((sum, e) => sum + (e[key] || 0), 0)
+  const valueOf = (e: Entry) => Number(e[key] ?? 0)
+  const total = entries.reduce((sum, e) => sum + valueOf(e), 0)
   return entries
-    .filter((e) => (e[key] || 0) > 0)
-    .sort((a, b) => b[key] - a[key])
+    .filter((e) => valueOf(e) > 0)
+    .sort((a, b) => valueOf(b) - valueOf(a))
     .slice(0, limit)
-    .map((e) => ({ name: e.food_name, value: e[key], pct: total > 0 ? (e[key] / total) * 100 : 0 }))
+    .map((e) => {
+      const value = valueOf(e)
+      return { name: e.food_name, value, pct: total > 0 ? (value / total) * 100 : 0 }
+    })
 }
 
 // ---- Balance: energy deficit/surplus as a weekly weight rate ----

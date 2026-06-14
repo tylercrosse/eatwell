@@ -5,6 +5,13 @@ import type { ResolvedTheme } from './theme'
 // so chart colors can't reference the CSS custom properties directly — they're duplicated here, one
 // palette per theme. Keep each palette in sync with the matching `[data-theme]` block in index.css.
 // Components read the active palette via `useChartColors()` (see theme.ts), not this object directly.
+//
+// Nutrition color language (app-wide). The CSS `--*` tokens in index.css are the source of truth for
+// non-chart UI; the hexes here mirror them for Recharts. One mapping, used everywhere:
+//   protein → --macro-protein · fat → --macro-fat · carbs → --macro-carbs · fiber → --macro-fiber
+//   energy (calorie total) → --energy · fullness → the 5-tier ramp (--fullness-*) · on/off-target → accent/danger
+// Macros read the same on every surface: stacked bars (day summary / Trends) and the MacroBar
+// composition strip on meal headers + entry rows.
 export interface ChartPalette {
   protein: string // --macro-protein
   carbs: string // --macro-carbs

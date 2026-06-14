@@ -22,6 +22,7 @@ import { getMetrics } from '../api/metrics'
 import { getTargets } from '../api/targets'
 import { ATWATER, signedWeeklyRateKg } from '../lib/targets'
 import { expenditureBreakdown, balanceColor } from '../lib/energy'
+import { MACRO_ORDER, NUTRITION_DISPLAY, type MacroKey } from '../lib/nutritionDisplay'
 import { stepsToKcal } from '../lib/activity'
 import { KCAL_PER_KG } from '../lib/tdee'
 import { ema, movingAverage } from '../lib/stats'
@@ -34,6 +35,8 @@ const RANGES = [7, 30, 90] as const
 const MA_WINDOW = 7
 const WEIGHT_EMA_ALPHA = 0.3 // smoothing for the scale-weight trend line
 const METRICS_LOOKBACK_DAYS = 730 // weigh-ins always load on this fixed lookback, not the range selector
+
+const macroChartKey = (key: MacroKey) => NUTRITION_DISPLAY[key].label
 
 /** Recharts v3's click state carries the active index (not a payload); map it to a day key. */
 function activeDayKey(state: unknown, data: ReadonlyArray<{ dayKey: string }>): string | undefined {
@@ -154,8 +157,8 @@ export function TrendsPage({ goToDay }: Props) {
         dayKey: day,
         date: formatShortDay(day),
         Protein: Math.round((d?.total_protein_g ?? 0) * ATWATER.protein),
-        Carbs: Math.round((d?.total_carbs_g ?? 0) * ATWATER.carbs),
         Fat: Math.round((d?.total_fat_g ?? 0) * ATWATER.fat),
+        Carbs: Math.round((d?.total_carbs_g ?? 0) * ATWATER.carbs),
         avg: ma[i] == null ? null : Math.round(ma[i] as number),
         expenditure: exp == null ? null : Math.round(exp),
       }
@@ -441,7 +444,7 @@ export function TrendsPage({ goToDay }: Props) {
   // Tight y-axis for the calories chart: ~200 kcal of headroom above the tallest thing drawn — a
   // day's stacked macro total, the expenditure line, or the intake target — rounded up to 100.
   const calDomainMax = useMemo(() => {
-    const peak = calData.reduce((m, r) => Math.max(m, r.Protein + r.Carbs + r.Fat, r.expenditure ?? 0), target ?? 0)
+    const peak = calData.reduce((m, r) => Math.max(m, r.Protein + r.Fat + r.Carbs, r.expenditure ?? 0), target ?? 0)
     return peak > 0 ? Math.ceil((peak + 200) / 100) * 100 : 'auto'
   }, [calData, target])
 
@@ -501,15 +504,30 @@ export function TrendsPage({ goToDay }: Props) {
               <XAxis dataKey="date" tick={AXIS_TICK} tickLine={false} axisLine={{ stroke: C.grid }} minTickGap={24} />
               <YAxis tick={AXIS_TICK} tickLine={false} axisLine={false} width={52} domain={[0, calDomainMax]} allowDataOverflow />
               <Tooltip {...TOOLTIP} />
-              {/* itemSorter={null} keeps declaration order (Protein, Carbs, Fat, Trend, Expenditure)
+              {/* itemSorter={null} keeps declaration order (Protein, Fat, Carbs, Trend, Expenditure)
                   so the macros stay grouped; the default 'value' sorter alphabetizes and splits them. */}
               <Legend wrapperStyle={{ fontSize: 11 }} itemSorter={null} />
-              <Bar dataKey="Protein" stackId="m" fill={C.protein} />
-              <Bar dataKey="Carbs" stackId="m" fill={C.carbs} />
-              <Bar dataKey="Fat" stackId="m" fill={C.fat} radius={[3, 3, 0, 0]} />
-              <Line dataKey="avg" name="Trend" stroke={C.accent} strokeWidth={2} dot={false} connectNulls />
+              {MACRO_ORDER.map((key, i) => (
+                <Bar
+                  key={key}
+                  dataKey={macroChartKey(key)}
+                  stackId="m"
+                  fill={key === 'fat' ? C.fat : key === 'protein' ? C.protein : C.carbs}
+                  legendType="circle"
+                  radius={i === MACRO_ORDER.length - 1 ? [3, 3, 0, 0] : undefined}
+                />
+              ))}
+              <Line dataKey="avg" name="Trend" stroke={C.accent} strokeWidth={2} dot={false} connectNulls legendType="line" />
               {expenditure.available && (
-                <Line dataKey="expenditure" name="Expenditure" stroke={C.expenditure} strokeWidth={2} dot={false} connectNulls />
+                <Line
+                  dataKey="expenditure"
+                  name="Expenditure"
+                  stroke={C.expenditure}
+                  strokeWidth={2}
+                  dot={false}
+                  connectNulls
+                  legendType="line"
+                />
               )}
               {target ? (
                 <ReferenceLine

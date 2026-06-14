@@ -8,13 +8,15 @@ interface Props {
   stepper?: boolean
   /** Increment for the ± buttons. */
   step?: number
+  /** Optional CSS token name (for example `--macro-fat`) shown as a dot beside the label. */
+  colorVar?: string
   onChange: (value: number) => void
 }
 
 /** A small labeled numeric field used for editing calories/macros. Clearing the field is
  *  allowed while editing — it stays empty so you can retype — and reverts to the current
  *  value on blur if left blank (an explicit "0" still commits). */
-export function MacroInput({ label, value, unit, stepper, step = 1, onChange }: Props) {
+export function MacroInput({ label, value, unit, stepper, step = 1, colorVar, onChange }: Props) {
   const num = useNumericDraft(value, (n) => (Number.isFinite(n) ? String(Math.round(n)) : ''), onChange)
   const nudge = (delta: number) => {
     num.reset() // a ± click overrides any in-progress typing
@@ -22,7 +24,10 @@ export function MacroInput({ label, value, unit, stepper, step = 1, onChange }: 
   }
   return (
     <label className={`macro-input${stepper ? ' macro-input--stepper' : ''}`}>
-      <span className="macro-input__label">{label}</span>
+      <span className="macro-input__label">
+        {colorVar && <span className="macro-input__label-dot" style={{ background: `var(${colorVar})` }} />}
+        {label}
+      </span>
       <span className="macro-input__field">
         {stepper && (
           <button

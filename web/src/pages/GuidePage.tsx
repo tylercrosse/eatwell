@@ -2,13 +2,13 @@ import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { FullnessPill } from '../components/FullnessBadge'
 import { MenuScanner } from '../components/MenuScanner'
+import { NutritionLegend } from '../components/NutritionLegend'
 import { getRecentFoods } from '../api/foods'
 import { getLatestMetric } from '../api/metrics'
 import { getTargets } from '../api/targets'
 import {
   FILLING_FOOD_IDEAS,
   LESS_FILLING_PATTERNS,
-  guideFoodMeta,
   guideGoalCopy,
   rankGuideFoods,
   type GuideGoal,
@@ -20,6 +20,7 @@ import {
 } from '../lib/guide'
 import { isBeverageForFullness } from '../lib/fullness'
 import { DEFAULT_TARGETS, goalDirection } from '../lib/targets'
+import { round } from '../lib/totals'
 import type { RecentFood } from '../types'
 
 const EMPTY_RECENT: RecentFood[] = []
@@ -38,6 +39,13 @@ const ROLE_BADGE_CLASS: Record<GuideRoleBadgeTone, string> = {
   addon: 'guide-role-badge--addon',
 }
 
+function guideServingMeta(food: RecentFood): string {
+  const serving = food.serving_size?.trim() || 'logged serving'
+  const parts = [serving, `${round(food.calories)} kcal`]
+  if (food.times_logged && food.times_logged > 1) parts.push(`${food.times_logged}x logged`)
+  return parts.join(' · ')
+}
+
 function GuideFoodRow({ item }: { item: RankedGuideFood }) {
   const { food, fullness, reason } = item
   return (
@@ -47,7 +55,10 @@ function GuideFoodRow({ item }: { item: RankedGuideFood }) {
           <span className="guide-food__name">{food.food_name}</span>
           {isBeverageForFullness(food) && <span className="guide-tag guide-tag--warn">Drink</span>}
         </div>
-        <span className="guide-food__meta">{guideFoodMeta(food)}</span>
+        <div className="guide-food__nutrition">
+          <span className="guide-food__meta">{guideServingMeta(food)}</span>
+          <NutritionLegend food={food} />
+        </div>
         <p className="guide-food__why">{reason}</p>
       </div>
       <FullnessPill score={fullness.score} variant="full" />

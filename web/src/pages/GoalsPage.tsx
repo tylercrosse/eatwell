@@ -6,7 +6,8 @@ import { UnitToggle } from '../components/UnitToggle'
 import { getTargets, putTargets } from '../api/targets'
 import { getLatestMetric, getMetrics } from '../api/metrics'
 import { getEntriesRange } from '../api/entries'
-import { DEFAULT_TARGETS, macroGramTargets, goalDirection } from '../lib/targets'
+import { DEFAULT_TARGETS, fiberGramTarget, macroGramTargets, goalDirection } from '../lib/targets'
+import { MACRO_ORDER, NUTRITION_DISPLAY, type MacroKey } from '../lib/nutritionDisplay'
 import { round, round1 } from '../lib/totals'
 import { cmToFtIn, displayToKg, ftInToCm, kgToDisplay, useWeightUnit } from '../lib/units'
 import { formatFullDay, lastNDays, localDayKey, shiftDay } from '../lib/date'
@@ -20,6 +21,18 @@ const ACTIVITY_OPTIONS = [
   { value: 1.725, label: 'Very active (6–7 days/wk)' },
   { value: 1.9, label: 'Athlete (2×/day)' },
 ]
+
+const TARGET_PCT_FIELD: Record<MacroKey, 'fat_pct' | 'protein_pct' | 'carbs_pct'> = {
+  fat: 'fat_pct',
+  protein: 'protein_pct',
+  carbs: 'carbs_pct',
+}
+
+const TARGET_GRAM_FIELD: Record<MacroKey, 'fat_g' | 'protein_g' | 'carbs_g'> = {
+  fat: 'fat_g',
+  protein: 'protein_g',
+  carbs: 'carbs_g',
+}
 
 export function GoalsPage() {
   const targetsQuery = useQuery({ queryKey: ['targets'], queryFn: getTargets })
@@ -53,6 +66,7 @@ function GoalsForm({ initial }: { initial: Targets }) {
   const pctOk = Math.abs(pctTotal - 100) < 0.5
   const calorieOk = form.calorie_target > 0
   const grams = macroGramTargets(form)
+  const fiberTarget = fiberGramTarget(form)
 
   function set(patch: Partial<Targets>) {
     if (save.isSuccess) save.reset()
@@ -116,16 +130,30 @@ function GoalsForm({ initial }: { initial: Targets }) {
         <div className="goals__split">
           <span className="field__label">Macro split (% of calories)</span>
           <div className="macros">
-            <MacroInput label="Protein" unit="%" stepper value={form.protein_pct} onChange={(v) => set({ protein_pct: v })} />
-            <MacroInput label="Carbs" unit="%" stepper value={form.carbs_pct} onChange={(v) => set({ carbs_pct: v })} />
-            <MacroInput label="Fat" unit="%" stepper value={form.fat_pct} onChange={(v) => set({ fat_pct: v })} />
+            {MACRO_ORDER.map((key) => {
+              const display = NUTRITION_DISPLAY[key]
+              const field = TARGET_PCT_FIELD[key]
+              return (
+                <MacroInput
+                  key={key}
+                  label={display.label}
+                  unit="%"
+                  colorVar={display.colorVar}
+                  stepper
+                  value={form[field]}
+                  onChange={(v) => set({ [field]: v })}
+                />
+              )
+            })}
           </div>
           <p className={`goals__total ${pctOk ? '' : 'goals__total--bad'}`}>
             Total: {round(pctTotal)}%{pctOk ? '' : ' — must add up to 100%'}
           </p>
         </div>
         <p className="goals__grams muted">
-          ≈ {round(grams.protein_g)} g protein · {round(grams.carbs_g)} g carbs · {round(grams.fat_g)} g fat
+          ≈{' '}
+          {MACRO_ORDER.map((key) => `${round(grams[TARGET_GRAM_FIELD[key]])} g ${NUTRITION_DISPLAY[key].label.toLowerCase()}`).join(' · ')}{' '}
+          · {round(fiberTarget)} g fiber
         </p>
       </div>
 

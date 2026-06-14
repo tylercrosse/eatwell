@@ -155,7 +155,7 @@ export interface DaySummary {
   total_fat_g: number
 }
 
-// Daily targets: a calorie goal + a protein/carbs/fat percent-of-calories split.
+// Daily targets: a calorie goal + a protein/fat/carbs percent-of-calories split.
 // Gram targets are derived client-side (see lib/targets.ts).
 export interface Targets {
   calorie_target: number
