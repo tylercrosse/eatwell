@@ -36,6 +36,12 @@ with a gross/net toggle**; charts via **Recharts**.
 | M5 Activity & expenditure | ✅ |
 | M6 Per-item entries (split captures) | ✅ (live-classification tuning pending) |
 | M7 Trends: expenditure line + balance weight prediction | ✅ (+ weight-forecast & goal-progress, beyond original plan) |
+| M8 Food Guide + Menu scanner | 🚧 in flight (uncommitted working tree) |
+| M9 UI theming (5 themes) + Settings menu | ✅ (+ System picks a dark variant) |
+| M10 IA pass: unified nutrition/fullness + FF transparency | ⬜ |
+| M11 Meal photos & visual identity | ⬜ |
+| M12 Conversational meal/restaurant assistant & recipes | ⬜ |
+| M13 Cost & taste optimization dimensions | ⬜ |
 
 ---
 
@@ -463,6 +469,278 @@ Builds on shipped 3.1 (weight), 3.2 (Trends/Recharts), and activity/expenditure
 
 ---
 
+## Milestone 8 — Food Guide + Menu scanner — 🚧 In flight (uncommitted)
+
+Being built in the working tree right now (not yet committed). Documented briefly here because the
+requested **M12 (chat/recipes)** and **M13 (cost)** build directly on it.
+
+**What it does:**
+
+- **Guide page** ([web/src/pages/GuidePage.tsx](web/src/pages/GuidePage.tsx),
+  [web/src/lib/guide.ts](web/src/lib/guide.ts)) — ranks your own logged/recent foods for your goal
+  (lose / gain / maintain) via `rankGuideFoods` → `rankFoodChoices`
+  ([web/src/lib/choiceScan.ts](web/src/lib/choiceScan.ts)): a `choiceScore` blending fullness,
+  protein-per-100kcal, fiber-per-100kcal, a calorie penalty, and beverage / low-fullness penalties.
+  Plus curated static idea lists (protein anchors / volume builders / fiber carbs / calorie add-ons)
+  and "less filling" patterns.
+- **Menu scanner** ([MenuScanner](web/src/components/MenuScanner.tsx),
+  [ChoiceScanResults](web/src/components/ChoiceScanResults.tsx),
+  [MenuPhotoPreview](web/src/components/MenuPhotoPreview.tsx)) — photograph a restaurant menu →
+  `POST /api/analyze/menu` ([analyze.py](app/routers/analyze.py), [openrouter.py](app/openrouter.py),
+  [schemas.py](app/schemas.py)) extracts `MenuOption[]` (name, description, section, **price**, serving
+  estimate, macros, `is_beverage`, confidence) → `choicesFromMenuResult` → a ranked best-choice list
+  for your goal, sortable by recommended / menu / calories / protein / fullness.
+
+**Status:** code + tests present ([tests/test_analyze_menu.py](tests/test_analyze_menu.py),
+[web/src/lib/choiceScan.test.ts](web/src/lib/choiceScan.test.ts),
+[web/src/lib/guide.test.ts](web/src/lib/guide.test.ts)). **Pending:** commit; build/lint/pytest
+verification; live tuning against real menu photos; where Guide/Menu live in the Log/Trends/Goals tab
+shell. This already carries the data hooks the requested items want — a goal-aware score (feeds M10) and
+a per-item **`price`** (feeds M13).
+
+---
+
+## Milestone 9 — UI theming (5 themes) + Settings menu — ✅
+
+→ **Shipped (9.1–9.5):** all five themes — **Light, Dark (slate), Black (GitHub), Cool (Solarized), Warm
+(Gruvbox)** — plus **System**. Token architecture in [index.css](web/src/index.css): `:root` is the dark
+base; each theme overrides the tokens via `:root[data-theme='…']`. Every hard-coded color was routed through
+tokens (tints via `color-mix()` so they adapt per theme; new tokens `--bg-deep / --on-accent / --overlay /
+--shadow / --reticle` + a `--fullness-*` 5-tier ramp); only the camera letterbox stays intentionally black.
+A **Settings** sheet ([SettingsMenu](web/src/components/SettingsMenu.tsx)) opens from a header gear
+([App.tsx](web/src/App.tsx)) with swatch previews; `usePersistentChoice` added to
+[prefs.ts](web/src/lib/prefs.ts). Charts are theme-aware via a palette-per-theme in
+[colors.ts](web/src/lib/colors.ts) consumed through `useChartColors()` ([theme.ts](web/src/lib/theme.ts)) in
+[TrendsPage](web/src/pages/TrendsPage.tsx) + [GoalProgress](web/src/components/GoalProgress.tsx). A no-flash
+inline bootstrap in [index.html](web/index.html) applies the saved theme + iOS `theme-color` before first paint.
+
+**Beyond the original plan:** **System resolves to a user-chosen dark variant** at night (a "Dark variant for
+System" sub-picker; persisted as `theme-system-dark`, honored by the bootstrap too) — light has one option so
+it isn't configurable yet. The theme module was split into [theme.ts](web/src/lib/theme.ts) (types/hooks/context)
++ [ThemeProvider.tsx](web/src/lib/ThemeProvider.tsx) (provider); `resolved` is derived during render via
+`useSyncExternalStore` (no setState-in-effect). User-facing labels (Black/Cool/Warm) are decoupled from the
+stable ids (`github-dark` etc.) that key storage/CSS/palettes.
+
+**Follow-up (ties into M10):** the palettes were authored against the *current* token set. When M10.1 adds the
+new fiber/satiety hues, those tokens must be added to all five `[data-theme]` blocks + the five chart palettes.
+
+Requested: theme the UI — **Light, Dark (current), GitHub dark, Solarized dark, Gruvbox dark**.
+
+**Context — today.** Every color is a CSS custom property in a single `:root` block
+([index.css](web/src/index.css)): `--bg / --surface / --surface-2 / --border / --text / --muted /
+--accent / --accent-strong / --danger`, the macro colors, the expenditure colors, and `color-scheme: dark`.
+The one hard-coupled exception: **chart colors are duplicated as hex literals in
+[CHART_COLORS](web/src/lib/colors.ts)** because Recharts writes `fill`/`stroke` as SVG presentation
+attributes that can't read `var()`. So a theme has **two surfaces to drive**: the CSS variables and the
+JS chart palette. Prefs today are boolean-only ([usePersistentToggle](web/src/lib/prefs.ts)).
+
+- **9.1 Token architecture — M.** Move `:root` to per-theme blocks keyed by `[data-theme="…"]` on
+  `<html>`; keep the existing variable *names* as the contract and let each theme redefine them. Set
+  `color-scheme: light|dark` per theme so native controls/scrollbars match. **Audit
+  [index.css](web/src/index.css) for hard-coded colors** that bypass the tokens — the header
+  `rgba(15,23,42,.85)`, the fullness tier colors (`.fullness--*` ~L596–612 and `.fullness-seg--*`
+  ~L915–930) — and route them through variables. Themes only work if *everything* reads from tokens.
+- **9.2 Chart palette per theme — S–M.** Make CHART_COLORS theme-aware: either (a) a
+  `Record<ThemeName, Palette>` selected in React and passed into [TrendsPage](web/src/pages/TrendsPage.tsx),
+  or (b) read resolved CSS vars via `getComputedStyle` on theme change and build the palette in JS.
+  **Recommend (a)** (simpler, no layout read). Thread the active palette down instead of importing the const.
+- **9.3 Settings menu (new home for prefs) — S–M.** Theme is the first occupant of a proper **Settings**
+  surface (a [Modal](web/src/components/Modal.tsx) sheet or a small page) — the user wants this as "the start of
+  a settings menu." It also becomes the home for prefs currently scattered or implicit: the **kg/lb** unit
+  toggle ([units.ts](web/src/lib/units.ts)), the **net/gross** energy default ([EnergySummary](web/src/components/EnergySummary.tsx)),
+  and future ones (default meal, photo/icon display from M11). Open it from a gear in the
+  [App.tsx](web/src/App.tsx) header (next to sign-out).
+- **9.4 Theme picker + persistence — S.** The theme control lives in 9.3's Settings. Add a sibling
+  `usePersistentChoice<T extends string>(key, fallback)` next to `usePersistentToggle`
+  ([prefs.ts](web/src/lib/prefs.ts)). Offer a **System** option (`prefers-color-scheme`). Apply `data-theme`
+  from localStorage in a tiny inline script in [index.html](web/index.html) **before first paint** to avoid a flash.
+- **9.5 All five palettes — S (data).** Ship tokens for all five at once: Light; Dark (current slate); GitHub
+  dark (`#0d1117` bg / `#161b22` surface / `#c9d1d9` text); Solarized dark (base03 `#002b36` / base02 `#073642`
+  / base0 `#839496`); Gruvbox dark (`#282828` / `#3c3836` / `#ebdbb2` + its red/green/yellow/aqua). Map the
+  macro / expenditure / fullness hues into each palette's spirit (not just the neutrals) so charts stay legible.
+  Mirror each palette in the JS chart map (9.2).
+- Themed PWA `theme-color` meta + manifest background should follow the active theme (iOS status bar).
+
+**Decided:** ship **all five themes at once** (not Light/Dark first). Rationale: the plumbing (9.1 tokens + 9.2
+chart map + 9.3 settings + 9.4 picker) is the real cost and is paid once; with a clean token contract each extra
+palette is ~data only, and building the contract against five palettes up front avoids baking in dark-only
+assumptions that are painful to retrofit. Light remains the most per-palette work (shadows/overlays/`rgba` tuned
+for dark need light counterparts) — budget for that within 9.5. Effort: **M–L** (the settings surface + getting
+Light right lift it above the original M).
+
+**Verification:** `tsc -b && vite build` + eslint; switch each theme and walk Log / Trends / Goals + modals
+— charts, fullness pills, macro bars, and native inputs all reskin; reload keeps the choice with no flash.
+
+---
+
+## Milestone 10 — IA pass: unified nutrition/fullness presentation + FF transparency — ⬜
+
+Requested: another IA pass — **consistency on how nutrition & fullness is presented, maybe more colors**,
+and it's **unclear how the fullness factor is calculated / hard to get a high score**.
+
+**Context — the inconsistency.** Nutrition/fullness is shown in several places with different grammars:
+per-entry [FullnessBadge](web/src/components/FullnessBadge.tsx) pill (EntryRow, EstimateCard); per-meal
+pill ([MealSection](web/src/components/MealSection.tsx)); the per-day fullness-meter (tier-mix bar +
+calorie-weighted average + food/drink volume) in [EnergySummary](web/src/components/EnergySummary.tsx);
+macros as stacked colors on Trends but bare numbers in editors; and now M8's Guide/Menu introduce *yet
+another* vocabulary (`guideScore`, protein-per-100kcal, role badges). When is something a pill vs a bar vs a
+number, and which colors mean what? No single answer today.
+
+- **10.1 A nutrition design language — M (design-led).** Fix one mapping and document it (a tokens file or
+  comment block) so Guide / Menu / Log / Trends stop reinventing: macro colors fixed everywhere (reuse the
+  already-tokenized protein/carbs/fat on entry rows, not only charts); fullness always the 5-tier ramp;
+  good/bad-vs-goal always accent/danger. **More colors:** add a distinct fiber hue and a satiety-emphasis
+  accent; consider per-macro mini-bars on entry rows.
+- **10.2 FF transparency — an explainer — S–M.** The score is opaque. Add an info affordance on the
+  [FullnessBadge](web/src/components/FullnessBadge.tsx) / fullness-meter that opens a
+  [Popover](web/src/components/Popover.tsx) breaking the score into its drivers — calorie density (dominant),
+  protein, fiber, fat penalty, beverage cap: *"2.4/5 — mostly because it's ~210 kcal/100g; +0.4 from protein."*
+  Expose a `fullnessExplain()` from [fullness.ts](web/src/lib/fullness.ts) returning the per-term deltas of the
+  `41.7·cal^-0.7 + 0.05·protein + 0.000617·fiber³ − 0.0000725·fat³ + 0.617` formula. Directly answers "how is
+  this calculated."
+- **10.3 "Why it's hard to score high" — reframe, don't recalibrate — M.** The observation is correct and
+  structural: the `41.7·cal^-0.7` term **dominates**, so the score is essentially *inverse calorie density*. A
+  25–50 kcal/100g vegetable hits 4–5; a normal composite plate at ~150–250 kcal/100g lands ~1.8–2.3 (moderate)
+  almost regardless of protein, because the protein/fiber terms are small add-ons. So "very filling" is
+  effectively reserved for watery whole foods, and real restaurant meals feel stuck at moderate.
+
+  **Decision (do not change the formula).** The absolute number being hard to max is *correct* — FF measures a
+  fixed property of a food ("satiety per 100g"). Re-anchoring the tiers would only make "moderate" *feel* better
+  without being more truthful, and would forfeit the grounding in the reverse-engineered nutritiondata formula.
+  The real issue is that FF is the wrong *headline* for most decisions. Fix the framing with **one headline per
+  context**:
+  - **Per individual food** (entry row, recent chip, ingredient): keep FF, but present it **relative to the
+    user's own logged foods** — "more filling than ~80% of what you eat" — alongside the tier label and the 10.2
+    explainer. Relative position is motivating and *movable*; an absolute `2.3/5` is neither.
+  - **Per meal / menu choice / Guide** (choosing what to order or cook for a goal): make the **goal-aware
+    "smart pick" score** the headline — M8's `choiceScore` ([choiceScan.ts](web/src/lib/choiceScan.ts):
+    protein-per-100kcal + fiber-per-100kcal + fullness, penalize beverages). FF appears as one *labeled input*
+    inside its breakdown, not as a competing number.
+
+  This resolves both complaints at once: the score stays honest, the user gets a signal they can actually move,
+  and no surface shows two rival scores (which is the M10 consistency goal). Needs: a `fullnessPercentile()`
+  helper (food vs the user's recent-foods distribution) and promoting `choiceScore` out of the Guide/Menu code
+  into the shared nutrition vocabulary so Log/meal surfaces can use it too.
+- **10.4 Log-page IA sweep — M.** With Guide/Menu (M8) and theming (M9) added, make one explicit pass over the
+  tab shell (Log / Trends / Goals → where do Guide / Menu / Chat live?) and the EnergySummary stack ordering.
+  Scoped to one deliberate pass, not a wholesale redo.
+
+**Decided (FF):** keep the formula; reframe per context (relative percentile on foods, goal-aware `choiceScore`
+as the headline on meals) + the 10.2 explainer. No tier recalibration.
+
+**Verification:** build/lint; the explainer's numbers reconcile with `fullnessFactor`; macro + fullness colors
+are now identical across Log, Trends, Guide, and Menu.
+
+---
+
+## Milestone 11 — Meal photos & visual identity — ⬜
+
+Requested: **see photos of meals, or icons** — research how other calorie apps do this.
+
+**Context.** Capture photos are already persisted (`/data/photos`, served at `/photos/<ref>`); entries carry
+`photo_ref`. But the photo is never resurfaced — entry rows are text-only. The unsequenced list already has a
+"Photo history gallery (S)"; this milestone expands it.
+
+**How other apps do it (research summary — to validate, not gospel):**
+
+- **MyFitnessPal / Lose It!** — a thumbnail on the diary row when a photo was attached, plus a separate photo
+  timeline.
+- **Foodvisor / Bitesnap / Calorie Mama** — the photo *is* the log: every entry is image-first and the diary is
+  a photo grid.
+- **Cronometer** — minimal imagery; leans on a dense food DB, food-group icons only.
+- **Yazio / Lifesum** — friendly category **illustrations/icons** when there's no photo, for a lighter feel.
+- **Takeaway:** two complementary directions — (a) **real thumbnails** where we already have them, and
+  (b) **category icons/emoji** so every row (text, barcode, recent re-log) still gets a visual identity.
+
+- **11.1 Thumbnails on entry rows — S–M.** Show a small `photo_ref` thumbnail on
+  [EntryRow](web/src/components/EntryRow.tsx) when present; tap → full image in a
+  [Modal](web/src/components/Modal.tsx). Needs a **resized variant** (a `?w=96` handled by the static layer, or
+  a thumbnail generated on upload in [storage.py](app/storage.py)) so the diary doesn't pull full-res photos.
+  Per-item split (M6) shares one photo across rows — decide: show it on each, or only the first.
+- **11.2 Photo timeline / gallery — S.** A dated grid of meal photos (own view or a Trends card). Cheap given
+  the photos already exist — mostly a `GET` listing `photo_ref`s with dates, scoped to the user.
+- **11.3 Category icons / fallback — S–M.** Derive a food category (the analysis already classifies food, or a
+  small keyword→emoji map) so photo-less entries still get a glyph. Lowest-effort visual win; pairs with the
+  M10 design language.
+
+**Decisions / open:** storage growth + retention (no photo GC today — see README "deferred"); worth a cap if
+galleries make photos first-class. Privacy is fine — photos are already user-scoped.
+
+**Recommend 11.3 (icons) + 11.1 (thumbnails) first** — biggest perceived polish for least work, data already
+exists. **Verification:** build/lint; thumbnails load resized (check payload size); icon fallback renders for a
+barcode/recent entry; the gallery shows only the current user's photos.
+
+---
+
+## Milestone 12 — Conversational meal & restaurant assistant / recipes — ⬜
+
+Requested: **some kind of chat for meal & restaurant instructions. Recipes?** Builds on M8 — the menu scanner
+already turns a restaurant menu into ranked, macro-tagged options; this is the *generative* layer on top.
+
+- **12.1 Restaurant order assistant — M.** Given a scanned menu (M8) or a restaurant name/cuisine, answer
+  goal-aware questions: *"what should I order to stay under 700 kcal with 40 g protein?"*, *"how do I make this
+  lighter?"* Backend: a `POST /api/assistant` (reuse [openrouter.py](app/openrouter.py) patterns) taking the
+  `MenuOption[]` context + the user's targets/goal + the question. **Ground the answer in the already-extracted
+  options** so it recommends real items with real (estimated) macros, not hallucinations.
+- **12.2 Recipes / "make it at home" — M.** From a logged meal or a craving, generate a recipe scaled to a
+  target (*"a 600 kcal, 45 g-protein version of this burrito bowl"*) → ingredients + steps + an estimated macro
+  breakdown that one-taps into the existing entry-create path (reuse the estimate schema + EstimateCard / batch).
+- **12.3 Meal-planning chat — L (stretch).** *"Plan dinners this week around my goal and what I usually log"* —
+  pulls from recent foods (frecency exists) + targets. Defer.
+
+**Design decisions / open:**
+
+- **Chat vs structured.** Freeform chat is flexible but harder to ground and pricier per call. **Recommend
+  starting structured** — a few canned questions + a free-text box, single-shot — cheaper, easier to keep
+  grounded in the real menu/macros, and it can grow into multi-turn chat later.
+- **Cost/latency** — extra LLM calls; gate behind an explicit button, never automatic.
+- **Where it lives** — the Guide page or the menu-scan result screen (M8), not a new top-level tab unless it
+  earns one (ties into the M10.4 IA sweep).
+
+Effort: M (12.1, 12.2 each), L (12.3). **Sequence:** M8 → 12.1 → 12.2. **Verification:** backend test mirroring
+[test_analyze_menu.py](tests/test_analyze_menu.py) (mock OpenRouter) asserting the assistant only references
+items in the supplied menu context; a generated recipe's macros round-trip into an entry; build/lint.
+
+---
+
+## Milestone 13 — Cost & taste as optimization dimensions — ⬜
+
+Requested: **cost and taste** — quality food can be expensive (find cheaper options), and some healthy food is
+less tasty than others. Today the app optimizes purely on nutrition; this adds two more axes.
+
+**Context.** The menu scanner (M8) already extracts a per-option **`price`**
+([choiceScan.ts](web/src/lib/choiceScan.ts) `FoodChoice.price`, `MenuOption.price`) — so cost data is *already
+flowing* for restaurant menus, just unused in scoring.
+
+- **13.1 Cost: capture & surface — S–M.** Add an optional `price`/`cost` to entries (reuse the menu `price`).
+  Surface cost-per-meal and cost-per-day, and — with macros — **cost per 100 kcal** and **cost per gram of
+  protein** (the "protein on a budget" view people actually want). Mostly: a nullable column +
+  schema/migration (the `_migrate_add_columns` pattern in [db.py](app/db.py)), an editor input, and a couple of
+  derived readouts.
+- **13.2 Cost in ranking — S.** Add cost as an *optional* term to the Guide/Menu `choiceScore`
+  ([choiceScan.ts](web/src/lib/choiceScan.ts)): when prices are present, prefer cheaper at equal nutrition;
+  expose a **"value"** sort (best nutrition per dollar). Extends existing scoring, no new infra.
+- **13.3 Taste rating — M.** Let the user rate logged foods (1–5 "would eat again"), stored per food (or per
+  `SavedFood` once 1.4 v2 lands). Use it to (a) re-rank Guide suggestions toward foods you actually like and
+  (b) flag "healthy but you rated low" so suggestions aren't joyless — the antidote to a guide that only
+  optimizes nutrition. Frecency is a weak *implicit* taste signal (you re-log what you like) that could seed it.
+
+**Design decisions / open:**
+
+- **Cost source** — manual entry is the realistic v1; menu prices are free (already extracted); per-region
+  grocery-price APIs are out of scope.
+- **Taste is per-user and subjective** — never aggregate/share; it only personalizes that user's ranking.
+- **Multi-objective tension** — cheapest, tastiest, and most nutritious rarely coincide. Don't fold them into
+  one opaque number; expose **separate sortable dimensions** (nutrition / value / "foods you like") so the user
+  picks the trade-off — consistent with M10's "don't hide it in one score" stance.
+
+Effort: S (13.1, 13.2) + M (13.3). **Sequence:** 13.1 → (13.2 ∥ 13.3); depends on M8 (menu price) and benefits
+from **1.4 v2 (saved foods)** as the home for a persistent taste rating. **Verification:** migration test for
+the new column(s) ([test_migration.py](tests/test_migration.py) pattern); "cost per g protein" + "value" sort
+compute correctly; taste rating persists per user and shifts Guide order; build/lint.
+
+---
+
 ## Backlog — additional ideas, unsequenced — ⬜
 
 - **Barcode scanning** ⭐ — ✅ **Shipped.** Camera scan via `@zxing/browser` (UPC/EAN only, lazy-loaded chunk +
@@ -510,6 +788,16 @@ Builds on shipped 3.1 (weight), 3.2 (Trends/Recharts), and activity/expenditure
 M4.2 (lift `day` to App) ──> Trends value → day navigation  [done]
 M5 (activity/expenditure) ──> M7 (expenditure on Trends)    [done]
 remaining: M1 1.4 v2/v3 (saved foods/meals), 1.4r c/g; backlog extras (export, water, …)
+
+new work (M8–M13) — recommended order: M8 → M9 → M10 → M11 → M12 → M13
+M8 (guide+menu, IN FLIGHT) ── land first: blocks clean tree; choiceScore+price feed M10/M12/M13
+M9 (theme tokens + Settings) ✅ done ── deepest arch foundation; later UI now inherits themes for free
+  └─ cross-cut: lock the full color-token vocab (M10.1 decision) BEFORE authoring the 5 palettes (M9.5)
+M10 (FF reframe + design language) ── highest user value; built on M9 tokens, promotes M8 choiceScore
+M11 (photos/icons) ── uses M10 design language + M9 Settings; mostly additive (needs thumbnail resize)
+M12 (chat/recipes) ── depends on M8; isolated LLM endpoint
+M13 (cost+taste) ── last: most new infra (cols/migrations); depends on M8 price + benefits from 1.4 v2
+(M12 ∥ M13 are swappable — both only need M8)
 ```
 
 ---
