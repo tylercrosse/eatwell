@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { LogPage } from './pages/LogPage'
+import { GuidePage } from './pages/GuidePage'
 import { GoalsPage } from './pages/GoalsPage'
 import { LoginPage } from './components/LoginPage'
 import { getMe, loginWithGoogle, logout } from './api/auth'
@@ -10,7 +11,7 @@ import { localDayKey } from './lib/date'
 // Lazy so the charting lib (recharts) is a separate chunk, off the initial load path.
 const TrendsPage = lazy(() => import('./pages/TrendsPage').then((m) => ({ default: m.TrendsPage })))
 
-type Tab = 'log' | 'trends' | 'goals'
+type Tab = 'log' | 'guide' | 'trends' | 'goals'
 
 export default function App() {
   const queryClient = useQueryClient()
@@ -60,45 +61,64 @@ export default function App() {
     <div className="app">
       <header className="app__header app__header--row">
         <h1>Calorie Tracker</h1>
-        <button className="app__signout" onClick={() => signOut.mutate()} title={me.email}>
-          {me.picture && <img className="app__avatar" src={me.picture} alt="" referrerPolicy="no-referrer" />}
+        <button
+          className="app__signout"
+          onClick={() => signOut.mutate()}
+          title={me.email}
+        >
+          {me.picture && (
+            <img
+              className="app__avatar"
+              src={me.picture}
+              alt=""
+              referrerPolicy="no-referrer"
+            />
+          )}
           Sign out
         </button>
       </header>
 
       <main className="app__main">
-        {tab === 'log' && <LogPage day={day} setDay={setDay} />}
-        {tab === 'trends' && (
+        {tab === "log" && <LogPage day={day} setDay={setDay} />}
+        {tab === "guide" && <GuidePage />}
+        {tab === "trends" && (
           <Suspense fallback={<p className="muted">Loading…</p>}>
             <TrendsPage goToDay={goToDay} />
           </Suspense>
         )}
-        {tab === 'goals' && <GoalsPage />}
+        {tab === "goals" && <GoalsPage />}
       </main>
 
       <nav className="tabbar">
         <button
-          className={`tabbar__btn ${tab === 'log' ? 'is-active' : ''}`}
-          onClick={() => setTab('log')}
+          className={`tabbar__btn ${tab === "log" ? "is-active" : ""}`}
+          onClick={() => setTab("log")}
         >
           <span className="tabbar__icon">📋</span>
           Log
         </button>
         <button
-          className={`tabbar__btn ${tab === 'trends' ? 'is-active' : ''}`}
-          onClick={() => setTab('trends')}
+          className={`tabbar__btn ${tab === "trends" ? "is-active" : ""}`}
+          onClick={() => setTab("trends")}
         >
           <span className="tabbar__icon">📉</span>
           Trends
         </button>
         <button
-          className={`tabbar__btn ${tab === 'goals' ? 'is-active' : ''}`}
-          onClick={() => setTab('goals')}
+          className={`tabbar__btn ${tab === "guide" ? "is-active" : ""}`}
+          onClick={() => setTab("guide")}
+        >
+          <span className="tabbar__icon">🥗</span>
+          Guide
+        </button>
+        <button
+          className={`tabbar__btn ${tab === "goals" ? "is-active" : ""}`}
+          onClick={() => setTab("goals")}
         >
           <span className="tabbar__icon">🎯</span>
           Goals
         </button>
       </nav>
     </div>
-  )
+  );
 }

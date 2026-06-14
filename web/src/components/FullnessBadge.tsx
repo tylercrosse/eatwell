@@ -1,4 +1,4 @@
-import { fullnessFactor, fullnessTier, FULLNESS_LABELS, type FullnessInput, type FullnessTier } from '../lib/fullness'
+import { fullnessFactor, fullnessTier, isBeverageForFullness, FULLNESS_LABELS, type FullnessInput, type FullnessTier } from '../lib/fullness'
 
 const TIER_CLASS: Record<FullnessTier, string> = {
   'very-filling': 'fullness--very-filling',
@@ -36,7 +36,7 @@ interface Props {
 export function FullnessBadge({ food, variant = 'full' }: Props) {
   const f = fullnessFactor(food)
   if (!f) return null
-  const title = food.is_beverage
+  const title = isBeverageForFullness(food)
     ? `Fullness factor ${f.score.toFixed(1)} / 5 — capped: liquid calories are far less filling`
     : `Fullness factor ${f.score.toFixed(1)} / 5 (per 100g)`
   return <FullnessPill score={f.score} variant={variant} title={title} />

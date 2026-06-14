@@ -4,6 +4,7 @@ import { PhotoCapture } from '../components/PhotoCapture'
 import { EstimateCard, type CaptureDraft, type ItemDraft } from '../components/EstimateCard'
 import { FullnessBadge } from '../components/FullnessBadge'
 import { clampServings, composeServingSize, parseServingSize } from '../lib/serving'
+import { isBeverageForFullness } from '../lib/fullness'
 import { postEstimate, postEstimateText } from '../api/estimate'
 import { postEntries } from '../api/entries'
 import { getBarcodeFood, getRecentFoods } from '../api/foods'
@@ -29,6 +30,15 @@ let _idSeq = 0
 const newId = () => `item-${_idSeq++}`
 
 function itemFromFoodItem(it: FoodItem): ItemDraft {
+  const isBeverage = isBeverageForFullness({
+    name: it.name,
+    calories: it.calories,
+    protein_g: it.protein_g,
+    fat_g: it.fat_g,
+    fiber_g: it.fiber_g,
+    weight_g: it.weight_g,
+    is_beverage: it.is_beverage,
+  })
   return {
     id: newId(),
     food_name: it.name,
@@ -40,7 +50,7 @@ function itemFromFoodItem(it: FoodItem): ItemDraft {
     fiber_g: it.fiber_g ?? 0,
     sugar_g: it.sugar_g ?? 0,
     sodium_mg: it.sodium_mg ?? 0,
-    is_beverage: it.is_beverage ?? false,
+    is_beverage: isBeverage,
     serving_size: '',
     servings: 1,
   }
@@ -75,11 +85,12 @@ function draftFromAnalysis(a: AnalysisResult, day: string): CaptureDraft {
 
 /** Prefill a single-item draft from a scanned packaged food (no AI call). */
 function draftFromBarcode(food: BarcodeFood, day: string): CaptureDraft {
+  const foodName = food.brand ? `${food.brand} ${food.name}` : food.name
   return {
     items: [
       {
         id: newId(),
-        food_name: food.brand ? `${food.brand} ${food.name}` : food.name,
+        food_name: foodName,
         calories: food.calories,
         protein_g: food.protein_g,
         carbs_g: food.carbs_g,
@@ -88,7 +99,7 @@ function draftFromBarcode(food: BarcodeFood, day: string): CaptureDraft {
         fiber_g: food.fiber_g,
         sugar_g: food.sugar_g,
         sodium_mg: food.sodium_mg,
-        is_beverage: food.is_beverage,
+        is_beverage: isBeverageForFullness({ ...food, food_name: foodName }),
         serving_size: food.serving_size,
         servings: 1,
       },
@@ -119,7 +130,7 @@ function draftFromRecent(food: RecentFood, day: string): CaptureDraft {
         fiber_g: per(food.fiber_g),
         sugar_g: per(food.sugar_g),
         sodium_mg: per(food.sodium_mg),
-        is_beverage: food.is_beverage ?? false,
+        is_beverage: isBeverageForFullness(food),
         serving_size: base,
         servings: clampServings(s),
       },

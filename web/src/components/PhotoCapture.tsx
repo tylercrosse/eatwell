@@ -3,6 +3,8 @@ import { useRef } from 'react'
 interface Props {
   onPhoto: (file: File) => void
   disabled?: boolean
+  cameraLabel?: string
+  libraryLabel?: string
 }
 
 /**
@@ -11,7 +13,12 @@ interface Props {
  *   - "Choose from library" omits capture -> photo library picker.
  * Chosen over getUserMedia: less plumbing and better behavior inside an installed PWA.
  */
-export function PhotoCapture({ onPhoto, disabled }: Props) {
+export function PhotoCapture({
+  onPhoto,
+  disabled,
+  cameraLabel = '📷 Take a photo',
+  libraryLabel = 'Choose from library',
+}: Props) {
   const cameraRef = useRef<HTMLInputElement>(null)
   const libraryRef = useRef<HTMLInputElement>(null)
 
@@ -38,14 +45,14 @@ export function PhotoCapture({ onPhoto, disabled }: Props) {
         disabled={disabled}
         onClick={() => cameraRef.current?.click()}
       >
-        📷 Take a photo
+        {cameraLabel}
       </button>
       <button
         className="btn btn--ghost"
         disabled={disabled}
         onClick={() => libraryRef.current?.click()}
       >
-        Choose from library
+        {libraryLabel}
       </button>
     </div>
   )

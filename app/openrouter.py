@@ -18,8 +18,11 @@ from app.config import Settings
 from app.schemas import (
     ACTIVITY_ANALYSIS_JSON_SCHEMA,
     FOOD_ANALYSIS_JSON_SCHEMA,
+    MENU_ANALYSIS_JSON_SCHEMA,
+    MENU_SCAN_OPTION_LIMIT,
     ActivityResult,
     AnalysisResult,
+    MenuAnalysisResult,
 )
 
 _ITEM_GRANULARITY = (
@@ -83,6 +86,22 @@ _ACTIVITY_SYSTEM_PROMPT = (
     "estimate but lower the confidence (0 = guess, 1 = very confident)."
 )
 
+_MENU_SYSTEM_PROMPT = (
+    "You analyze restaurant menu photos to help someone compare what to order. Return ONLY "
+    "data matching the schema. Extract up to 24 clearly visible ORDERABLE menu items. Return "
+    "items in the same reading order they appear in the image when possible. Skip "
+    "section headers, modifiers, sauce choices, toppings, and add-ons unless they are standalone "
+    "items someone could order. Track the nearest preceding visible section heading or column "
+    "heading for every item, such as Salads, Burgers, Drinks, Sides, or Entrees, and put that exact "
+    "heading in section. Do not leave section empty when a heading clearly applies to the item. If a "
+    "restaurant name, price, or description is visible, copy it; otherwise use an empty string. For "
+    "each option, estimate nutrition for one typical restaurant serving, including calories, "
+    "protein/carbs/fat, edible weight_g, fiber_g, sugar_g, sodium_mg, is_beverage, and a "
+    "serving_size_estimate. Mark drinks as is_beverage=true; soups and broths eaten as meals are not "
+    "beverages. Use source_text to quote the visible menu text you used for that option. If the image "
+    "is blurry or an item is uncertain, lower confidence."
+)
+
 _MAX_TOOL_ROUNDS = 4
 
 
@@ -109,6 +128,21 @@ def _parse_analysis(content: str | None) -> AnalysisResult:
         return AnalysisResult.model_validate_json(content)
     except ValidationError as exc:
         raise EstimationError(f"Model returned malformed nutrition data: {exc}") from exc
+
+
+def _parse_menu_analysis(content: str | None) -> MenuAnalysisResult:
+    """Validate the model's JSON content into a ``MenuAnalysisResult``."""
+    if not content:
+        raise EstimationError("Model returned an empty response.")
+    try:
+        payload = json.loads(content)
+        if isinstance(payload, dict) and isinstance(payload.get("options"), list):
+            payload["options"] = payload["options"][:MENU_SCAN_OPTION_LIMIT]
+        return MenuAnalysisResult.model_validate(payload)
+    except ValidationError as exc:
+        raise EstimationError(f"Model returned malformed menu data: {exc}") from exc
+    except json.JSONDecodeError as exc:
+        raise EstimationError(f"Model returned malformed menu JSON: {exc}") from exc
 
 
 async def analyze_food_image(jpeg_bytes: bytes, settings: Settings) -> AnalysisResult:
@@ -146,6 +180,46 @@ async def analyze_food_image(jpeg_bytes: bytes, settings: Settings) -> AnalysisR
 
     content = resp.choices[0].message.content if resp.choices else None
     return _parse_analysis(content)
+
+
+async def analyze_menu_image(jpeg_bytes: bytes, settings: Settings) -> MenuAnalysisResult:
+    """Send a menu photo to the model and return comparable menu options."""
+    if not settings.openrouter_api_key:
+        raise EstimationError("OPENROUTER_API_KEY is not configured.")
+
+    data_url = "data:image/jpeg;base64," + base64.b64encode(jpeg_bytes).decode("ascii")
+
+    try:
+        resp = await _client(settings).chat.completions.create(
+            model=settings.openrouter_model,
+            timeout=settings.openrouter_timeout,
+            messages=[
+                {"role": "system", "content": _MENU_SYSTEM_PROMPT},
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": "Scan this menu and extract orderable options to compare.",
+                        },
+                        {"type": "image_url", "image_url": {"url": data_url}},
+                    ],
+                },
+            ],
+            response_format={
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "menu_analysis",
+                    "strict": True,
+                    "schema": MENU_ANALYSIS_JSON_SCHEMA,
+                },
+            },
+        )
+    except APIError as exc:
+        raise EstimationError(f"OpenRouter request failed: {exc}") from exc
+
+    content = resp.choices[0].message.content if resp.choices else None
+    return _parse_menu_analysis(content)
 
 
 async def analyze_food_text(description: str, settings: Settings) -> AnalysisResult:

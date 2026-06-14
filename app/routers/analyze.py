@@ -15,7 +15,7 @@ from app import openrouter, storage
 from app.config import Settings
 from app.deps import get_current_user, get_session, get_settings
 from app.models import BodyMetric, User
-from app.schemas import ActivityAnalyzeRequest, ActivityResult, AnalysisResult
+from app.schemas import ActivityAnalyzeRequest, ActivityResult, AnalysisResult, MenuAnalysisResult
 
 router = APIRouter(tags=["analyze"])
 
@@ -93,3 +93,26 @@ async def analyze(
 
     photo_ref = storage.save_photo(jpeg, settings.photos_dir)
     return AnalyzeResponse(photo_ref=photo_ref, analysis=analysis)
+
+
+@router.post("/analyze/menu", response_model=MenuAnalysisResult)
+async def analyze_menu(
+    file: UploadFile = File(...),
+    settings: Settings = Depends(get_settings),
+    user: User = Depends(get_current_user),
+) -> MenuAnalysisResult:
+    raw = await file.read()
+    if not raw:
+        raise HTTPException(status_code=400, detail="Empty upload.")
+    if len(raw) > settings.max_upload_bytes:
+        raise HTTPException(status_code=413, detail="Image too large.")
+
+    try:
+        jpeg = storage.normalize_image(raw, settings.max_image_dimension)
+    except storage.ImageError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    try:
+        return await openrouter.analyze_menu_image(jpeg, settings)
+    except openrouter.EstimationError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc

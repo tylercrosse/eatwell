@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field, model_validator
 
 # Canonical meal buckets, in display order: breakfast, lunch, dinner, snacks.
 Meal = Literal["breakfast", "lunch", "dinner", "snacks"]
+MENU_SCAN_OPTION_LIMIT = 24
 
 # --- AI estimation ---------------------------------------------------------
 
@@ -48,6 +49,37 @@ class AnalysisResult(BaseModel):
     # True when this is primarily a drink (coffee, juice, soda, alcohol, milk, smoothie).
     is_beverage: bool = False
     serving_size_estimate: str
+    confidence: float = Field(ge=0.0, le=1.0)
+
+
+class MenuOption(BaseModel):
+    """One orderable option extracted from a restaurant menu photo.
+
+    This is deliberately not a FoodEntry: menu scans compare choices before eating and
+    should not imply logging-level precision.
+    """
+
+    name: str
+    description: str = ""
+    section: str = ""
+    price: str = ""
+    source_text: str = ""
+    calories: float = Field(ge=0.0)
+    protein_g: float = Field(ge=0.0)
+    carbs_g: float = Field(ge=0.0)
+    fat_g: float = Field(ge=0.0)
+    weight_g: float = Field(ge=0.0)
+    fiber_g: float = Field(ge=0.0)
+    sugar_g: float = Field(ge=0.0)
+    sodium_mg: float = Field(ge=0.0)
+    is_beverage: bool = False
+    serving_size_estimate: str
+    confidence: float = Field(ge=0.0, le=1.0)
+
+
+class MenuAnalysisResult(BaseModel):
+    restaurant_name: str = ""
+    options: list[MenuOption] = Field(max_length=MENU_SCAN_OPTION_LIMIT)
     confidence: float = Field(ge=0.0, le=1.0)
 
 
@@ -134,6 +166,79 @@ FOOD_ANALYSIS_JSON_SCHEMA: dict = {
         "serving_size_estimate",
         "confidence",
     ],
+}
+
+
+MENU_ANALYSIS_JSON_SCHEMA: dict = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "restaurant_name": {
+            "type": "string",
+            "description": "Restaurant or menu name if visible; otherwise an empty string.",
+        },
+        "options": {
+            "type": "array",
+            "description": "Up to 24 clearly visible, orderable menu items, in menu reading order when possible.",
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "name": {"type": "string", "description": "Orderable menu item name"},
+                    "description": {"type": "string", "description": "Visible description, or empty string"},
+                    "section": {
+                        "type": "string",
+                        "description": (
+                            "Nearest visible menu section or column heading that applies to this item, "
+                            "e.g. Salads, Burgers, Drinks; empty only when no heading is visible."
+                        ),
+                    },
+                    "price": {"type": "string", "description": "Visible price, or empty string"},
+                    "source_text": {
+                        "type": "string",
+                        "description": "The exact visible menu text used for this option, or closest excerpt.",
+                    },
+                    "calories": {"type": "number", "description": "Estimated kcal for one typical restaurant serving"},
+                    "protein_g": {"type": "number"},
+                    "carbs_g": {"type": "number"},
+                    "fat_g": {"type": "number"},
+                    "weight_g": {"type": "number", "description": "Estimated edible serving weight in grams"},
+                    "fiber_g": {"type": "number"},
+                    "sugar_g": {"type": "number"},
+                    "sodium_mg": {"type": "number"},
+                    "is_beverage": {
+                        "type": "boolean",
+                        "description": "true only for drink options; false for soups and solid foods.",
+                    },
+                    "serving_size_estimate": {
+                        "type": "string",
+                        "description": "Human serving estimate, e.g. '1 entree (~450g)'",
+                    },
+                    "confidence": {"type": "number", "description": "0 to 1"},
+                },
+                "required": [
+                    "name",
+                    "description",
+                    "section",
+                    "price",
+                    "source_text",
+                    "calories",
+                    "protein_g",
+                    "carbs_g",
+                    "fat_g",
+                    "weight_g",
+                    "fiber_g",
+                    "sugar_g",
+                    "sodium_mg",
+                    "is_beverage",
+                    "serving_size_estimate",
+                    "confidence",
+                ],
+            },
+        },
+        "confidence": {"type": "number", "description": "Overall confidence in menu extraction and estimates"},
+    },
+    "required": ["restaurant_name", "options", "confidence"],
 }
 
 

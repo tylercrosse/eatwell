@@ -22,6 +22,8 @@ export function fullnessTier(score: number): FullnessTier {
 }
 
 export interface FullnessInput {
+  food_name?: string | null
+  name?: string | null
   calories: number
   protein_g: number
   fat_g: number
@@ -34,6 +36,12 @@ export interface FullnessInput {
 // formula rewards their high water content. So drinks are capped at the bottom of the scale —
 // 1.4 lands in the "low" tier — regardless of what the raw equation produces.
 const BEVERAGE_FF_CAP = 1.4
+
+/** True when a food should use the low-fullness drink cap. User-reviewed data is authoritative;
+ * beta/legacy rows should be cleaned in the DB instead of guessed from names at runtime. */
+export function isBeverageForFullness(food: FullnessInput): boolean {
+  return food.is_beverage === true
+}
 
 /**
  * Fullness Factor for a food, or null when it can't be scored (no usable weight, or no
@@ -50,7 +58,7 @@ export function fullnessFactor(food: FullnessInput): Fullness | null {
   const fiber = (food.fiber_g ?? 0) * per100
   const raw = 41.7 * cal ** -0.7 + 0.05 * protein + 0.000617 * fiber ** 3 - 0.0000725 * fat ** 3 + 0.617
   let score = clamp(0.5, 5, raw)
-  if (food.is_beverage) score = Math.min(score, BEVERAGE_FF_CAP)
+  if (isBeverageForFullness(food)) score = Math.min(score, BEVERAGE_FF_CAP)
   return { score, tier: fullnessTier(score) }
 }
 
@@ -106,7 +114,7 @@ export function fullnessBreakdown(items: FullnessInput[]): FullnessBreakdown {
   for (const it of items) {
     const cals = Number.isFinite(it.calories) ? Math.max(0, it.calories) : 0
     if (it.weight_g && it.weight_g > 0) {
-      if (it.is_beverage) beverageWeightG += it.weight_g
+      if (isBeverageForFullness(it)) beverageWeightG += it.weight_g
       else foodWeightG += it.weight_g
     }
     const f = fullnessFactor(it)

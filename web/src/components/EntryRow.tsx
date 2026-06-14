@@ -4,6 +4,7 @@ import { MEAL_LABELS, MEAL_ORDER, bucketOf } from '../lib/meals'
 import { dayKeyOf, formatTime, localDayKey, withDayKey } from '../lib/date'
 import { composeServingSize, parseServingSize } from '../lib/serving'
 import { round } from '../lib/totals'
+import { isBeverageForFullness } from '../lib/fullness'
 import { MacroInput } from './MacroInput'
 import { FullnessBadge } from './FullnessBadge'
 import { ServingsStepper } from './ServingsStepper'
@@ -40,6 +41,7 @@ interface EditForm {
   fiber_g: number
   sugar_g: number
   sodium_mg: number
+  is_beverage: boolean
 }
 
 /** Split a stored entry back into the per-serving baseline the editor works on. */
@@ -60,6 +62,7 @@ function formFromEntry(e: Entry): EditForm {
     fiber_g: (e.fiber_g ?? 0) / f,
     sugar_g: (e.sugar_g ?? 0) / f,
     sodium_mg: (e.sodium_mg ?? 0) / f,
+    is_beverage: isBeverageForFullness(e),
   }
 }
 
@@ -90,6 +93,7 @@ export function EntryRow({ entry, saving, onSave, onDelete }: Props) {
       fiber_g: scaledOrNull(form.fiber_g),
       sugar_g: scaledOrNull(form.sugar_g),
       sodium_mg: scaledOrNull(form.sodium_mg),
+      is_beverage: form.is_beverage,
     })
     setEditing(false)
   }
@@ -143,6 +147,15 @@ export function EntryRow({ entry, saving, onSave, onDelete }: Props) {
           </label>
 
           <ServingsStepper value={form.servings} onChange={(v) => setForm({ ...form, servings: v })} />
+
+          <label className="estimate__beverage">
+            <input
+              type="checkbox"
+              checked={form.is_beverage}
+              onChange={(e) => setForm({ ...form, is_beverage: e.target.checked })}
+            />
+            Drink
+          </label>
 
           <div className="macros">
             <MacroInput label="Calories" unit="kcal" value={form.calories * f} onChange={(v) => setForm({ ...form, calories: v / f })} />

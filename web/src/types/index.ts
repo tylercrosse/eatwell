@@ -33,6 +33,31 @@ export interface AnalyzeResponse {
   analysis: AnalysisResult
 }
 
+export interface MenuOption {
+  name: string
+  description: string
+  section: string
+  price: string
+  source_text: string
+  calories: number
+  protein_g: number
+  carbs_g: number
+  fat_g: number
+  weight_g: number
+  fiber_g: number
+  sugar_g: number
+  sodium_mg: number
+  is_beverage: boolean
+  serving_size_estimate: string
+  confidence: number
+}
+
+export interface MenuAnalysisResult {
+  restaurant_name: string
+  options: MenuOption[]
+  confidence: number
+}
+
 export type Meal = 'breakfast' | 'lunch' | 'dinner' | 'snacks'
 
 export interface Entry {
