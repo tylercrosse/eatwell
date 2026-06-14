@@ -22,3 +22,30 @@ export function usePersistentToggle(key: string, fallback = false): [boolean, (v
   }
   return [value, set]
 }
+
+function loadChoice<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
+  try {
+    const v = localStorage.getItem(key)
+    return v != null && (allowed as readonly string[]).includes(v) ? (v as T) : fallback
+  } catch {
+    return fallback // storage unavailable (private mode etc.)
+  }
+}
+
+/** A string-enum preference persisted to localStorage. Unknown/stale values fall back. */
+export function usePersistentChoice<T extends string>(
+  key: string,
+  allowed: readonly T[],
+  fallback: T,
+): [T, (v: T) => void] {
+  const [value, setValue] = useState<T>(() => loadChoice(key, allowed, fallback))
+  const set = (next: T) => {
+    try {
+      localStorage.setItem(key, next)
+    } catch {
+      // ignore; preference just won't persist
+    }
+    setValue(next)
+  }
+  return [value, set]
+}

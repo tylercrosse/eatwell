@@ -1,4 +1,4 @@
-import { CHART_COLORS as C } from '../lib/colors'
+import { useChartColors } from '../lib/theme'
 
 // Progress toward each goal on the metric's own scale (x = weight / body fat, not date). Takes
 // display-ready numbers (already converted to the active weight unit) computed on the Trends page.
@@ -23,6 +23,7 @@ const clampPct = (f: number) => Math.min(Math.max(f, 0), 1) * 100
 const fmtVal = (v: number, unit: string) => (unit === '%' ? `${v}%` : `${v} ${unit}`)
 
 export function GoalProgressTrack({ metrics }: { metrics: GoalMetric[] }) {
+  const C = useChartColors()
   if (!metrics.length) {
     return <p className="muted chart-card__empty">Set a goal weight or body fat in Goals, then log a weigh-in.</p>
   }

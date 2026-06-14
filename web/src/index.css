@@ -1,5 +1,9 @@
 :root {
+  /* Default theme = Dark (slate). The [data-theme] blocks below override these tokens for the
+     other themes. Token *names* are the contract every component reads; only the values change.
+     Chart colors are duplicated in src/lib/colors.ts (Recharts can't read CSS vars) — keep in sync. */
   --bg: #0f172a;
+  --bg-deep: #020617; /* deeper than --bg: photo stages, immersive viewers */
   --surface: #1e293b;
   --surface-2: #273449;
   --border: #334155;
@@ -7,6 +11,7 @@
   --muted: #94a3b8;
   --accent: #34d399;
   --accent-strong: #10b981;
+  --on-accent: #03251a; /* text/icon on a filled --accent-strong */
   --danger: #f87171;
   --macro-protein: #60a5fa;
   --macro-carbs: #fbbf24;
@@ -14,11 +19,137 @@
   --exp-bmr: #a78bfa;
   --exp-baseline: #2dd4bf;
   --exp-exercise: #fb923c;
-  --radius: 16px;
+  /* Fullness-factor 5-tier ramp (very filling = green → low = red) */
+  --fullness-very-filling: #34d399;
+  --fullness-filling: #a3e635;
+  --fullness-moderate: #fbbf24;
+  --fullness-light: #fb923c;
+  --fullness-low: #f87171;
+  /* Effects (tuned per theme) */
+  --overlay: rgba(0, 0, 0, 0.55); /* modal scrim + immersive backdrops */
+  --shadow: rgba(0, 0, 0, 0.45);
+  --reticle: rgba(255, 255, 255, 0.9); /* camera framing outline */
 
+  --radius: 16px;
   color-scheme: dark;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+:root[data-theme='light'] {
+  --bg: #f8fafc;
+  --bg-deep: #e2e8f0;
+  --surface: #ffffff;
+  --surface-2: #f1f5f9;
+  --border: #cbd5e1;
+  --text: #0f172a;
+  --muted: #64748b;
+  --accent: #059669;
+  --accent-strong: #047857;
+  --on-accent: #ffffff;
+  --danger: #dc2626;
+  --macro-protein: #2563eb;
+  --macro-carbs: #d97706;
+  --macro-fat: #db2777;
+  --exp-bmr: #7c3aed;
+  --exp-baseline: #0d9488;
+  --exp-exercise: #ea580c;
+  --fullness-very-filling: #059669;
+  --fullness-filling: #65a30d;
+  --fullness-moderate: #d97706;
+  --fullness-light: #ea580c;
+  --fullness-low: #dc2626;
+  --overlay: rgba(15, 23, 42, 0.4);
+  --shadow: rgba(15, 23, 42, 0.15);
+  --reticle: rgba(255, 255, 255, 0.9);
+  color-scheme: light;
+}
+
+:root[data-theme='github-dark'] {
+  --bg: #0d1117;
+  --bg-deep: #010409;
+  --surface: #161b22;
+  --surface-2: #21262d;
+  --border: #30363d;
+  --text: #c9d1d9;
+  --muted: #8b949e;
+  --accent: #3fb950;
+  --accent-strong: #238636;
+  --on-accent: #ffffff;
+  --danger: #f85149;
+  --macro-protein: #58a6ff;
+  --macro-carbs: #d29922;
+  --macro-fat: #db61a2;
+  --exp-bmr: #a371f7;
+  --exp-baseline: #39c5cf;
+  --exp-exercise: #f0883e;
+  --fullness-very-filling: #3fb950;
+  --fullness-filling: #56d364;
+  --fullness-moderate: #d29922;
+  --fullness-light: #f0883e;
+  --fullness-low: #f85149;
+  --overlay: rgba(1, 4, 9, 0.6);
+  --shadow: rgba(1, 4, 9, 0.5);
+  --reticle: rgba(255, 255, 255, 0.9);
+  color-scheme: dark;
+}
+
+:root[data-theme='solarized-dark'] {
+  --bg: #002b36;
+  --bg-deep: #00212b;
+  --surface: #073642;
+  --surface-2: #0a4453;
+  --border: #0f4d5e;
+  --text: #93a1a1;
+  --muted: #657b83;
+  --accent: #859900;
+  --accent-strong: #859900;
+  --on-accent: #002b36;
+  --danger: #dc322f;
+  --macro-protein: #268bd2;
+  --macro-carbs: #b58900;
+  --macro-fat: #d33682;
+  --exp-bmr: #6c71c4;
+  --exp-baseline: #2aa198;
+  --exp-exercise: #cb4b16;
+  --fullness-very-filling: #859900;
+  --fullness-filling: #9aa700;
+  --fullness-moderate: #b58900;
+  --fullness-light: #cb4b16;
+  --fullness-low: #dc322f;
+  --overlay: rgba(0, 20, 25, 0.6);
+  --shadow: rgba(0, 20, 25, 0.5);
+  --reticle: rgba(238, 232, 213, 0.9);
+  color-scheme: dark;
+}
+
+:root[data-theme='gruvbox-dark'] {
+  --bg: #282828;
+  --bg-deep: #1d2021;
+  --surface: #3c3836;
+  --surface-2: #504945;
+  --border: #665c54;
+  --text: #ebdbb2;
+  --muted: #a89984;
+  --accent: #b8bb26;
+  --accent-strong: #98971a;
+  --on-accent: #1d2021;
+  --danger: #fb4934;
+  --macro-protein: #83a598;
+  --macro-carbs: #fabd2f;
+  --macro-fat: #d3869b;
+  --exp-bmr: #b16286;
+  --exp-baseline: #8ec07c;
+  --exp-exercise: #fe8019;
+  --fullness-very-filling: #b8bb26;
+  --fullness-filling: #98971a;
+  --fullness-moderate: #fabd2f;
+  --fullness-light: #fe8019;
+  --fullness-low: #fb4934;
+  --overlay: rgba(0, 0, 0, 0.55);
+  --shadow: rgba(0, 0, 0, 0.5);
+  --reticle: rgba(235, 219, 178, 0.9);
+  color-scheme: dark;
 }
 
 * {
@@ -50,7 +181,7 @@ body {
   padding: calc(env(safe-area-inset-top) + 14px) 20px 12px;
   position: sticky;
   top: 0;
-  background: rgba(15, 23, 42, 0.85);
+  background: color-mix(in srgb, var(--bg) 85%, transparent);
   backdrop-filter: blur(10px);
   z-index: 5;
 }
@@ -142,7 +273,7 @@ body {
   justify-content: center;
   gap: 8px;
   padding: 8px 8px calc(env(safe-area-inset-bottom) + 8px);
-  background: rgba(15, 23, 42, 0.92);
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
   backdrop-filter: blur(10px);
   border-top: 1px solid var(--border);
 }
@@ -201,7 +332,7 @@ body {
 
 .btn--primary {
   background: var(--accent-strong);
-  color: #03251a;
+  color: var(--on-accent);
 }
 
 .btn--ghost {
@@ -333,7 +464,7 @@ body {
 .scanner__reticle {
   position: absolute;
   inset: 26% 12%;
-  border: 2px solid rgba(255, 255, 255, 0.9);
+  border: 2px solid var(--reticle);
   border-radius: 10px;
   box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.28);
 }
@@ -564,15 +695,15 @@ body {
 }
 
 .conf--high {
-  background: rgba(52, 211, 153, 0.15);
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
   color: var(--accent);
 }
 .conf--med {
-  background: rgba(251, 191, 36, 0.15);
-  color: #fbbf24;
+  background: color-mix(in srgb, var(--macro-carbs) 15%, transparent);
+  color: var(--macro-carbs);
 }
 .conf--low {
-  background: rgba(248, 113, 113, 0.15);
+  background: color-mix(in srgb, var(--danger) 15%, transparent);
   color: var(--danger);
 }
 
@@ -594,24 +725,24 @@ body {
 
 /* filling = green/good, low fullness = red — most-filling first. */
 .fullness--very-filling {
-  background: rgba(52, 211, 153, 0.16);
-  color: var(--accent);
+  background: color-mix(in srgb, var(--fullness-very-filling) 16%, transparent);
+  color: var(--fullness-very-filling);
 }
 .fullness--filling {
-  background: rgba(132, 204, 22, 0.16);
-  color: #a3e635;
+  background: color-mix(in srgb, var(--fullness-filling) 16%, transparent);
+  color: var(--fullness-filling);
 }
 .fullness--moderate {
-  background: rgba(251, 191, 36, 0.16);
-  color: #fbbf24;
+  background: color-mix(in srgb, var(--fullness-moderate) 16%, transparent);
+  color: var(--fullness-moderate);
 }
 .fullness--light {
-  background: rgba(251, 146, 60, 0.16);
-  color: #fb923c;
+  background: color-mix(in srgb, var(--fullness-light) 16%, transparent);
+  color: var(--fullness-light);
 }
 .fullness--low {
-  background: rgba(248, 113, 113, 0.16);
-  color: var(--danger);
+  background: color-mix(in srgb, var(--fullness-low) 16%, transparent);
+  color: var(--fullness-low);
 }
 
 .field {
@@ -913,19 +1044,19 @@ body {
 
 /* Shared tier colors for the meter segments + legend dots. */
 .fullness-seg--very-filling {
-  background: var(--accent);
+  background: var(--fullness-very-filling);
 }
 .fullness-seg--filling {
-  background: #a3e635;
+  background: var(--fullness-filling);
 }
 .fullness-seg--moderate {
-  background: #fbbf24;
+  background: var(--fullness-moderate);
 }
 .fullness-seg--light {
-  background: #fb923c;
+  background: var(--fullness-light);
 }
 .fullness-seg--low {
-  background: var(--danger);
+  background: var(--fullness-low);
 }
 .fullness-seg--unknown {
   background: var(--surface-2);
@@ -1020,7 +1151,7 @@ body {
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 12px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 12px 32px var(--shadow);
   cursor: default;
 }
 
@@ -1384,7 +1515,7 @@ body {
 }
 
 .guide-note {
-  color: #fbbf24;
+  color: var(--macro-carbs);
 }
 
 .guide-section__head {
@@ -1483,7 +1614,7 @@ body {
 
 .guide-tag {
   padding: 2px 7px;
-  background: rgba(248, 113, 113, 0.16);
+  background: color-mix(in srgb, var(--danger) 16%, transparent);
   color: var(--danger);
 }
 
@@ -1529,27 +1660,27 @@ body {
 }
 
 .guide-role-badge--anchor {
-  background: rgba(96, 165, 250, 0.16);
-  border-color: rgba(96, 165, 250, 0.28);
-  color: #93c5fd;
+  background: color-mix(in srgb, var(--macro-protein) 16%, transparent);
+  border-color: color-mix(in srgb, var(--macro-protein) 28%, transparent);
+  color: var(--macro-protein);
 }
 
 .guide-role-badge--volume {
-  background: rgba(52, 211, 153, 0.14);
-  border-color: rgba(52, 211, 153, 0.28);
-  color: #6ee7b7;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 28%, transparent);
+  color: var(--accent);
 }
 
 .guide-role-badge--fiber {
-  background: rgba(251, 191, 36, 0.14);
-  border-color: rgba(251, 191, 36, 0.28);
-  color: #fcd34d;
+  background: color-mix(in srgb, var(--macro-carbs) 14%, transparent);
+  border-color: color-mix(in srgb, var(--macro-carbs) 28%, transparent);
+  color: var(--macro-carbs);
 }
 
 .guide-role-badge--addon {
-  background: rgba(244, 114, 182, 0.14);
-  border-color: rgba(244, 114, 182, 0.28);
-  color: #f9a8d4;
+  background: color-mix(in srgb, var(--macro-fat) 14%, transparent);
+  border-color: color-mix(in srgb, var(--macro-fat) 28%, transparent);
+  color: var(--macro-fat);
 }
 
 .guide-group {
@@ -1691,7 +1822,7 @@ body {
   border: 1px solid var(--border);
   border-radius: 10px;
   overflow: hidden;
-  background: #020617;
+  background: var(--bg-deep);
   cursor: zoom-in;
 }
 
@@ -1706,9 +1837,9 @@ body {
   position: absolute;
   right: 8px;
   bottom: 8px;
-  border: 1px solid rgba(148, 163, 184, 0.32);
+  border: 1px solid color-mix(in srgb, var(--muted) 32%, transparent);
   border-radius: 999px;
-  background: rgba(2, 6, 23, 0.88);
+  background: color-mix(in srgb, var(--bg-deep) 88%, transparent);
   color: var(--text);
   font-size: 0.72rem;
   font-weight: 800;
@@ -1730,7 +1861,7 @@ body {
   flex-direction: column;
   padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
     max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
-  background: #020617;
+  background: var(--bg-deep);
 }
 
 .photo-viewer__bar {
@@ -1797,7 +1928,7 @@ body {
   overflow: auto;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: #020617;
+  background: var(--bg-deep);
   overscroll-behavior: contain;
   touch-action: pan-x pan-y pinch-zoom;
   -webkit-overflow-scrolling: touch;
@@ -1866,10 +1997,10 @@ body {
   display: inline-flex;
   align-items: center;
   max-width: 100%;
-  border: 1px solid rgba(96, 165, 250, 0.32);
+  border: 1px solid color-mix(in srgb, var(--macro-protein) 32%, transparent);
   border-radius: 999px;
-  background: rgba(96, 165, 250, 0.13);
-  color: #93c5fd;
+  background: color-mix(in srgb, var(--macro-protein) 13%, transparent);
+  color: var(--macro-protein);
   font-size: 0.7rem;
   font-weight: 800;
   line-height: 1.2;
@@ -1928,7 +2059,7 @@ body {
 
 .seg__btn.is-active {
   background: var(--accent-strong);
-  color: #03251a;
+  color: var(--on-accent);
 }
 
 /* ---- Trends ---- */
@@ -2180,7 +2311,7 @@ body {
   position: fixed;
   inset: 0;
   z-index: 50;
-  background: rgba(0, 0, 0, 0.55);
+  background: var(--overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2287,7 +2418,7 @@ body {
 
 .daypicker__day.is-selected {
   background: var(--accent-strong);
-  color: #03251a;
+  color: var(--on-accent);
   font-weight: 700;
 }
 
@@ -2306,7 +2437,7 @@ body {
 }
 
 .daypicker__day.is-selected .daypicker__dot {
-  background: #03251a;
+  background: var(--on-accent);
 }
 
 /* ---- Net calories + burned + recommendation ---- */
@@ -2319,7 +2450,7 @@ body {
 }
 
 .entry__cal--burn {
-  color: #fb923c;
+  color: var(--exp-exercise);
 }
 
 .goals__rec {
@@ -2337,4 +2468,121 @@ body {
   border-top: 1px solid var(--border);
   padding-top: 12px;
   margin-top: 4px;
+}
+
+/* ---- Header actions + Settings ---- */
+.app__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app__icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.settings__section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 0 8px;
+}
+
+.settings__heading {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.settings__hint {
+  margin: 0;
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.theme-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+
+.theme-option.is-active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.theme-option__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme-option__check {
+  flex: none;
+  color: var(--accent);
+  font-weight: 800;
+}
+
+.theme-swatch {
+  position: relative;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.theme-swatch__bar {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  top: 5px;
+  height: 6px;
+  border-radius: 3px;
+}
+
+.theme-swatch__dot {
+  position: absolute;
+  left: 5px;
+  bottom: 4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+/* "System" option: a light/dark split preview (fixed colors — it's the OS choice, not a theme). */
+.theme-swatch--system {
+  background: linear-gradient(135deg, #f8fafc 0 50%, #0f172a 50% 100%);
 }

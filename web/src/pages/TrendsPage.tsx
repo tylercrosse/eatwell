@@ -28,19 +28,12 @@ import { ema, movingAverage } from '../lib/stats'
 import { daysBetween, formatFullDay, formatShortDay, lastNDays, localDayKey, shiftDay } from '../lib/date'
 import { kgToDisplay, useWeightUnit } from '../lib/units'
 import { round1 } from '../lib/totals'
-import { CHART_COLORS as C } from '../lib/colors'
+import { useChartColors } from '../lib/theme'
 
 const RANGES = [7, 30, 90] as const
 const MA_WINDOW = 7
 const WEIGHT_EMA_ALPHA = 0.3 // smoothing for the scale-weight trend line
 const METRICS_LOOKBACK_DAYS = 730 // weigh-ins always load on this fixed lookback, not the range selector
-
-const TOOLTIP = {
-  contentStyle: { background: '#1e293b', border: '1px solid #334155', borderRadius: 8, fontSize: 12 },
-  labelStyle: { color: C.muted },
-  itemStyle: { color: '#e2e8f0' },
-}
-const AXIS_TICK = { fill: C.muted, fontSize: 11 }
 
 /** Recharts v3's click state carries the active index (not a payload); map it to a day key. */
 function activeDayKey(state: unknown, data: ReadonlyArray<{ dayKey: string }>): string | undefined {
@@ -66,6 +59,13 @@ interface Props {
 }
 
 export function TrendsPage({ goToDay }: Props) {
+  const C = useChartColors()
+  const TOOLTIP = {
+    contentStyle: { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 12 },
+    labelStyle: { color: C.muted },
+    itemStyle: { color: C.text },
+  }
+  const AXIS_TICK = { fill: C.muted, fontSize: 11 }
   const [unit, setUnit] = useWeightUnit()
   const [days, setDays] = useState<number>(30)
   const currentYear = new Date().getFullYear()

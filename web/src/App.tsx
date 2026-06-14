@@ -4,6 +4,7 @@ import { LogPage } from './pages/LogPage'
 import { GuidePage } from './pages/GuidePage'
 import { GoalsPage } from './pages/GoalsPage'
 import { LoginPage } from './components/LoginPage'
+import { SettingsMenu } from './components/SettingsMenu'
 import { getMe, loginWithGoogle, logout } from './api/auth'
 import { ApiError } from './api/client'
 import { localDayKey } from './lib/date'
@@ -18,6 +19,7 @@ export default function App() {
   const [tab, setTab] = useState<Tab>('log')
   const [day, setDay] = useState<string>(localDayKey()) // the day the Log page is viewing
   const [loginError, setLoginError] = useState<string | null>(null)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   // 401 here just means "not signed in" — surface the login screen, don't retry.
   const meQuery = useQuery({ queryKey: ['me'], queryFn: getMe, retry: false })
@@ -61,22 +63,34 @@ export default function App() {
     <div className="app">
       <header className="app__header app__header--row">
         <h1>Calorie Tracker</h1>
-        <button
-          className="app__signout"
-          onClick={() => signOut.mutate()}
-          title={me.email}
-        >
-          {me.picture && (
-            <img
-              className="app__avatar"
-              src={me.picture}
-              alt=""
-              referrerPolicy="no-referrer"
-            />
-          )}
-          Sign out
-        </button>
+        <div className="app__header-actions">
+          <button
+            className="app__icon-btn"
+            onClick={() => setSettingsOpen(true)}
+            aria-label="Settings"
+            title="Settings"
+          >
+            ⚙️
+          </button>
+          <button
+            className="app__signout"
+            onClick={() => signOut.mutate()}
+            title={me.email}
+          >
+            {me.picture && (
+              <img
+                className="app__avatar"
+                src={me.picture}
+                alt=""
+                referrerPolicy="no-referrer"
+              />
+            )}
+            Sign out
+          </button>
+        </div>
       </header>
+
+      {settingsOpen && <SettingsMenu onClose={() => setSettingsOpen(false)} />}
 
       <main className="app__main">
         {tab === "log" && <LogPage day={day} setDay={setDay} />}

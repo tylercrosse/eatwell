@@ -6,6 +6,38 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#0f172a" />
+    <!-- Apply the saved theme before first paint so there's no light/dark flash. Mirrors
+         resolveTheme()/THEME_BG in src/lib/theme.tsx — keep the resolved values in sync. -->
+    <script>
+      (function () {
+        try {
+          var darks = ['dark', 'github-dark', 'solarized-dark', 'gruvbox-dark']
+          var valid = ['light'].concat(darks)
+          var t = localStorage.getItem('theme') || 'system'
+          if (valid.indexOf(t) === -1) {
+            // 'system' or unknown → follow the OS; pick the saved dark variant at night.
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+              t = 'light'
+            } else {
+              var d = localStorage.getItem('theme-system-dark')
+              t = darks.indexOf(d) !== -1 ? d : 'dark'
+            }
+          }
+          document.documentElement.dataset.theme = t
+          var bg = {
+            light: '#f8fafc',
+            dark: '#0f172a',
+            'github-dark': '#0d1117',
+            'solarized-dark': '#002b36',
+            'gruvbox-dark': '#282828',
+          }[t]
+          var m = document.querySelector('meta[name="theme-color"]')
+          if (m && bg) m.setAttribute('content', bg)
+        } catch (e) {
+          /* ignore — falls back to the default dark :root */
+        }
+      })()
+    </script>
     <!-- iOS standalone PWA hints (manifest covers Android/Chrome) -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
