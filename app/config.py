@@ -59,6 +59,10 @@ class Settings(BaseSettings):
     owner_email: str = ""
     # Send the session cookie only over HTTPS. Keep false for local http dev.
     cookie_secure: bool = False
+    # Local-only QA auth for browser/API testing without Google. Disabled by default.
+    qa_auth_enabled: bool = False
+    qa_auth_secret: str = ""
+    qa_auth_accounts: str = "qa1|qa1@example.test|QA One,qa2|qa2@example.test|QA Two"
 
     @property
     def cors_origin_list(self) -> list[str]:
@@ -67,6 +71,17 @@ class Settings(BaseSettings):
     @property
     def allowed_email_set(self) -> set[str]:
         return {e.strip().lower() for e in self.allowed_emails.split(",") if e.strip()}
+
+    @property
+    def qa_auth_account_map(self) -> dict[str, tuple[str, str]]:
+        accounts: dict[str, tuple[str, str]] = {}
+        for raw in self.qa_auth_accounts.split(","):
+            parts = [p.strip() for p in raw.split("|", 2)]
+            if len(parts) != 3 or not parts[0] or not parts[1]:
+                continue
+            account_id, email, name = parts
+            accounts[account_id.lower()] = (email.lower(), name)
+        return accounts
 
     @property
     def db_url(self) -> str:

@@ -7,7 +7,9 @@ any pre-auth rows (user_id IS NULL) so data logged before auth isn't orphaned.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+import secrets
+
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
@@ -22,6 +24,11 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 class GoogleLoginRequest(BaseModel):
     credential: str  # the Google ID token from Google Identity Services
+
+
+class QaLoginRequest(BaseModel):
+    account: str
+    secret: str
 
 
 class UserRead(BaseModel):
@@ -41,6 +48,10 @@ def _set_session_cookie(response: Response, token: str, settings: Settings) -> N
         samesite="lax",
         path="/",
     )
+
+
+def _is_local_request(request: Request) -> bool:
+    return request.url.hostname in {"localhost", "127.0.0.1", "::1"}
 
 
 def _claim_orphan_rows(session: Session, user: User, settings: Settings) -> None:
@@ -92,6 +103,55 @@ def login_google(
 
     if is_new:
         _claim_orphan_rows(session, user, settings)
+
+    _set_session_cookie(response, auth_lib.create_session_token(user.id, settings), settings)
+    return user
+
+
+@router.post("/qa", response_model=UserRead)
+def login_qa(
+    payload: QaLoginRequest,
+    request: Request,
+    response: Response,
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+) -> User:
+    """Local-only QA login that mints the same session cookie as Google sign-in."""
+    if not settings.qa_auth_enabled or not settings.qa_auth_secret:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="QA auth is not available.",
+        )
+    if not _is_local_request(request):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="QA auth is only available from localhost.",
+        )
+    if not secrets.compare_digest(payload.secret, settings.qa_auth_secret):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid QA credentials.",
+        )
+
+    account_id = payload.account.strip().lower()
+    account = settings.qa_auth_account_map.get(account_id)
+    if account is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid QA credentials.",
+        )
+
+    email, name = account
+    sub = f"qa:{account_id}"
+    user = session.exec(select(User).where(User.google_sub == sub)).first()
+    if user is None:
+        user = User(google_sub=sub, email=email)
+    user.email = email
+    user.name = name
+    user.picture = None
+    session.add(user)
+    session.commit()
+    session.refresh(user)
 
     _set_session_cookie(response, auth_lib.create_session_token(user.id, settings), settings)
     return user

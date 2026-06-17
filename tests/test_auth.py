@@ -10,10 +10,13 @@ from datetime import datetime
 from fastapi.testclient import TestClient
 
 from app.auth import AuthError
+from app.config import get_settings
 from app.db import engine
 from app.main import app
 from app.models import FoodEntry, Targets, User
 from sqlmodel import Session, select
+
+QA_SECRET = "local-qa-secret"
 
 
 def _login(client, monkeypatch, email, sub=None, name="Tester"):
@@ -21,6 +24,22 @@ def _login(client, monkeypatch, email, sub=None, name="Tester"):
     claims = {"sub": sub or f"sub-{email}", "email": email, "email_verified": True, "name": name}
     monkeypatch.setattr("app.auth.verify_google_token", lambda credential, settings: claims)
     return client.post("/api/auth/google", json={"credential": "fake-google-token"})
+
+
+def _enable_qa(monkeypatch, accounts="qa1|qa1@example.test|QA One,qa2|qa2@example.test|QA Two"):
+    settings = get_settings()
+    monkeypatch.setattr(settings, "qa_auth_enabled", True)
+    monkeypatch.setattr(settings, "qa_auth_secret", QA_SECRET)
+    monkeypatch.setattr(settings, "qa_auth_accounts", accounts)
+
+
+def _qa_login(client, account="qa1", secret=QA_SECRET):
+    return client.post("/api/auth/qa", json={"account": account, "secret": secret})
+
+
+def _all_users() -> list[User]:
+    with Session(engine) as s:
+        return s.exec(select(User)).all()
 
 
 # --- Gate ------------------------------------------------------------------
@@ -77,6 +96,60 @@ def test_login_is_idempotent_for_same_google_sub(anon_client, monkeypatch):
     _login(anon_client, monkeypatch, "owner@example.com", sub="stable-sub")
     with Session(engine) as s:
         assert len(s.exec(select(User)).all()) == 1
+
+
+# --- Local QA login ---------------------------------------------------------
+
+
+def test_qa_login_is_disabled_by_default(anon_client):
+    assert _qa_login(anon_client).status_code == 401
+    assert _all_users() == []
+
+
+def test_qa_login_succeeds_for_configured_local_account(monkeypatch):
+    _enable_qa(monkeypatch)
+    with TestClient(app, base_url="http://localhost") as c:
+        r = _qa_login(c)
+        assert r.status_code == 200, r.text
+        assert r.json()["email"] == "qa1@example.test"
+        assert r.json()["name"] == "QA One"
+
+        me = c.get("/api/auth/me")
+        assert me.status_code == 200
+        assert me.json()["email"] == "qa1@example.test"
+
+    users = _all_users()
+    assert len(users) == 1
+    assert users[0].google_sub == "qa:qa1"
+
+
+def test_qa_login_rejects_invalid_secret_without_creating_user(monkeypatch):
+    _enable_qa(monkeypatch)
+    with TestClient(app, base_url="http://localhost") as c:
+        assert _qa_login(c, secret="wrong").status_code == 401
+    assert _all_users() == []
+
+
+def test_qa_login_rejects_unknown_account_without_creating_user(monkeypatch):
+    _enable_qa(monkeypatch)
+    with TestClient(app, base_url="http://localhost") as c:
+        assert _qa_login(c, account="missing").status_code == 401
+    assert _all_users() == []
+
+
+def test_qa_login_rejects_non_local_host_without_creating_user(anon_client, monkeypatch):
+    _enable_qa(monkeypatch)
+    assert _qa_login(anon_client).status_code == 403
+    assert _all_users() == []
+
+
+def test_qa_login_does_not_claim_owner_orphan_rows(monkeypatch):
+    _enable_qa(monkeypatch, accounts="owner|owner@example.com|QA Owner")
+    _seed_orphan_rows()
+
+    with TestClient(app, base_url="http://localhost") as c:
+        assert _qa_login(c, account="owner").status_code == 200
+        assert c.get("/api/entries").json() == []
 
 
 # --- Per-user scoping -------------------------------------------------------

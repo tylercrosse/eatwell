@@ -137,6 +137,28 @@ JavaScript origins**; no redirect URI is needed (the sign-in button returns the 
 Keep the deployed URL, `CORS_ORIGINS`, and the Authorized JavaScript origins all pointing at the
 **same origin**, or sign-in/CORS will fail.
 
+### Local QA auth
+
+For local browser/API testing without Google, enable the local-only QA login endpoint:
+
+```bash
+QA_AUTH_ENABLED=true
+QA_AUTH_SECRET=pick-a-local-secret
+QA_AUTH_ACCOUNTS="qa1|qa1@example.test|QA One,qa2|qa2@example.test|QA Two"
+```
+
+Run the backend, open `http://localhost:8000/docs` in the same browser, and execute
+`POST /api/auth/qa` with:
+
+```json
+{ "account": "qa1", "secret": "pick-a-local-secret" }
+```
+
+That creates/reuses the configured QA user and sets the same httpOnly `ct_session` cookie
+as Google sign-in. Then open the PWA. Use the same hostname everywhere (`localhost` vs
+`127.0.0.1`) so the browser sends the cookie to the app/API. The QA endpoint rejects
+non-local hosts and is intentionally not shown in the frontend.
+
 ## API reference
 
 | Method | Path | Purpose |
