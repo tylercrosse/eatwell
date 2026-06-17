@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   Area,
@@ -18,28 +18,59 @@ import {
 import type { TooltipContentProps } from 'recharts'
 import { UnitToggle } from '../components/UnitToggle'
 import { GoalProgressTrack, type GoalMetric } from '../components/GoalProgress'
-import { getEntriesRange } from '../api/entries'
-import { getExerciseRange } from '../api/exercise'
-import { getMetrics } from '../api/metrics'
+import { TrendGestureSurface } from '../components/TrendGestureSurface'
+import { TrendScrubber } from '../components/TrendScrubber'
 import { getTargets } from '../api/targets'
+import { getTrendsHistory } from '../api/trends'
 import { ATWATER, signedWeeklyRateKg } from '../lib/targets'
 import { burnedBreakdown, balanceColor } from '../lib/energy'
 import { MACRO_ORDER, NUTRITION_DISPLAY, type MacroKey } from '../lib/nutritionDisplay'
 import { stepsToKcal } from '../lib/activity'
 import { KCAL_PER_KG } from '../lib/tdee'
-import { emaByDate, movingAverage } from '../lib/stats'
+import { emaByDate, interpolateByDate, movingAverage } from '../lib/stats'
 import { bandHalfWidthKg, predictWeightSeries } from '../lib/forecast'
-import { daysBetween, formatFullDay, formatShortDay, lastNDays, localDayKey, shiftDay } from '../lib/date'
+import { daysBetween, formatFullDay, formatShortDay, localDayKey, shiftDay } from '../lib/date'
 import { kgToDisplay, useWeightUnit } from '../lib/units'
 import { round1 } from '../lib/totals'
 import { useChartColors } from '../lib/theme'
+import {
+  allTrendWindow,
+  clampTrendWindow,
+  panTrendWindow,
+  trendWindowEndingAt,
+  windowSize,
+  zoomTrendWindowByFactor,
+  type TrendWindow,
+} from '../lib/trendWindow'
 
-const RANGES = [7, 30, 90] as const
 const MA_WINDOW = 7
 const WEIGHT_EMA_ALPHA = 0.3 // smoothing for the scale-weight trend line
-const METRICS_LOOKBACK_DAYS = 730 // weigh-ins always load on this fixed lookback, not the range selector
+const TREND_PRESETS = [7, 14, 30, 90, 180] as const
+const MAX_PRESET_DAYS = TREND_PRESETS[TREND_PRESETS.length - 1]
+const TIMELINE_PADDING_DAYS = 90
 
 const macroChartKey = (key: MacroKey) => NUTRITION_DISPLAY[key].label
+
+function dayAxis(start: string, end: string): string[] {
+  const span = Math.max(daysBetween(start, end), 0)
+  const axis: string[] = []
+  for (let i = 0; i <= span; i++) axis.push(shiftDay(start, i))
+  return axis
+}
+
+function rangeLabel(axis: string[], windowRange: TrendWindow): string {
+  const start = axis[windowRange.startIndex]
+  const end = axis[windowRange.endIndex]
+  return start && end ? `${formatShortDay(start)} - ${formatShortDay(end)}` : ''
+}
+
+function minDay(a: string, b: string): string {
+  return a < b ? a : b
+}
+
+function maxDay(a: string, b: string): string {
+  return a > b ? a : b
+}
 
 /** Recharts v3's click state carries the active index (not a payload); map it to a day key. */
 function activeDayKey(state: unknown, data: ReadonlyArray<{ dayKey: string }>): string | undefined {
@@ -73,32 +104,82 @@ export function TrendsPage({ goToDay }: Props) {
   }
   const AXIS_TICK = { fill: C.muted, fontSize: 11 }
   const [unit, setUnit] = useWeightUnit()
-  const [days, setDays] = useState<number>(30)
+  const today = useMemo(() => localDayKey(), [])
+  const [windowRange, setWindowRange] = useState<TrendWindow>({ startIndex: 0, endIndex: 29 })
+  const trendsRootRef = useRef<HTMLDivElement | null>(null)
+  const historyBoundsRef = useRef<string | null>(null)
+  const suppressClickUntilRef = useRef(0)
   const currentYear = new Date().getFullYear()
 
-  const axis = useMemo(() => lastNDays(days), [days])
-  const from = axis[0]
-  const to = axis[axis.length - 1]
-
-  const entriesQuery = useQuery({
-    queryKey: ['entries-range', from, to],
-    queryFn: () => getEntriesRange(from, to),
+  const historyQuery = useQuery({
+    queryKey: ['trends-history', today],
+    queryFn: () => getTrendsHistory(today),
   })
-  const exerciseQuery = useQuery({
-    queryKey: ['exercise-range', from, to],
-    queryFn: () => getExerciseRange(from, to),
-  })
-  // Weigh-ins load on a fixed lookback, NOT the selected range, so the latest weight is always
-  // available even when it predates a short window — the range only zooms the time-series x-axes.
-  const metricsFrom = useMemo(() => shiftDay(to, -METRICS_LOOKBACK_DAYS), [to])
-  const metricsQuery = useQuery({ queryKey: ['metrics', metricsFrom, to], queryFn: () => getMetrics(metricsFrom, to) })
   const targetsQuery = useQuery({ queryKey: ['targets'], queryFn: getTargets })
+
+  useEffect(() => {
+    const el = trendsRootRef.current
+    if (!el) return
+
+    const blockBrowserZoom = (event: WheelEvent) => {
+      if (event.ctrlKey || event.metaKey) event.preventDefault()
+    }
+    const blockGesture = (event: Event) => {
+      event.preventDefault()
+    }
+
+    el.addEventListener('wheel', blockBrowserZoom, { passive: false, capture: true })
+    el.addEventListener('gesturestart', blockGesture)
+    el.addEventListener('gesturechange', blockGesture)
+    return () => {
+      el.removeEventListener('wheel', blockBrowserZoom, true)
+      el.removeEventListener('gesturestart', blockGesture)
+      el.removeEventListener('gesturechange', blockGesture)
+    }
+  }, [])
+
+  const historyAxis = useMemo(() => {
+    const hasData = Boolean(
+      (historyQuery.data?.entries.length ?? 0) + (historyQuery.data?.exercise.length ?? 0) + (historyQuery.data?.metrics.length ?? 0),
+    )
+    const dataStart = historyQuery.data?.start_date ?? shiftDay(today, -29)
+    const dataEnd = historyQuery.data?.end_date ?? today
+    if (!hasData) return dayAxis(shiftDay(today, -29), today)
+
+    const start = minDay(shiftDay(dataStart, -TIMELINE_PADDING_DAYS), shiftDay(today, 1 - MAX_PRESET_DAYS))
+    const end = maxDay(shiftDay(maxDay(dataEnd, today), TIMELINE_PADDING_DAYS), shiftDay(today, TIMELINE_PADDING_DAYS))
+    return dayAxis(start, end)
+  }, [historyQuery.data, today])
+
+  useEffect(() => {
+    const bounds = `${historyAxis[0]}:${historyAxis[historyAxis.length - 1]}`
+    const todayIndex = Math.max(0, historyAxis.indexOf(today))
+    if (historyBoundsRef.current !== bounds) {
+      historyBoundsRef.current = bounds
+      setWindowRange(trendWindowEndingAt(historyAxis.length, todayIndex, 30))
+      return
+    }
+    setWindowRange((prev) => clampTrendWindow(prev, historyAxis.length))
+  }, [historyAxis, today])
+
+  const visibleWindow = useMemo(() => clampTrendWindow(windowRange, historyAxis.length), [windowRange, historyAxis.length])
+  const axis = useMemo(() => historyAxis.slice(visibleWindow.startIndex, visibleWindow.endIndex + 1), [historyAxis, visibleWindow])
+  const from = axis[0]
+  const entriesData = useMemo(() => historyQuery.data?.entries ?? [], [historyQuery.data?.entries])
+  const exerciseData = useMemo(() => historyQuery.data?.exercise ?? [], [historyQuery.data?.exercise])
+  const metricsData = useMemo(() => historyQuery.data?.metrics ?? [], [historyQuery.data?.metrics])
+  const chartGestureProps = {
+    windowRange: visibleWindow,
+    totalDays: historyAxis.length,
+    onWindowChange: setWindowRange,
+    suppressClickUntilRef,
+  }
 
   // Seed weight for the per-day burned (BMR) calc: the weigh-in at or before the window start
   // (forward-filled, since weigh-ins are sparse). When none precedes the window we fall back to the
   // LATEST weigh-in — body mass is the best available estimate for BMR, never the stale first entry.
   const baseline = useMemo(() => {
-    const loggedW = (metricsQuery.data ?? []).filter((m) => m.weight_kg != null)
+    const loggedW = metricsData.filter((m) => m.weight_kg != null)
     const onBefore = loggedW.filter((m) => m.date <= from)
     const windowStartKg = onBefore.length
       ? (onBefore[onBefore.length - 1].weight_kg as number)
@@ -106,18 +187,18 @@ export function TrendsPage({ goToDay }: Props) {
         ? (loggedW[loggedW.length - 1].weight_kg as number)
         : null
     return { windowStartKg }
-  }, [metricsQuery.data, from])
+  }, [metricsData, from])
 
   // "Where you are now": the smoothed value at the most recent weigh-in, range-independent. The
   // predicted line, the goal-pace line, and goal progress all start from this one point, so the
   // energy-balance forecast re-anchors to recent scale readings instead of the first entry ever —
   // and a single noisy reading (hydration, etc.) is damped by the time-aware EMA.
   const anchor = useMemo(() => {
-    const loggedW = (metricsQuery.data ?? []).filter((m) => m.weight_kg != null)
+    const loggedW = metricsData.filter((m) => m.weight_kg != null)
     if (!loggedW.length) return { anchorKg: null as number | null, anchorDate: null as string | null }
     const smoothed = emaByDate(loggedW.map((m) => ({ date: m.date, value: m.weight_kg as number })), WEIGHT_EMA_ALPHA)
     return { anchorKg: smoothed[smoothed.length - 1], anchorDate: loggedW[loggedW.length - 1].date }
-  }, [metricsQuery.data])
+  }, [metricsData])
 
   // Per-day total energy burned (BMR + baseline activity + exercise + step burn), keyed by day.
   // Weight is forward-filled across the axis (BMR needs a weight every day, but weigh-ins are sparse):
@@ -126,8 +207,8 @@ export function TrendsPage({ goToDay }: Props) {
   // weight on record — the burned-derived features then stay hidden.
   const burned = useMemo(() => {
     const t = targetsQuery.data
-    const exByDate = new Map((exerciseQuery.data ?? []).map((d) => [d.date, d.total_calories]))
-    const metricByDate = new Map((metricsQuery.data ?? []).map((m) => [m.date, m]))
+    const exByDate = new Map(exerciseData.map((d) => [d.date, d.total_calories]))
+    const metricByDate = new Map(metricsData.map((m) => [m.date, m]))
 
     const byDay = new Map<string, number>()
     let available = false
@@ -151,12 +232,12 @@ export function TrendsPage({ goToDay }: Props) {
       }
     }
     return { byDay, available }
-  }, [targetsQuery.data, metricsQuery.data, exerciseQuery.data, baseline, axis, currentYear])
+  }, [targetsQuery.data, metricsData, exerciseData, baseline, axis, currentYear])
 
   // Calories per day, split by macro contribution (kcal), with a 7-day total-calorie average and
   // (when the profile is complete) a burned line — the gap above the bars is the day's balance.
   const calData = useMemo(() => {
-    const byDate = new Map((entriesQuery.data ?? []).map((d) => [d.date, d]))
+    const byDate = new Map(entriesData.map((d) => [d.date, d]))
     const totals = axis.map((day) => byDate.get(day)?.total_calories ?? 0)
     const ma = movingAverage(totals, MA_WINDOW)
     return axis.map((day, i) => {
@@ -172,14 +253,14 @@ export function TrendsPage({ goToDay }: Props) {
         burned: exp == null ? null : Math.round(exp),
       }
     })
-  }, [entriesQuery.data, axis, burned])
+  }, [entriesData, axis, burned])
 
   // Daily balance (consumed − burned) + a running cumulative, for the energy-balance chart. Only
   // days with logged intake count — an unlogged day is a gap, never a phantom full-day deficit. The
   // goal daily balance (from the goal's weekly rate) is what each bar is colored against.
   const balanceData = useMemo(() => {
-    const byDate = new Map((entriesQuery.data ?? []).map((d) => [d.date, d]))
-    const metrics = metricsQuery.data ?? []
+    const byDate = new Map(entriesData.map((d) => [d.date, d]))
+    const metrics = metricsData
     const lastWeightKg = [...metrics].reverse().find((m) => m.weight_kg != null)?.weight_kg ?? null
     const swr = targetsQuery.data ? signedWeeklyRateKg(targetsQuery.data, lastWeightKg) : null
     const goalDailyKcal = swr == null ? null : (swr * KCAL_PER_KG) / 7
@@ -214,8 +295,9 @@ export function TrendsPage({ goToDay }: Props) {
       goalDailyKcal,
       predictedKg: round1(kgToDisplay(netKcal / KCAL_PER_KG, unit)),
       hasData: burned.available && loggedDays > 0,
+      canRender: burned.available && entriesData.some((d) => d.entry_count > 0),
     }
-  }, [entriesQuery.data, metricsQuery.data, targetsQuery.data, axis, burned, unit])
+  }, [entriesData, metricsData, targetsQuery.data, axis, burned, unit])
 
   // Weight + body-fat on the same daily axis as the calories chart. Actuals + a time-aware EMA
   // trend, a dashed goal-pace projection drawn forward from your most recent weigh-in at the goal
@@ -223,11 +305,14 @@ export function TrendsPage({ goToDay }: Props) {
   // "Predicted" line: anchored at that same most-recent (smoothed) weight, adding the running
   // energy balance accrued since (Σ net / 7700). Both projections share one origin point.
   const weightData = useMemo(() => {
-    const metrics = metricsQuery.data ?? []
+    const metrics = metricsData
     const byDate = new Map(metrics.map((m) => [m.date, m]))
     const logged = metrics.filter((m) => m.weight_kg != null)
     const emaVals = emaByDate(logged.map((m) => ({ date: m.date, value: m.weight_kg as number })), WEIGHT_EMA_ALPHA)
-    const trendByDate = new Map(logged.map((m, i) => [m.date, emaVals[i]]))
+    const trendSamples = logged.map((m, i) => ({ date: m.date, value: emaVals[i] }))
+    const trendVals = interpolateByDate(trendSamples, axis)
+    const bodyFatSamples = metrics.flatMap((m) => (m.body_fat_pct == null ? [] : [{ date: m.date, value: m.body_fat_pct }]))
+    const bodyFatTrendVals = interpolateByDate(bodyFatSamples, axis)
 
     const t = targetsQuery.data
     const currentKg = anchor.anchorKg // smoothed most-recent weight
@@ -269,6 +354,7 @@ export function TrendsPage({ goToDay }: Props) {
       weight: number | null
       trend: number | null
       bodyFat: number | null
+      bodyFatTrend: number | null
       projWeight: number | null
       projBodyFat: number | null
       predWeight: number | null
@@ -291,8 +377,9 @@ export function TrendsPage({ goToDay }: Props) {
         dayKey: dk,
         date: formatShortDay(dk),
         weight: m?.weight_kg == null ? null : round1(kgToDisplay(m.weight_kg, unit)),
-        trend: trendByDate.has(dk) ? round1(kgToDisplay(trendByDate.get(dk) as number, unit)) : null,
+        trend: trendVals[i] == null ? null : round1(kgToDisplay(trendVals[i] as number, unit)),
         bodyFat: m?.body_fat_pct ?? null,
+        bodyFatTrend: bodyFatTrendVals[i] == null ? null : round1(bodyFatTrendVals[i] as number),
         projWeight,
         projBodyFat,
         predWeight: predKg == null ? null : round1(kgToDisplay(predKg, unit)),
@@ -300,7 +387,7 @@ export function TrendsPage({ goToDay }: Props) {
     })
     const hasBodyFat = metrics.some((m) => m.body_fat_pct != null)
     return { rows, hasProjection: dir !== 0, hasPrediction, hasBodyFat }
-  }, [metricsQuery.data, targetsQuery.data, balanceData, anchor, burned, unit, axis])
+  }, [metricsData, targetsQuery.data, balanceData, anchor, burned, unit, axis])
 
   // Weight forecast: the same weight/body-fat picture, but the axis runs from the past window out to
   // the goal-pace finish date. Past = actuals + the time-aware EMA trend (as in the weight chart).
@@ -308,12 +395,13 @@ export function TrendsPage({ goToDay }: Props) {
   // at the recent average daily balance (both from your most-recent weight), plus a shaded
   // uncertainty band around the future Predicted line that widens with the horizon.
   const forecastData = useMemo(() => {
-    const metrics = metricsQuery.data ?? []
+    const metrics = metricsData
     const t = targetsQuery.data
     const byDate = new Map(metrics.map((m) => [m.date, m]))
     const loggedW = metrics.filter((m) => m.weight_kg != null)
     const emaVals = emaByDate(loggedW.map((m) => ({ date: m.date, value: m.weight_kg as number })), WEIGHT_EMA_ALPHA)
-    const trendByDate = new Map(loggedW.map((m, i) => [m.date, emaVals[i]]))
+    const trendSamples = loggedW.map((m, i) => ({ date: m.date, value: emaVals[i] }))
+    const bodyFatSamples = metrics.flatMap((m) => (m.body_fat_pct == null ? [] : [{ date: m.date, value: m.body_fat_pct }]))
 
     const currentKg = anchor.anchorKg // smoothed most-recent weight
     const anchorWeightDate = anchor.anchorDate
@@ -335,8 +423,16 @@ export function TrendsPage({ goToDay }: Props) {
       goalDateKey = shiftDay(anchorWeightDate, daysToGoal)
       futureDays = Math.min(Math.max(daysBetween(todayKey, goalDateKey), 0), 730)
     }
-    const axisF: string[] = []
-    for (let i = -(days - 1); i <= futureDays; i++) axisF.push(shiftDay(todayKey, i))
+    const axisF = [...axis]
+    const visibleEnd = axis[axis.length - 1]
+    if (visibleEnd >= todayKey) {
+      for (let i = 1; i <= futureDays; i++) {
+        const dk = shiftDay(todayKey, i)
+        if (dk > visibleEnd) axisF.push(dk)
+      }
+    }
+    const trendVals = interpolateByDate(trendSamples, axisF)
+    const bodyFatTrendVals = interpolateByDate(bodyFatSamples, axisF)
 
     // Body-fat glide to its goal over the same weight-goal timeline.
     const lastBf = [...metrics].reverse().find((m) => m.body_fat_pct != null) ?? null
@@ -372,6 +468,7 @@ export function TrendsPage({ goToDay }: Props) {
       weight: number | null
       trend: number | null
       bodyFat: number | null
+      bodyFatTrend: number | null
       projWeight: number | null
       projBodyFat: number | null
       predWeight: number | null
@@ -402,8 +499,9 @@ export function TrendsPage({ goToDay }: Props) {
         dayKey: dk,
         date: formatShortDay(dk),
         weight: m?.weight_kg == null ? null : round1(kgToDisplay(m.weight_kg, unit)),
-        trend: trendByDate.has(dk) ? round1(kgToDisplay(trendByDate.get(dk) as number, unit)) : null,
+        trend: trendVals[i] == null ? null : round1(kgToDisplay(trendVals[i] as number, unit)),
         bodyFat: m?.body_fat_pct ?? null,
+        bodyFatTrend: bodyFatTrendVals[i] == null ? null : round1(bodyFatTrendVals[i] as number),
         projWeight,
         projBodyFat,
         predWeight: predKg == null ? null : round1(kgToDisplay(predKg, unit)),
@@ -430,13 +528,13 @@ export function TrendsPage({ goToDay }: Props) {
       predGoalLabel: predGoalKey ? formatFullDay(predGoalKey) : null,
       todayLabel: formatShortDay(todayKey),
     }
-  }, [metricsQuery.data, targetsQuery.data, burned, balanceData, anchor, unit, days])
+  }, [metricsData, targetsQuery.data, burned, balanceData, anchor, unit, axis])
 
   // Goal progress on each metric's own scale (non-date x-axis), range-independent. start = earliest
   // weigh-in on record, now = the smoothed most-recent weight, predicted = that weight plus the
   // energy balance accrued since (Σ net / 7700) — a predicted "now". All in the active weight unit.
   const goalProgress = useMemo(() => {
-    const metrics = metricsQuery.data ?? []
+    const metrics = metricsData
     const t = targetsQuery.data
     const loggedW = metrics.filter((m) => m.weight_kg != null)
     const loggedBf = metrics.filter((m) => m.body_fat_pct != null)
@@ -471,10 +569,10 @@ export function TrendsPage({ goToDay }: Props) {
       metricsOut.push({ key: 'bodyfat', label: 'Body fat', unit: '%', start: round1(startBf), now: round1(nowBf), goal: round1(goalBf) })
     }
     return { metrics: metricsOut, hasGoal: metricsOut.length > 0 }
-  }, [metricsQuery.data, targetsQuery.data, burned, balanceData, anchor, unit])
+  }, [metricsData, targetsQuery.data, burned, balanceData, anchor, unit])
 
-  const hasEntries = (entriesQuery.data?.length ?? 0) > 0
-  const hasWeight = (metricsQuery.data ?? []).some((r) => r.weight_kg != null)
+  const hasEntries = entriesData.length > 0
+  const hasWeight = metricsData.some((r) => r.weight_kg != null)
   const target = targetsQuery.data?.calorie_target
 
   // Tight y-axis for the calories chart: ~200 kcal of headroom above the tallest thing drawn — a
@@ -524,40 +622,101 @@ export function TrendsPage({ goToDay }: Props) {
     )
   }
 
+  const displayedDays = windowSize(visibleWindow)
+  const todayIndex = Math.max(0, historyAxis.indexOf(today))
+  const availablePresets = TREND_PRESETS.filter((days) => days < historyAxis.length)
+  const panStep = Math.max(1, Math.round(displayedDays * 0.8))
+  const canPanOlder = visibleWindow.startIndex > 0
+  const canPanNewer = visibleWindow.endIndex < historyAxis.length - 1
+  const canZoomIn = displayedDays > Math.min(7, historyAxis.length)
+  const canZoomOut = displayedDays < historyAxis.length
+  const isAllHistory = visibleWindow.startIndex === 0 && visibleWindow.endIndex === historyAxis.length - 1
+  const displayedRange = `${rangeLabel(historyAxis, visibleWindow)} · ${displayedDays}d`
+  const shouldSuppressChartClick = () => Date.now() < suppressClickUntilRef.current
+
   return (
-    <div className="page trends">
+    <div ref={trendsRootRef} className="page trends">
       <div className="trends__bar">
-        <div className="seg" role="group" aria-label="Range">
-          {RANGES.map((r) => (
+        <div className="trend-window">
+          <div className="trend-window__label">{displayedRange}</div>
+          <div className="trend-window__controls" role="group" aria-label="Timeline controls">
             <button
-              key={r}
               type="button"
-              className={`seg__btn ${days === r ? 'is-active' : ''}`}
-              onClick={() => setDays(r)}
+              className="trend-window__btn"
+              aria-label="Older dates"
+              disabled={!canPanOlder}
+              onClick={() => setWindowRange((w) => panTrendWindow(clampTrendWindow(w, historyAxis.length), historyAxis.length, -panStep))}
             >
-              {r}d
+              ‹
             </button>
-          ))}
+            <button
+              type="button"
+              className="trend-window__btn"
+              aria-label="Zoom out"
+              disabled={!canZoomOut}
+              onClick={() => setWindowRange((w) => zoomTrendWindowByFactor(clampTrendWindow(w, historyAxis.length), historyAxis.length, 1.35))}
+            >
+              −
+            </button>
+            <button
+              type="button"
+              className="trend-window__btn"
+              aria-label="Zoom in"
+              disabled={!canZoomIn}
+              onClick={() => setWindowRange((w) => zoomTrendWindowByFactor(clampTrendWindow(w, historyAxis.length), historyAxis.length, 0.7))}
+            >
+              +
+            </button>
+            {availablePresets.map((days) => (
+              <button
+                key={days}
+                type="button"
+                className={`trend-window__btn trend-window__btn--text ${displayedDays === days ? 'is-active' : ''}`}
+                onClick={() => setWindowRange(trendWindowEndingAt(historyAxis.length, todayIndex, days))}
+              >
+                {days}d
+              </button>
+            ))}
+            <button
+              type="button"
+              className={`trend-window__btn trend-window__btn--text ${isAllHistory ? 'is-active' : ''}`}
+              disabled={isAllHistory}
+              onClick={() => setWindowRange(allTrendWindow(historyAxis.length))}
+            >
+              All
+            </button>
+            <button
+              type="button"
+              className="trend-window__btn"
+              aria-label="Newer dates"
+              disabled={!canPanNewer}
+              onClick={() => setWindowRange((w) => panTrendWindow(clampTrendWindow(w, historyAxis.length), historyAxis.length, panStep))}
+            >
+              ›
+            </button>
+          </div>
         </div>
         <UnitToggle unit={unit} onChange={setUnit} />
       </div>
 
-      <p className="muted trends__hint">Tap a day on a chart to open it.</p>
+      <TrendScrubber axis={historyAxis} windowRange={visibleWindow} onWindowChange={setWindowRange} />
 
       <div className="card chart-card">
         <h3 className="chart-card__title">Calories by macro</h3>
         {hasEntries ? (
-          <ResponsiveContainer width="100%" height={220}>
-            <ComposedChart
-              data={calData}
-              syncId="trends"
-              syncMethod="value"
-              margin={{ top: 8, right: 60, bottom: 0, left: 0 }}
-              onClick={(state) => {
-                const dk = activeDayKey(state, calData)
-                if (dk) goToDay(dk)
-              }}
-            >
+          <TrendGestureSurface {...chartGestureProps}>
+            <ResponsiveContainer width="100%" height={220}>
+              <ComposedChart
+                data={calData}
+                syncId="trends"
+                syncMethod="value"
+                margin={{ top: 8, right: 60, bottom: 0, left: 0 }}
+                onClick={(state) => {
+                  if (shouldSuppressChartClick()) return
+                  const dk = activeDayKey(state, calData)
+                  if (dk) goToDay(dk)
+                }}
+              >
               <CartesianGrid stroke={C.grid} strokeOpacity={0.4} vertical={false} />
               <XAxis dataKey="date" tick={AXIS_TICK} tickLine={false} axisLine={{ stroke: C.grid }} minTickGap={24} />
               <YAxis tick={AXIS_TICK} tickLine={false} axisLine={false} width={52} domain={[0, calDomainMax]} allowDataOverflow />
@@ -573,9 +732,10 @@ export function TrendsPage({ goToDay }: Props) {
                   fill={key === 'fat' ? C.fat : key === 'protein' ? C.protein : C.carbs}
                   legendType="circle"
                   radius={i === MACRO_ORDER.length - 1 ? [3, 3, 0, 0] : undefined}
+                  isAnimationActive={false}
                 />
               ))}
-              <Line dataKey="avg" name="Trend" stroke={C.accent} strokeWidth={2} dot={false} connectNulls legendType="line" />
+              <Line dataKey="avg" name="Trend" stroke={C.accent} strokeWidth={2} dot={false} connectNulls legendType="line" isAnimationActive={false} />
               {burned.available && (
                 <Line
                   dataKey="burned"
@@ -585,6 +745,7 @@ export function TrendsPage({ goToDay }: Props) {
                   dot={false}
                   connectNulls
                   legendType="line"
+                  isAnimationActive={false}
                 />
               )}
               {target ? (
@@ -595,8 +756,9 @@ export function TrendsPage({ goToDay }: Props) {
                   label={{ value: 'intake target', fill: C.muted, fontSize: 10, position: 'insideTopRight' }}
                 />
               ) : null}
-            </ComposedChart>
-          </ResponsiveContainer>
+              </ComposedChart>
+            </ResponsiveContainer>
+          </TrendGestureSurface>
         ) : (
           <p className="muted chart-card__empty">No entries in this range yet.</p>
         )}
@@ -604,24 +766,30 @@ export function TrendsPage({ goToDay }: Props) {
 
       <div className="card chart-card">
         <h3 className="chart-card__title">Energy balance</h3>
-        {balanceData.hasData ? (
+        {balanceData.canRender ? (
           <>
-            <p className="chart-card__readout">
-              Balance <strong>{signed(balanceData.netKcal)} kcal</strong> over {balanceData.loggedDays} logged{' '}
-              {balanceData.loggedDays === 1 ? 'day' : 'days'} · predicted{' '}
-              <strong>≈ {signed1(balanceData.predictedKg)} {unit}</strong>
-            </p>
-            <ResponsiveContainer width="100%" height={200}>
-              <ComposedChart
-                data={balanceData.rows}
-                syncId="trends"
-                syncMethod="value"
-                margin={{ top: 8, right: 8, bottom: 0, left: 0 }}
-                onClick={(state) => {
-                  const dk = activeDayKey(state, balanceData.rows)
-                  if (dk) goToDay(dk)
-                }}
-              >
+            {balanceData.hasData ? (
+              <p className="chart-card__readout">
+                Balance <strong>{signed(balanceData.netKcal)} kcal</strong> over {balanceData.loggedDays} logged{' '}
+                {balanceData.loggedDays === 1 ? 'day' : 'days'} · predicted{' '}
+                <strong>≈ {signed1(balanceData.predictedKg)} {unit}</strong>
+              </p>
+            ) : (
+              <p className="chart-card__readout muted">No logged days in this range.</p>
+            )}
+            <TrendGestureSurface {...chartGestureProps}>
+              <ResponsiveContainer width="100%" height={200}>
+                <ComposedChart
+                  data={balanceData.rows}
+                  syncId="trends"
+                  syncMethod="value"
+                  margin={{ top: 8, right: 8, bottom: 0, left: 0 }}
+                  onClick={(state) => {
+                    if (shouldSuppressChartClick()) return
+                    const dk = activeDayKey(state, balanceData.rows)
+                    if (dk) goToDay(dk)
+                  }}
+                >
                 <CartesianGrid stroke={C.grid} strokeOpacity={0.4} vertical={false} />
                 <XAxis dataKey="date" tick={AXIS_TICK} tickLine={false} axisLine={{ stroke: C.grid }} minTickGap={24} />
                 <YAxis yAxisId="net" tick={AXIS_TICK} tickLine={false} axisLine={false} width={52} />
@@ -629,14 +797,15 @@ export function TrendsPage({ goToDay }: Props) {
                 <Tooltip {...TOOLTIP} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
                 <ReferenceLine yAxisId="net" y={0} stroke={C.muted} />
-                <Bar yAxisId="net" dataKey="net" name="Balance (kcal)" fill={C.muted}>
+                <Bar yAxisId="net" dataKey="net" name="Balance (kcal)" fill={C.muted} isAnimationActive={false}>
                   {balanceData.rows.map((r) => (
                     <Cell key={r.dayKey} fill={barColor(r.net)} />
                   ))}
                 </Bar>
-                <Line yAxisId="cum" dataKey="cumNet" name="Cumulative" stroke={C.projection} strokeWidth={2} dot={false} connectNulls />
-              </ComposedChart>
-            </ResponsiveContainer>
+                <Line yAxisId="cum" dataKey="cumNet" name="Cumulative" stroke={C.projection} strokeWidth={2} dot={false} connectNulls isAnimationActive={false} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </TrendGestureSurface>
             <p className="chart-card__note">
               {goalAware
                 ? 'Bars: green = on your goal pace, red = off it. Line: running total.'
@@ -654,17 +823,19 @@ export function TrendsPage({ goToDay }: Props) {
         <h3 className="chart-card__title">Weight &amp; body fat</h3>
         {hasWeight ? (
           <>
-            <ResponsiveContainer width="100%" height={220}>
-              <LineChart
-                data={weightData.rows}
-                syncId="trends"
-                syncMethod="value"
-                margin={{ top: 8, right: 8, bottom: 0, left: 0 }}
-                onClick={(state) => {
-                  const dk = activeDayKey(state, weightData.rows)
-                  if (dk) goToDay(dk)
-                }}
-              >
+            <TrendGestureSurface {...chartGestureProps}>
+              <ResponsiveContainer width="100%" height={220}>
+                <LineChart
+                  data={weightData.rows}
+                  syncId="trends"
+                  syncMethod="value"
+                  margin={{ top: 8, right: 8, bottom: 0, left: 0 }}
+                  onClick={(state) => {
+                    if (shouldSuppressChartClick()) return
+                    const dk = activeDayKey(state, weightData.rows)
+                    if (dk) goToDay(dk)
+                  }}
+                >
                 <CartesianGrid stroke={C.grid} strokeOpacity={0.4} vertical={false} />
                 {/* band scale (not the lines-only default of "point") so points sit on band centers,
                     matching the bar charts above — keeps the shared x labels and synced cursor aligned. */}
@@ -673,22 +844,36 @@ export function TrendsPage({ goToDay }: Props) {
                 <YAxis yAxisId="bf" orientation="right" tick={AXIS_TICK} tickLine={false} axisLine={false} width={52} domain={padDomain(0.3)} />
                 <Tooltip {...TOOLTIP} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Line yAxisId="w" dataKey="weight" name={`Weight (${unit})`} stroke={C.muted} strokeWidth={1} dot={{ r: 2 }} connectNulls />
-                <Line yAxisId="w" dataKey="trend" name="Trend" stroke={C.accent} strokeWidth={2.5} dot={false} connectNulls />
+                <Line yAxisId="w" dataKey="weight" name={`Weight (${unit})`} stroke={C.muted} strokeWidth={1} dot={{ r: 2 }} connectNulls isAnimationActive={false} />
+                <Line yAxisId="w" dataKey="trend" name={`Weight trend (${unit})`} stroke={C.accent} strokeWidth={2.5} dot={false} connectNulls isAnimationActive={false} />
                 {weightData.hasPrediction && (
-                  <Line yAxisId="w" dataKey="predWeight" name="Predicted" stroke={C.projection} strokeWidth={2} strokeDasharray="2 3" dot={false} connectNulls />
+                  <Line yAxisId="w" dataKey="predWeight" name="Predicted" stroke={C.projection} strokeWidth={2} strokeDasharray="2 3" dot={false} connectNulls isAnimationActive={false} />
                 )}
                 {weightData.hasProjection && (
-                  <Line yAxisId="w" dataKey="projWeight" name="Goal pace" stroke={C.goal} strokeWidth={2} strokeDasharray="5 4" dot={false} connectNulls />
+                  <Line yAxisId="w" dataKey="projWeight" name="Goal pace" stroke={C.goal} strokeWidth={2} strokeDasharray="5 4" dot={false} connectNulls isAnimationActive={false} />
                 )}
                 {weightData.hasBodyFat && (
-                  <Line yAxisId="bf" dataKey="bodyFat" name="Body fat %" stroke={C.fat} strokeWidth={1.5} dot={{ r: 2 }} connectNulls />
+                  <Line yAxisId="bf" dataKey="bodyFatTrend" name="Body fat trend %" stroke={C.fat} strokeWidth={1.5} dot={false} connectNulls isAnimationActive={false} />
+                )}
+                {weightData.hasBodyFat && (
+                  <Line
+                    yAxisId="bf"
+                    dataKey="bodyFat"
+                    name="Body fat measurement %"
+                    stroke="transparent"
+                    strokeWidth={0}
+                    dot={{ r: 2, fill: C.fat, stroke: C.fat }}
+                    tooltipType="none"
+                    legendType="none"
+                    isAnimationActive={false}
+                  />
                 )}
                 {weightData.hasBodyFat && weightData.hasProjection && (
-                  <Line yAxisId="bf" dataKey="projBodyFat" name="BF goal" stroke={C.fat} strokeWidth={1.5} strokeDasharray="5 4" dot={false} connectNulls />
+                  <Line yAxisId="bf" dataKey="projBodyFat" name="BF goal" stroke={C.fat} strokeWidth={1.5} strokeDasharray="5 4" dot={false} connectNulls isAnimationActive={false} />
                 )}
-              </LineChart>
-            </ResponsiveContainer>
+                </LineChart>
+              </ResponsiveContainer>
+            </TrendGestureSurface>
             {(weightData.hasPrediction || weightData.hasProjection) && (
               <p className="chart-card__note">
                 {weightData.hasProjection && 'Goal pace = your target rate. '}
@@ -720,17 +905,19 @@ export function TrendsPage({ goToDay }: Props) {
                   ))}
               </p>
             )}
-            <ResponsiveContainer width="100%" height={240}>
-              <ComposedChart
-                data={forecastData.rows}
-                syncId="trends"
-                syncMethod="value"
-                margin={{ top: 8, right: 8, bottom: 0, left: 0 }}
-                onClick={(state) => {
-                  const dk = activeDayKey(state, forecastData.rows)
-                  if (dk) goToDay(dk)
-                }}
-              >
+            <TrendGestureSurface {...chartGestureProps}>
+              <ResponsiveContainer width="100%" height={240}>
+                <ComposedChart
+                  data={forecastData.rows}
+                  syncId="trends"
+                  syncMethod="value"
+                  margin={{ top: 8, right: 8, bottom: 0, left: 0 }}
+                  onClick={(state) => {
+                    if (shouldSuppressChartClick()) return
+                    const dk = activeDayKey(state, forecastData.rows)
+                    if (dk) goToDay(dk)
+                  }}
+                >
                 <CartesianGrid stroke={C.grid} strokeOpacity={0.4} vertical={false} />
                 {/* band scale (matching the charts above) so points sit on band centers — this chart
                     has its own future-extended x range, but the overlap reads consistently with them. */}
@@ -750,20 +937,34 @@ export function TrendsPage({ goToDay }: Props) {
                   <ReferenceLine yAxisId="w" y={forecastData.goalDisplay} stroke={C.goal} strokeDasharray="4 4" label={{ value: 'goal', fill: C.muted, fontSize: 10, position: 'insideBottomRight' }} />
                 )}
                 <ReferenceLine yAxisId="w" x={forecastData.todayLabel} stroke={C.muted} strokeOpacity={0.6} label={{ value: 'today', fill: C.muted, fontSize: 10, position: 'insideTopLeft' }} />
-                <Line yAxisId="w" dataKey="weight" name={`Weight (${unit})`} stroke={C.muted} strokeWidth={1} dot={{ r: 2 }} connectNulls />
-                <Line yAxisId="w" dataKey="trend" name="Trend" stroke={C.accent} strokeWidth={2.5} dot={false} connectNulls />
+                <Line yAxisId="w" dataKey="weight" name={`Weight (${unit})`} stroke={C.muted} strokeWidth={1} dot={{ r: 2 }} connectNulls isAnimationActive={false} />
+                <Line yAxisId="w" dataKey="trend" name={`Weight trend (${unit})`} stroke={C.accent} strokeWidth={2.5} dot={false} connectNulls isAnimationActive={false} />
                 {forecastData.hasPrediction && (
-                  <Line yAxisId="w" dataKey="predWeight" name="Predicted" stroke={C.projection} strokeWidth={2} strokeDasharray="2 3" dot={false} connectNulls />
+                  <Line yAxisId="w" dataKey="predWeight" name="Predicted" stroke={C.projection} strokeWidth={2} strokeDasharray="2 3" dot={false} connectNulls isAnimationActive={false} />
                 )}
-                <Line yAxisId="w" dataKey="projWeight" name="Goal pace" stroke={C.goal} strokeWidth={2} strokeDasharray="5 4" dot={false} connectNulls />
+                <Line yAxisId="w" dataKey="projWeight" name="Goal pace" stroke={C.goal} strokeWidth={2} strokeDasharray="5 4" dot={false} connectNulls isAnimationActive={false} />
                 {forecastData.hasBodyFat && (
-                  <Line yAxisId="bf" dataKey="bodyFat" name="Body fat %" stroke={C.fat} strokeWidth={1.5} dot={{ r: 2 }} connectNulls />
+                  <Line yAxisId="bf" dataKey="bodyFatTrend" name="Body fat trend %" stroke={C.fat} strokeWidth={1.5} dot={false} connectNulls isAnimationActive={false} />
                 )}
                 {forecastData.hasBodyFat && (
-                  <Line yAxisId="bf" dataKey="projBodyFat" name="BF goal" stroke={C.fat} strokeWidth={1.5} strokeDasharray="5 4" dot={false} connectNulls />
+                  <Line
+                    yAxisId="bf"
+                    dataKey="bodyFat"
+                    name="Body fat measurement %"
+                    stroke="transparent"
+                    strokeWidth={0}
+                    dot={{ r: 2, fill: C.fat, stroke: C.fat }}
+                    tooltipType="none"
+                    legendType="none"
+                    isAnimationActive={false}
+                  />
                 )}
-              </ComposedChart>
-            </ResponsiveContainer>
+                {forecastData.hasBodyFat && (
+                  <Line yAxisId="bf" dataKey="projBodyFat" name="BF goal" stroke={C.fat} strokeWidth={1.5} strokeDasharray="5 4" dot={false} connectNulls isAnimationActive={false} />
+                )}
+                </ComposedChart>
+              </ResponsiveContainer>
+            </TrendGestureSurface>
             <p className="chart-card__note">
               Goal pace = your target; Predicted = your recent intake
               {forecastData.anchorLabel ? `, from your ${forecastData.anchorLabel} weigh-in` : ''}. Shaded = forecast

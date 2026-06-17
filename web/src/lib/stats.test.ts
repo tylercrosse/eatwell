@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ema, emaByDate, movingAverage } from './stats'
+import { ema, emaByDate, interpolateByDate, movingAverage } from './stats'
 
 describe('movingAverage', () => {
   it('is null until the window fills, then trails', () => {
@@ -54,5 +54,19 @@ describe('emaByDate', () => {
       0.3,
     )
     expect(out[1]).toBeCloseTo(0.3 * 110 + 0.7 * 100)
+  })
+})
+
+describe('interpolateByDate', () => {
+  it('fills daily values between dated samples', () => {
+    const out = interpolateByDate(
+      [
+        { date: '2026-06-01', value: 80 },
+        { date: '2026-06-04', value: 77 },
+      ],
+      ['2026-05-31', '2026-06-01', '2026-06-02', '2026-06-03', '2026-06-04', '2026-06-05'],
+    )
+
+    expect(out).toEqual([null, 80, 79, 78, 77, null])
   })
 })

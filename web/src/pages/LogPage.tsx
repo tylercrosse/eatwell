@@ -50,6 +50,7 @@ export function LogPage({ day, setDay }: Props) {
   const invalidateEntries = () => {
     queryClient.invalidateQueries({ queryKey: ['entries'] })
     queryClient.invalidateQueries({ queryKey: ['entries-range'] })
+    queryClient.invalidateQueries({ queryKey: ['trends-history'] })
   }
   const remove = useMutation({ mutationFn: deleteEntry, onSuccess: invalidateEntries })
   const update = useMutation({

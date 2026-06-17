@@ -39,7 +39,7 @@ with a gross/net toggle**; charts via **Recharts**.
 | M7 Trends: burned line + balance weight prediction        | ✅ (+ weight-forecast & goal-progress, beyond original plan)                    |
 | M8 Food Guide + Menu scanner                              | ✅                                                                              |
 | M9 UI theming (5 themes) + Settings menu                  | ✅ (+ System picks a dark variant)                                              |
-| M10 IA pass: unified nutrition/fullness + FF transparency | ⬜                                                                              |
+| M10 IA pass: unified nutrition/fullness + FF transparency | 🚧                                                                              |
 | M11 Meal photos & visual identity                         | ⬜                                                                              |
 | M12 Conversational meal/restaurant assistant & recipes    | ⬜                                                                              |
 | M13 Cost & taste optimization dimensions                  | ⬜                                                                              |
@@ -574,7 +574,7 @@ Light right lift it above the original M).
 
 ---
 
-## Milestone 10 — IA pass: unified nutrition/fullness presentation + FF transparency — ⬜
+## Milestone 10 — IA pass: unified nutrition/fullness presentation + FF transparency — 🚧
 
 Requested: another IA pass — **consistency on how nutrition & fullness is presented, maybe more colors**,
 and it's **unclear how the fullness factor is calculated / hard to get a high score**.

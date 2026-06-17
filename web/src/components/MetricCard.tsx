@@ -30,7 +30,10 @@ export function MetricCard({ day, metric, previousWeightKg, previousWeighInDate 
 
   const remove = useMutation({
     mutationFn: deleteMetric,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['metrics'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['metrics'] })
+      queryClient.invalidateQueries({ queryKey: ['trends-history'] })
+    },
   })
 
   if (editing) {

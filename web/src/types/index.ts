@@ -216,6 +216,14 @@ export interface ExerciseDaySummary {
   total_calories: number
 }
 
+export interface TrendHistory {
+  start_date: string
+  end_date: string
+  entries: DaySummary[]
+  exercise: ExerciseDaySummary[]
+  metrics: BodyMetric[]
+}
+
 // AI estimate for a free-text activity (POST /api/analyze/activity).
 export interface ActivityResult {
   name: string

@@ -46,3 +46,23 @@ export function emaByDate(samples: { date: string; value: number }[], alpha: num
   })
   return out
 }
+
+/** Linear values across a daily axis between dated samples; null before the first and after the last. */
+export function interpolateByDate(samples: { date: string; value: number }[], axis: string[]): (number | null)[] {
+  if (samples.length === 0) return axis.map(() => null)
+  let sampleIndex = 0
+  return axis.map((day) => {
+    while (sampleIndex < samples.length - 1 && samples[sampleIndex + 1].date < day) sampleIndex += 1
+
+    const current = samples[sampleIndex]
+    if (current.date === day) return current.value
+
+    const next = samples[sampleIndex + 1]
+    if (!next || current.date > day || next.date < day) return null
+
+    const span = daysBetween(current.date, next.date)
+    if (span <= 0) return current.value
+    const offset = daysBetween(current.date, day)
+    return current.value + ((next.value - current.value) * offset) / span
+  })
+}

@@ -64,6 +64,7 @@ export function AddExercise({ day, currentSteps, onDone }: Props) {
       await Promise.all(tasks)
       queryClient.invalidateQueries({ queryKey: ['metrics'] })
       queryClient.invalidateQueries({ queryKey: ['exercise'] })
+      queryClient.invalidateQueries({ queryKey: ['trends-history'] })
       onDone()
     } catch {
       setError("Couldn't save. Try again.")

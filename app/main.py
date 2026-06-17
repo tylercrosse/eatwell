@@ -15,7 +15,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
 from app.db import init_db
-from app.routers import analyze, auth, entries, exercise, foods, metrics, targets
+from app.routers import analyze, auth, entries, exercise, foods, metrics, targets, trends
 
 settings = get_settings()
 
@@ -43,6 +43,7 @@ app.include_router(exercise.router, prefix="/api")
 app.include_router(foods.router, prefix="/api")
 app.include_router(metrics.router, prefix="/api")
 app.include_router(targets.router, prefix="/api")
+app.include_router(trends.router, prefix="/api")
 
 
 @app.get("/api/health")

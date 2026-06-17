@@ -466,6 +466,14 @@ class ExerciseDaySummary(BaseModel):
     total_calories: float
 
 
+class TrendHistory(BaseModel):
+    start_date: str  # YYYY-MM-DD
+    end_date: str  # YYYY-MM-DD
+    entries: list[DaySummary]
+    exercise: list[ExerciseDaySummary]
+    metrics: list[MetricRead]
+
+
 # --- Activity AI estimate --------------------------------------------------
 
 

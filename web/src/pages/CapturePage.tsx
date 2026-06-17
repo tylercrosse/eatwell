@@ -333,6 +333,7 @@ export function CapturePage({ day, onLogged }: Props) {
       // Entries may be logged for any day (not just today) — refresh all day lists + trends.
       queryClient.invalidateQueries({ queryKey: ['entries'] })
       queryClient.invalidateQueries({ queryKey: ['entries-range'] })
+      queryClient.invalidateQueries({ queryKey: ['trends-history'] })
       queryClient.invalidateQueries({ queryKey: ['foods', 'recent'] })
       reset()
       onLogged()

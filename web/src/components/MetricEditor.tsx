@@ -26,6 +26,7 @@ export function MetricEditor({ day, metric, onDone }: Props) {
     mutationFn: postMetric,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['metrics'] })
+      queryClient.invalidateQueries({ queryKey: ['trends-history'] })
       onDone()
     },
   })

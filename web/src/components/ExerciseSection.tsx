@@ -20,7 +20,10 @@ export function ExerciseSection({ day }: { day: string }) {
   // Use the most recent logged weight (not just this day's) for the step→kcal estimate.
   const stepKcal = stepsToKcal(steps, latestWeightQuery.data?.weight_kg)
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['exercise'] })
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ['exercise'] })
+    queryClient.invalidateQueries({ queryKey: ['trends-history'] })
+  }
   const remove = useMutation({ mutationFn: deleteExercise, onSuccess: invalidate })
   const update = useMutation({
     mutationFn: ({ id, patch }: { id: number; patch: Partial<ExerciseCreate> }) => patchExercise(id, patch),
@@ -141,7 +144,10 @@ function StepsRow({ metric, stepKcal }: { metric: BodyMetric; stepKcal: number }
   const [editing, setEditing] = useState(false)
   const [steps, setSteps] = useState<number | null>(metric.steps)
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['metrics'] })
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ['metrics'] })
+    queryClient.invalidateQueries({ queryKey: ['trends-history'] })
+  }
   const patch = useMutation({
     mutationFn: (s: number | null) => patchMetric(metric.id, { steps: s }),
     onSuccess: invalidate,
