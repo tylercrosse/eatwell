@@ -21,3 +21,7 @@ web/dev-dist/
 
 # OS / editor
 .DS_Store
+
+# Repo-level agent instructions (overrides global ignores on this machine)
+!AGENTS.md
+!CLAUDE.md

@@ -2,7 +2,6 @@ import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { PhotoCapture } from '../components/PhotoCapture'
 import { EstimateCard, type CaptureDraft, type ItemDraft } from '../components/EstimateCard'
-import { FullnessBadge } from '../components/FullnessBadge'
 import { clampServings, composeServingSize, parseServingSize } from '../lib/serving'
 import { isBeverageForFullness } from '../lib/fullness'
 import { postEstimate, postEstimateText } from '../api/estimate'
@@ -475,7 +474,6 @@ export function CapturePage({ day, onLogged }: Props) {
                               ↻ {times}×
                             </span>
                           )}
-                          <FullnessBadge food={food} variant="compact" />
                           <span>{Math.round(food.protein_g)} g protein</span>
                         </span>
                       </button>

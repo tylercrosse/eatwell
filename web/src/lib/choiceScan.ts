@@ -1,10 +1,11 @@
-import { fullnessFactor, isBeverageForFullness, type Fullness } from './fullness'
+import { isBeverageForFullness } from './fullness'
+import { mealStayingPower, STAYING_POWER_LABELS, type MealStayingPower } from './stayingPower'
 import type { GoalDirection } from './targets'
 import { round } from './totals'
 import type { MenuAnalysisResult, MenuOption } from '../types'
 
 export type ChoiceGoal = GoalDirection | 'unknown'
-export type ChoiceSort = 'recommended' | 'menu' | 'calories' | 'protein' | 'fullness'
+export type ChoiceSort = 'recommended' | 'menu' | 'calories' | 'protein' | 'fiber' | 'stayingPower'
 
 export interface FoodChoice {
   id: string
@@ -29,7 +30,7 @@ export interface FoodChoice {
 
 export interface ScoredFoodChoice {
   choice: FoodChoice
-  fullness: Fullness
+  stayingPower: MealStayingPower
   choiceScore: number
   proteinPer100Kcal: number
   fiberPer100Kcal: number
@@ -73,51 +74,52 @@ export function choicesFromMenuResult(result: MenuAnalysisResult): FoodChoice[] 
   return result.options.map(choiceFromMenuOption)
 }
 
-function scoreChoice(choice: FoodChoice, fullness: Fullness, goal: ChoiceGoal): number {
+function scoreChoice(choice: FoodChoice, stayingPower: MealStayingPower, goal: ChoiceGoal): number {
   const calories = safeNumber(choice.calories)
   const protein = safeNumber(choice.protein_g)
   const proteinDensity = per100Kcal(choice.protein_g, calories)
   const fiberDensity = per100Kcal(choice.fiber_g, calories)
   const beveragePenalty = isBeverageForFullness(choice) ? 10 : 0
-  const lowFullnessPenalty = fullness.tier === 'low' ? 8 : fullness.tier === 'light' ? 3 : 0
+  const lowSupportPenalty = stayingPower.tier === 'light' ? 8 : stayingPower.tier === 'moderate' ? 2 : 0
 
   if (goal === 'lose') {
-    return fullness.score * 22 + proteinDensity * 1.8 + fiberDensity * 1.5 - calories / 120 - beveragePenalty
+    return stayingPower.score * 24 + proteinDensity * 1.8 + fiberDensity * 1.5 - calories / 160 - beveragePenalty
   }
   if (goal === 'gain') {
-    return fullness.score * 12 + protein * 0.9 + proteinDensity * 0.8 + fiberDensity * 0.5 + calories / 120 - lowFullnessPenalty
+    return stayingPower.score * 14 + protein * 0.9 + proteinDensity * 0.8 + fiberDensity * 0.5 + calories / 130 - lowSupportPenalty
   }
-  return fullness.score * 18 + proteinDensity * 1.2 + fiberDensity - calories / 260 - beveragePenalty
+  return stayingPower.score * 20 + proteinDensity * 1.2 + fiberDensity - calories / 260 - beveragePenalty
 }
 
-function reasonFor(choice: FoodChoice, fullness: Fullness, goal: ChoiceGoal): string {
+function reasonFor(choice: FoodChoice, stayingPower: MealStayingPower, goal: ChoiceGoal): string {
   const calories = safeNumber(choice.calories)
   const protein = safeNumber(choice.protein_g)
   const proteinDensity = per100Kcal(choice.protein_g, calories)
   const fiberDensity = per100Kcal(choice.fiber_g, calories)
 
-  if (isBeverageForFullness(choice)) return 'Liquid calories are capped low for fullness.'
+  if (isBeverageForFullness(choice)) return 'Liquid calories count separately because drinks usually have less staying power.'
   if (goal === 'gain' && calories >= 550 && protein >= 25) return 'Useful protein and calories for a gain phase.'
-  if (goal === 'gain' && fullness.score >= 3) return 'Filling enough to anchor a meal; add denser sides if calories are short.'
-  if (fullness.score >= 4) return 'High volume for the calories.'
+  if (goal === 'gain' && stayingPower.tier === 'strong') return 'Strong enough to anchor a meal; add denser sides if calories are short.'
+  if (stayingPower.tier === 'strong' && stayingPower.foodWeightG >= 400) return 'Strong logged portion with useful food volume.'
   if (proteinDensity >= 8) return 'Strong protein per calorie.'
   if (fiberDensity >= 3) return 'Useful fiber for appetite control.'
-  return 'Better fullness than many calorie-dense choices.'
+  if (stayingPower.unknownFoodCalories > 0) return 'Nutrition suggests support, but missing food weight makes volume uncertain.'
+  return `${STAYING_POWER_LABELS[stayingPower.tier]} staying power for this logged portion.`
 }
 
 export function rankFoodChoices(choices: FoodChoice[], goal: ChoiceGoal): ScoredFoodChoice[] {
   const scored = choices.flatMap((choice) => {
-    const fullness = fullnessFactor(choice)
-    if (!fullness) return []
+    const stayingPower = mealStayingPower([choice])
+    if (!stayingPower) return []
     const calories = safeNumber(choice.calories)
     return [
       {
         choice,
-        fullness,
-        choiceScore: scoreChoice(choice, fullness, goal),
+        stayingPower,
+        choiceScore: scoreChoice(choice, stayingPower, goal),
         proteinPer100Kcal: per100Kcal(choice.protein_g, calories),
         fiberPer100Kcal: per100Kcal(choice.fiber_g, calories),
-        reason: reasonFor(choice, fullness, goal),
+        reason: reasonFor(choice, stayingPower, goal),
       },
     ]
   })
@@ -139,12 +141,15 @@ export function sortScoredFoodChoices(items: ScoredFoodChoice[], sort: ChoiceSor
   if (sort === 'protein') {
     return [...items].sort((a, b) => safeNumber(b.choice.protein_g) - safeNumber(a.choice.protein_g) || byMenuOrder(a, b))
   }
-  if (sort === 'fullness') {
-    return [...items].sort((a, b) => b.fullness.score - a.fullness.score || byMenuOrder(a, b))
+  if (sort === 'fiber') {
+    return [...items].sort((a, b) => safeNumber(b.choice.fiber_g) - safeNumber(a.choice.fiber_g) || byMenuOrder(a, b))
+  }
+  if (sort === 'stayingPower') {
+    return [...items].sort((a, b) => b.stayingPower.score - a.stayingPower.score || byMenuOrder(a, b))
   }
 
   return [...items].sort(
-    (a, b) => b.choiceScore - a.choiceScore || b.fullness.score - a.fullness.score || byMenuOrder(a, b),
+    (a, b) => b.choiceScore - a.choiceScore || b.stayingPower.score - a.stayingPower.score || byMenuOrder(a, b),
   )
 }
 

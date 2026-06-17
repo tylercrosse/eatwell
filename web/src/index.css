@@ -39,15 +39,15 @@
 }
 
 :root[data-theme='light'] {
-  --bg: #f8fafc;
-  --bg-deep: #e2e8f0;
+  --bg: #e8ecf3;
+  --bg-deep: #d8dfe9;
   --surface: #ffffff;
   --surface-2: #f1f5f9;
-  --border: #cbd5e1;
+  --border: #dce2e9;
   --text: #0f172a;
   --muted: #64748b;
-  --accent: #059669;
-  --accent-strong: #047857;
+  --accent: #859900;
+  --accent-strong: #859900;
   --on-accent: #ffffff;
   --danger: #dc2626;
   --macro-protein: #2563eb;
@@ -729,6 +729,21 @@ body {
   opacity: 0.85;
 }
 
+.staying-power {
+  align-self: flex-start;
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.staying-power__suffix {
+  font-weight: 600;
+  opacity: 0.85;
+}
+
 /* filling = green/good, low fullness = red — most-filling first. */
 .fullness--very-filling {
   background: color-mix(in srgb, var(--fullness-very-filling) 16%, transparent);
@@ -749,6 +764,23 @@ body {
 .fullness--low {
   background: color-mix(in srgb, var(--fullness-low) 16%, transparent);
   color: var(--fullness-low);
+}
+
+.staying-power--strong {
+  background: color-mix(in srgb, var(--fullness-very-filling) 16%, transparent);
+  color: var(--fullness-very-filling);
+}
+.staying-power--solid {
+  background: color-mix(in srgb, var(--fullness-filling) 16%, transparent);
+  color: var(--fullness-filling);
+}
+.staying-power--moderate {
+  background: color-mix(in srgb, var(--fullness-moderate) 16%, transparent);
+  color: var(--fullness-moderate);
+}
+.staying-power--light {
+  background: color-mix(in srgb, var(--fullness-light) 16%, transparent);
+  color: var(--fullness-light);
 }
 
 .field {
@@ -951,7 +983,7 @@ body {
 .energy-ring__value {
   font-size: clamp(1.25rem, 5.5vw, 1.6rem);
   font-weight: 800;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 
 .energy-ring__unit {
@@ -970,6 +1002,19 @@ body {
   font-size: 0.78rem;
   color: var(--muted);
   font-weight: 600;
+}
+
+.energy-dial__target {
+  stroke: var(--text);
+  stroke-width: 3;
+  stroke-linecap: round;
+  opacity: 0.58;
+}
+
+.energy-dial__marker {
+  stroke: var(--bg);
+  stroke-width: 2.5;
+  filter: drop-shadow(0 2px 4px var(--shadow));
 }
 
 .energy-summary__bars {
@@ -1096,6 +1141,72 @@ body {
   background: var(--surface-2);
 }
 
+/* ---- Staying power meter (overview) ---- */
+.staying-meter {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.staying-meter__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.78rem;
+}
+
+.staying-meter__head .macro-bar__nums {
+  text-align: right;
+  line-height: 1.3;
+}
+
+.staying-meter__bar {
+  display: flex;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--border);
+}
+
+.staying-meter__seg {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.staying-meter__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.staying-meter__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.staying-meter__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.staying-seg--strong {
+  background: var(--fullness-very-filling);
+}
+.staying-seg--solid {
+  background: var(--fullness-filling);
+}
+.staying-seg--moderate {
+  background: var(--fullness-moderate);
+}
+.staying-seg--light {
+  background: var(--fullness-light);
+}
+
 /* ---- Energy balance line ---- */
 .energy-balance-block {
   display: flex;
@@ -1177,7 +1288,7 @@ body {
 .popover__panel {
   position: absolute;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translateX(calc(-50% + var(--popover-shift-x, 0px)));
   z-index: 20;
   min-width: 220px;
   max-width: min(280px, 86vw);
@@ -1363,8 +1474,9 @@ body {
   color: var(--muted);
 }
 
-/* Day-level food/drink volume caption under the fullness meter. */
-.fullness-meter__volume {
+/* Day-level food/drink volume caption under the fullness/staying-power meters. */
+.fullness-meter__volume,
+.staying-meter__volume {
   margin: 0;
   font-size: 0.72rem;
   color: var(--muted);
@@ -2278,6 +2390,11 @@ body {
   background: var(--surface-2);
 }
 
+.day-nav .btn--icon {
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
 /* ---- Entry list ---- */
 .entry-list {
   list-style: none;
@@ -2328,6 +2445,36 @@ body {
 
 .entry__details {
   color: var(--muted);
+}
+
+.entry-support {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: nowrap;
+  opacity: 0.9;
+}
+
+.entry-support--strong {
+  color: var(--fullness-very-filling);
+  background: color-mix(in srgb, var(--fullness-very-filling) 7%, transparent);
+}
+.entry-support--solid {
+  color: var(--fullness-filling);
+  background: color-mix(in srgb, var(--fullness-filling) 7%, transparent);
+}
+.entry-support--moderate {
+  color: var(--fullness-moderate);
+  background: color-mix(in srgb, var(--fullness-moderate) 7%, transparent);
+}
+.entry-support--light {
+  color: var(--muted);
+  background: color-mix(in srgb, var(--surface-2) 70%, transparent);
 }
 
 .nutrition-legend {
@@ -2428,6 +2575,8 @@ body {
 
 .log-actions .btn {
   flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
 }
 
 .trends__hint {

@@ -11,7 +11,18 @@ frontend is swappable — a native Expo app could later use the same backend unc
 app/            FastAPI backend (analyze + entries, SQLite, OpenRouter wrapper)
 web/            Vite + React + TypeScript PWA
 tests/          pytest backend tests
+docs/           Product, launch, and implementation planning docs
 ```
+
+## Project docs
+
+- [AGENTS.md](AGENTS.md) is the canonical guide for AI coding agents working in this repo.
+- [docs/BACKLOG.md](docs/BACKLOG.md) tracks implementation roadmap and feature context.
+- [docs/COMMERCIAL_READINESS.md](docs/COMMERCIAL_READINESS.md) tracks App Store, launch,
+  monetization, privacy, domain, and deployment readiness.
+- [docs/PRODUCT_OPPORTUNITIES.md](docs/PRODUCT_OPPORTUNITIES.md) tracks market-led product
+  opportunities and differentiator ideas.
+- [web/README.md](web/README.md) has frontend-specific commands and conventions.
 
 ## Prerequisites
 
@@ -155,3 +166,10 @@ and `VITE_GOOGLE_CLIENT_ID` (see `web/.env.example`).
   [Authentication](#authentication-google-sign-in).
 - The backend is the source of truth; there's no offline queue (iOS PWAs can evict storage).
 - Deferred: Apple Health/HealthKit, accounts, Postgres, push reminders, native Expo client.
+
+## Agent notes
+
+Before non-trivial code changes, read [AGENTS.md](AGENTS.md) and the relevant docs under
+`docs/`. The worktree may contain in-progress user changes; do not revert or overwrite
+unrelated files. For schema changes, use the additive SQLite migration pattern in
+`app/db.py` and add tests.

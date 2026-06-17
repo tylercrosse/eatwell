@@ -11,12 +11,11 @@ import { AddExercise } from '../components/AddExercise'
 import { CapturePage } from './CapturePage'
 import { deleteEntry, getEntries, patchEntry } from '../api/entries'
 import { getExercise } from '../api/exercise'
-import { getRecentFoods } from '../api/foods'
 import { getLatestMetric, getMetrics } from '../api/metrics'
 import { getTargets } from '../api/targets'
 import { formatDayLabel, localDayKey, shiftDay } from '../lib/date'
 import { sumTotals } from '../lib/totals'
-import { fullnessBreakdown, fullnessScores } from '../lib/fullness'
+import { dayStayingPower, mealStayingPower } from '../lib/stayingPower'
 import { stepsToKcal } from '../lib/activity'
 import { expenditureBreakdown } from '../lib/energy'
 import { groupByMeal } from '../lib/meals'
@@ -38,12 +37,6 @@ export function LogPage({ day, setDay }: Props) {
   const metricQuery = useQuery({ queryKey: ['metrics', day, day], queryFn: () => getMetrics(day, day) })
   const latestWeightQuery = useQuery({ queryKey: ['metrics', 'latest'], queryFn: getLatestMetric })
   const exerciseQuery = useQuery({ queryKey: ['exercise', day], queryFn: () => getExercise(day) })
-  // Your recent foods → the cohort the fullness explainer ranks each food against
-  // ("more filling than X% of your foods"). Frecency-ranked, broad sample, day-independent.
-  const recentQuery = useQuery({
-    queryKey: ['foods', 'recent', 'cohort'],
-    queryFn: () => getRecentFoods(undefined, 'frecency', 100),
-  })
 
   // An edit can move an entry to another day, so invalidate all day lists + the trends range.
   const invalidateEntries = () => {
@@ -58,9 +51,12 @@ export function LogPage({ day, setDay }: Props) {
 
   const entries = entriesQuery.data ?? []
   const totals = sumTotals(entries)
-  const fullness = fullnessBreakdown(entries)
-  const cohort = fullnessScores(recentQuery.data ?? [])
   const groups = groupByMeal(entries)
+  const mealPowers = groups.flatMap((g) => {
+    const power = mealStayingPower(g.entries)
+    return power ? [power] : []
+  })
+  const stayingPower = dayStayingPower(mealPowers)
   const isToday = day === localDayKey()
   const metric = metricQuery.data?.[0]
 
@@ -116,8 +112,7 @@ export function LogPage({ day, setDay }: Props) {
       <EnergySummary
         totals={totals}
         targets={targets}
-        fullness={fullness}
-        fullnessCohort={cohort}
+        stayingPower={stayingPower}
         expenditure={expenditure}
         expenditureBreakdown={expenditureDetail}
         entries={entries}
@@ -143,7 +138,6 @@ export function LogPage({ day, setDay }: Props) {
             savingId={update.isPending ? (update.variables?.id ?? null) : null}
             onSave={(id, patch) => update.mutate({ id, patch })}
             onDelete={(id) => remove.mutate(id)}
-            cohort={cohort}
           />
         ))
       )}

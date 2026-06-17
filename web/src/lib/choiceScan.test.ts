@@ -90,7 +90,7 @@ describe('food choice display metadata', () => {
 })
 
 describe('rankFoodChoices', () => {
-  it('favors filling, protein-rich options for loss goals', () => {
+  it('favors high staying-power, protein-rich options for loss goals', () => {
     const ranked = rankFoodChoices(
       [
         choice({ name: 'Fries', calories: 520, protein_g: 6, fat_g: 28, weight_g: 180, fiber_g: 4 }),
@@ -112,7 +112,8 @@ describe('rankFoodChoices', () => {
     )
 
     expect(ranked[0].choice.name).toBe('Chicken soup')
-    expect(ranked[1].fullness.tier).toBe('low')
+    expect(ranked[1].stayingPower.beverageCalories).toBeGreaterThan(0)
+    expect(ranked[1].stayingPower.tier).toBe('light')
   })
 })
 
@@ -171,7 +172,23 @@ describe('sortScoredFoodChoices', () => {
     expect(sorted.map((item) => item.choice.name)).toEqual(['Steak plate', 'Pasta'])
   })
 
-  it('sorts fullness high first', () => {
+  it('sorts fiber high first', () => {
+    const sorted = sortScoredFoodChoices(
+      rankFoodChoices(
+        [
+          choice({ name: 'Chicken plate', menuOrder: 0, calories: 620, protein_g: 45, fiber_g: 3, weight_g: 420 }),
+          choice({ name: 'Bean chili', menuOrder: 1, calories: 520, protein_g: 28, fiber_g: 15, weight_g: 480 }),
+          choice({ name: 'Turkey wrap', menuOrder: 2, calories: 480, protein_g: 32, fiber_g: 6, weight_g: 330 }),
+        ],
+        'maintain',
+      ),
+      'fiber',
+    )
+
+    expect(sorted.map((item) => item.choice.name)).toEqual(['Bean chili', 'Turkey wrap', 'Chicken plate'])
+  })
+
+  it('sorts staying power high first', () => {
     const sorted = sortScoredFoodChoices(
       rankFoodChoices(
         [
@@ -180,7 +197,7 @@ describe('sortScoredFoodChoices', () => {
         ],
         'unknown',
       ),
-      'fullness',
+      'stayingPower',
     )
 
     expect(sorted.map((item) => item.choice.name)).toEqual(['Lentil soup', 'Mozzarella sticks'])

@@ -1,8 +1,8 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { FullnessPill } from '../components/FullnessBadge'
 import { MenuScanner } from '../components/MenuScanner'
 import { NutritionLegend } from '../components/NutritionLegend'
+import { StayingPowerBadge } from '../components/StayingPowerBadge'
 import { getRecentFoods } from '../api/foods'
 import { getLatestMetric } from '../api/metrics'
 import { getTargets } from '../api/targets'
@@ -26,11 +26,10 @@ import type { RecentFood } from '../types'
 const EMPTY_RECENT: RecentFood[] = []
 const MAX_PERSONAL_FOODS = 10
 const STATIC_BADGE_CLASS: Record<GuideStaticBadgeTone, string> = {
-  'very-filling': 'fullness--very-filling',
-  filling: 'fullness--filling',
-  moderate: 'fullness--moderate',
-  light: 'fullness--light',
-  low: 'fullness--low',
+  strong: 'staying-power--strong',
+  solid: 'staying-power--solid',
+  moderate: 'staying-power--moderate',
+  light: 'staying-power--light',
 }
 const ROLE_BADGE_CLASS: Record<GuideRoleBadgeTone, string> = {
   anchor: 'guide-role-badge--anchor',
@@ -47,12 +46,13 @@ function guideServingMeta(food: RecentFood): string {
 }
 
 function GuideFoodRow({ item }: { item: RankedGuideFood }) {
-  const { food, fullness, reason } = item
+  const { food, reason } = item
   return (
     <div className="guide-food">
       <div className="guide-food__main">
         <div className="guide-food__top">
           <span className="guide-food__name">{food.food_name}</span>
+          <StayingPowerBadge power={item.stayingPower} variant="compact" explain />
           {isBeverageForFullness(food) && <span className="guide-tag guide-tag--warn">Drink</span>}
         </div>
         <div className="guide-food__nutrition">
@@ -61,13 +61,12 @@ function GuideFoodRow({ item }: { item: RankedGuideFood }) {
         </div>
         <p className="guide-food__why">{reason}</p>
       </div>
-      <FullnessPill score={fullness.score} variant="full" />
     </div>
   )
 }
 
 function StaticGuideBadge({ badge }: { badge: GuideStaticBadge }) {
-  return <span className={`fullness guide-badge ${STATIC_BADGE_CLASS[badge.tone]}`}>{badge.label}</span>
+  return <span className={`staying-power guide-badge ${STATIC_BADGE_CLASS[badge.tone]}`}>{badge.label}</span>
 }
 
 function RoleGuideBadge({ badge }: { badge: GuideRoleBadge }) {
@@ -110,9 +109,9 @@ export function GuidePage() {
           <div>
             <span className="guide-eyebrow">Personalized</span>
             <h2>Your best logged servings</h2>
-            <p className="guide-section__sub">Ranked from the serving size and nutrition saved in your food history.</p>
+            <p className="guide-section__sub">Ranked by the same staying-power model used on logged meals.</p>
           </div>
-          {rankedFoods.length > 0 && <span className="guide-count">{rankedFoods.length} scored</span>}
+          {rankedFoods.length > 0 && <span className="guide-count">{rankedFoods.length} ranked</span>}
         </div>
 
         {foodsQuery.isLoading ? (
@@ -121,7 +120,7 @@ export function GuidePage() {
           <p className="error-text">Couldn't load your recent foods.</p>
         ) : visibleFoods.length === 0 ? (
           <p className="empty guide-empty">
-            Log foods with serving weights to build a personal filling-foods list. Until then, use the ideas below.
+            Log foods with calories, protein, and fiber to build a personal staying-power list. Until then, use the ideas below.
           </p>
         ) : (
           <>
@@ -132,8 +131,8 @@ export function GuidePage() {
             </div>
             {unscoredCount > 0 && (
               <p className="guide-footnote">
-                {unscoredCount} recent {unscoredCount === 1 ? 'food was' : 'foods were'} skipped because fullness needs a
-                usable serving weight.
+                {unscoredCount} recent {unscoredCount === 1 ? 'food was' : 'foods were'} skipped because staying power needs
+                usable calories.
               </p>
             )}
           </>
@@ -175,7 +174,7 @@ export function GuidePage() {
         <div className="guide-section__head">
           <div>
             <span className="guide-eyebrow">Portion intentionally</span>
-            <h2>Less filling for the calories</h2>
+            <h2>Lower staying power for the calories</h2>
           </div>
         </div>
         <div className="guide-patterns">

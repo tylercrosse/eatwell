@@ -1,73 +1,84 @@
-# React + TypeScript + Vite
+# Calorie Tracker Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Vite + React + TypeScript PWA for the calorie tracker. The frontend is intentionally thin:
+it owns capture/review UI, local presentation state, React Query caches, chart rendering,
+themes, and PWA behavior while the FastAPI backend remains the source of truth.
 
-Currently, two official plugins are available:
+## Commands
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev
+npm run build
+npm run lint
+npm run test
+npm run preview
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Common local development setup from the repo root:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+```bash
+# terminal 1
+uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# terminal 2
+cd web && npm run dev
 ```
+
+Vite proxies `/api` and `/photos` to `http://localhost:8000`, so local browser calls stay
+same-origin.
+
+## Structure
+
+```text
+src/App.tsx           app shell, auth gate, tab navigation
+src/api/              typed API helpers
+src/components/       reusable UI components
+src/lib/              product math, formatting, prefs, themes
+src/pages/            Log, Trends, Guide, Goals, Capture flows
+src/types/            backend response/request mirrors
+src/index.css         global styles and theme tokens
+```
+
+## Environment
+
+Copy `web/.env.example` to `web/.env.local` when local auth is needed.
+
+- `VITE_GOOGLE_CLIENT_ID` is build-time config for Google Identity Services.
+- `VITE_API_BASE_URL` defaults to `/api`; only override it when the API is on a separate
+  origin.
+
+## Frontend Conventions
+
+- Use React Query for server state and cache invalidation.
+- Keep API shapes in snake_case to match the backend and avoid mapping layers.
+- Keep shared calculations in `src/lib/` and cover meaningful product math with Vitest.
+- Use existing CSS tokens and theme variables instead of hard-coded colors.
+- Preserve mobile/PWA ergonomics; desktop/tablet responsiveness is a planned commercial
+  readiness item, not a reason to break the current phone layout.
+- Keep capture and review flows constrained and fast; logging speed is a core product bet.
+- When adding AI-powered UI, make cost/latency/error states explicit and avoid automatic
+  calls without user intent.
+
+## Verification
+
+For frontend changes, run:
+
+```bash
+npm run build
+npm run lint
+```
+
+Run `npm run test` when changing code under `src/lib/` or anything with existing Vitest
+coverage.
+
+For visual or layout changes, also manually check at phone and desktop widths. Important
+surfaces: Log, capture/review modal, Trends charts, Guide/menu scanner, Goals, Settings,
+and login.
+
+## Planning Docs
+
+- Agent guidance: [`../AGENTS.md`](../AGENTS.md)
+- Implementation roadmap: [`../docs/BACKLOG.md`](../docs/BACKLOG.md)
+- Commercial readiness: [`../docs/COMMERCIAL_READINESS.md`](../docs/COMMERCIAL_READINESS.md)
+- Product opportunities: [`../docs/PRODUCT_OPPORTUNITIES.md`](../docs/PRODUCT_OPPORTUNITIES.md)

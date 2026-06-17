@@ -98,7 +98,7 @@ export function MenuScanner({ goal }: Props) {
         <div>
           <span className="guide-eyebrow">Menu scanner</span>
           <h2>Compare a menu photo</h2>
-          <p className="guide-section__sub">Rank visible options by your goal, fullness, protein, and drink penalty.</p>
+          <p className="guide-section__sub">Rank visible options by your goal, protein, fiber, calories, and staying power.</p>
         </div>
       </div>
 
@@ -154,7 +154,8 @@ export function MenuScanner({ goal }: Props) {
                   <option value="menu">Menu order</option>
                   <option value="calories">Calories, low first</option>
                   <option value="protein">Protein, high first</option>
-                  <option value="fullness">Fullness, high first</option>
+                  <option value="fiber">Fiber, high first</option>
+                  <option value="stayingPower">Staying power, high first</option>
                 </select>
               </label>
             </div>

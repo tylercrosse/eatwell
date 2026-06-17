@@ -48,7 +48,7 @@ export const CHART_PALETTES: Record<ResolvedTheme, ChartPalette> = {
     protein: '#2563eb',
     carbs: '#d97706',
     fat: '#db2777',
-    accent: '#059669',
+    accent: '#4d7c0f',
     danger: '#dc2626',
     expenditure: '#ea580c',
     goal: '#7c3aed',

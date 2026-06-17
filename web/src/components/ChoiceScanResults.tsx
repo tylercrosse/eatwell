@@ -1,4 +1,3 @@
-import { FullnessPill } from './FullnessBadge'
 import { NutritionLegend } from './NutritionLegend'
 import {
   choiceConfidenceCopy,
@@ -8,6 +7,7 @@ import {
 } from '../lib/choiceScan'
 import { isBeverageForFullness } from '../lib/fullness'
 import { round } from '../lib/totals'
+import { StayingPowerBadge } from './StayingPowerBadge'
 
 const CONF_CLASS = {
   high: 'conf--high',
@@ -30,7 +30,7 @@ export function ChoiceScanResults({ items, emptyText = 'No comparable options fo
   return (
     <div className="choice-results">
       {items.map((item, index) => {
-        const { choice, fullness, reason } = item
+        const { choice, reason } = item
         const confidence = choiceConfidenceCopy(choice.confidence)
         const showConfidence = confidence && confidence.tone !== 'high'
         const section = foodChoiceSectionLabel(choice)
@@ -41,6 +41,7 @@ export function ChoiceScanResults({ items, emptyText = 'No comparable options fo
             <div className="choice-row__main">
               <div className="choice-row__top">
                 <span className="choice-row__name">{choice.name}</span>
+                <StayingPowerBadge power={item.stayingPower} variant="compact" explain />
                 {section && <span className="choice-row__section">{section}</span>}
                 {isBeverageForFullness(choice) && <span className="guide-tag guide-tag--warn">Drink</span>}
               </div>
@@ -53,14 +54,13 @@ export function ChoiceScanResults({ items, emptyText = 'No comparable options fo
               <p className="choice-row__why">{reason}</p>
               {choice.sourceText && <span className="choice-row__source">Menu text: {choice.sourceText}</span>}
             </div>
-            <div className="choice-row__side">
-              <FullnessPill score={fullness.score} variant="full" />
-              {showConfidence && (
+            {showConfidence && (
+              <div className="choice-row__side">
                 <span className={`conf choice-row__conf ${CONF_CLASS[confidence.tone]}`}>
                   {confidence.label}
                 </span>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         )
       })}

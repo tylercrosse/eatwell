@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { MacroEditorFields } from './MacroEditorFields'
-import { FullnessBadge } from './FullnessBadge'
 import { NutritionLegend } from './NutritionLegend'
 import { ServingsStepper } from './ServingsStepper'
 import { round } from '../lib/totals'
@@ -17,7 +16,7 @@ export interface ItemDraft {
   protein_g: number
   carbs_g: number
   fat_g: number
-  weight_g: number // edible weight (powers the fullness badge); 0 = unknown
+  weight_g: number // edible weight (feeds staying power); 0 = unknown
   fiber_g: number
   sugar_g: number
   sodium_mg: number
@@ -63,7 +62,7 @@ interface ItemEditorProps {
   onRemove: () => void
 }
 
-/** A collapsible per-item row: name + a fullness/macro summary, expanding to the full editor. */
+/** A collapsible per-item row: name + macro summary, expanding to the full editor. */
 function ItemEditor({ item, single, selected, onToggleSelect, onChange, onRemove }: ItemEditorProps) {
   const [open, setOpen] = useState(single)
   const f = item.servings // ServingsStepper clamps > 0, so safe to divide by
@@ -113,7 +112,6 @@ function ItemEditor({ item, single, selected, onToggleSelect, onChange, onRemove
           }}
         />
         {item.calories * f <= 0 && <span className="input-warn">Needs calories</span>}
-        <FullnessBadge food={item} variant="compact" />
         <label className="estimate__beverage">
           <input type="checkbox" checked={item.is_beverage} onChange={(e) => onChange({ is_beverage: e.target.checked })} />
           Drink

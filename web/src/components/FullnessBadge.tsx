@@ -22,7 +22,7 @@ interface PillProps {
   score: number // 0.5–5
   /** Compact form shows just the colored label (for tight rows); full adds the /5 score. */
   variant?: 'compact' | 'full'
-  /** Tooltip override; defaults to a generic "Fullness factor N / 5". */
+  /** Tooltip override; defaults to a generic "Filling per calorie N / 5". */
   title?: string
 }
 
@@ -30,7 +30,7 @@ interface PillProps {
 export function FullnessPill({ score, variant = 'full', title }: PillProps) {
   const tier = fullnessTier(score)
   return (
-    <span className={`fullness ${TIER_CLASS[tier]}`} title={title ?? `Fullness factor ${score.toFixed(1)} / 5`}>
+    <span className={`fullness ${TIER_CLASS[tier]}`} title={title ?? `Filling per calorie ${score.toFixed(1)} / 5`}>
       {FULLNESS_LABELS[tier]}
       {variant === 'full' && <span className="fullness__value"> · {score.toFixed(1)}/5</span>}
     </span>
@@ -56,7 +56,7 @@ function FullnessExplainer({ food, cohort }: { food: FullnessInput; cohort?: num
   const clamped = Math.abs(ex.raw - ex.score) > 0.05 && !ex.beverageCapped
   return (
     <div>
-      <div className="popover__title">Fullness factor {ex.score.toFixed(1)} / 5</div>
+      <div className="popover__title">Filling per calorie {ex.score.toFixed(1)} / 5</div>
       <div className="contrib-table contrib-table--terms">
         {rows.map((r) => (
           <div className="contrib-table__row" key={r.label}>
@@ -74,7 +74,10 @@ function FullnessExplainer({ food, cohort }: { food: FullnessInput; cohort?: num
       {pct != null && <p className="popover__note">More filling than {pct}% of your recent foods.</p>}
       {ex.beverageCapped && <p className="popover__note">Capped at 1.4 — liquid calories are far less filling.</p>}
       {clamped && <p className="popover__note">Clamped to the 0.5–5 scale.</p>}
-      <p className="popover__note">Calorie density dominates, so "very filling" favors high-volume, watery foods.</p>
+      <p className="popover__note">
+        This is a per-100g efficiency score, not a meal-size estimate. Calorie density dominates, so high-volume foods
+        score highest.
+      </p>
     </div>
   )
 }
@@ -93,12 +96,12 @@ export function FullnessBadge({ food, variant = 'full', explain = false, cohort 
   const f = fullnessFactor(food)
   if (!f) return null
   const title = isBeverageForFullness(food)
-    ? `Fullness factor ${f.score.toFixed(1)} / 5 — capped: liquid calories are far less filling`
-    : `Fullness factor ${f.score.toFixed(1)} / 5 (per 100g)`
+    ? `Filling per calorie ${f.score.toFixed(1)} / 5 — capped: liquid calories are far less filling`
+    : `Filling per calorie ${f.score.toFixed(1)} / 5 (per 100g)`
   const pill = <FullnessPill score={f.score} variant={variant} title={title} />
   if (!explain) return pill
   return (
-    <Popover label="How this fullness score is built" content={<FullnessExplainer food={food} cohort={cohort} />}>
+    <Popover label="How this per-calorie score is built" content={<FullnessExplainer food={food} cohort={cohort} />}>
       {pill}
     </Popover>
   )

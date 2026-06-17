@@ -25,7 +25,7 @@ const food = (patch: Partial<RecentFood> & Pick<RecentFood, 'food_name'>): Recen
 })
 
 describe('rankGuideFoods', () => {
-  it('excludes foods without usable weight', () => {
+  it('keeps foods without weight when calories are usable', () => {
     const ranked = rankGuideFoods(
       [
         food({ food_name: 'Unknown bowl', weight_g: null }),
@@ -34,10 +34,11 @@ describe('rankGuideFoods', () => {
       'lose',
     )
 
-    expect(ranked.map((f) => f.food.food_name)).toEqual(['Greek yogurt'])
+    expect(ranked.map((f) => f.food.food_name)).toContain('Unknown bowl')
+    expect(ranked.find((f) => f.food.food_name === 'Unknown bowl')?.stayingPower.unknownFoodCalories).toBeGreaterThan(0)
   })
 
-  it('puts higher-fullness protein foods above low-fullness foods for loss framing', () => {
+  it('puts higher staying-power protein servings above lighter support foods for loss framing', () => {
     const ranked = rankGuideFoods(
       [
         food({ food_name: 'Almonds', calories: 170, protein_g: 6, fat_g: 15, fiber_g: 3, weight_g: 28 }),
@@ -47,7 +48,7 @@ describe('rankGuideFoods', () => {
     )
 
     expect(ranked[0].food.food_name).toBe('Chicken breast')
-    expect(ranked[0].fullness.score).toBeGreaterThan(ranked[1].fullness.score)
+    expect(ranked[0].stayingPower.score).toBeGreaterThan(ranked[1].stayingPower.score)
   })
 })
 
@@ -106,8 +107,8 @@ describe('static guide data', () => {
     }
   })
 
-  it('labels less-filling rows with a standard fullness badge', () => {
-    const tones = new Set(['very-filling', 'filling', 'moderate', 'light', 'low'])
+  it('labels lower-support rows with standard staying-power badges', () => {
+    const tones = new Set(['strong', 'solid', 'moderate', 'light'])
     for (const row of LESS_FILLING_PATTERNS) {
       expect(row.badge.label).toBeTruthy()
       expect(tones.has(row.badge.tone)).toBe(true)

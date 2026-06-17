@@ -1,15 +1,15 @@
-import { type Fullness, type FullnessTier } from './fullness'
 import { foodChoiceMeta, rankFoodChoices, type FoodChoice } from './choiceScan'
+import type { MealStayingPower, StayingPowerTier } from './stayingPower'
 import type { GoalDirection } from './targets'
 import type { RecentFood } from '../types'
 
 export type GuideGoal = GoalDirection | 'unknown'
-export type GuideStaticBadgeTone = FullnessTier
+export type GuideStaticBadgeTone = StayingPowerTier
 export type GuideRoleBadgeTone = 'anchor' | 'volume' | 'fiber' | 'addon'
 
 export interface RankedGuideFood {
   food: RecentFood
-  fullness: Fullness
+  stayingPower: MealStayingPower
   guideScore: number
   proteinPer100Kcal: number
   fiberPer100Kcal: number
@@ -85,7 +85,7 @@ export function rankGuideFoods(foods: RecentFood[], goal: GuideGoal): RankedGuid
   })
   return rankFoodChoices(choices, goal).map((scored) => ({
     food: byId.get(scored.choice.id)!,
-    fullness: scored.fullness,
+    stayingPower: scored.stayingPower,
     guideScore: scored.choiceScore,
     proteinPer100Kcal: scored.proteinPer100Kcal,
     fiberPer100Kcal: scored.fiberPer100Kcal,
@@ -98,27 +98,27 @@ export function guideGoalCopy(goal: GuideGoal): GuideGoalCopy {
     case 'lose':
       return {
         label: 'Loss',
-        title: 'Find foods that do more per calorie',
-        body: 'Prioritizes foods with stronger fullness, protein, and fiber for the calories they cost.',
+        title: 'Find servings with staying power',
+        body: 'Prioritizes logged portions with stronger meal support, useful protein, fiber, and reasonable calories.',
       }
     case 'gain':
       return {
         label: 'Gain',
         title: 'Stay fed without making calories impossible',
-        body: 'Prioritizes protein and useful calories while still flagging foods that may not keep you full.',
+        body: 'Prioritizes protein and useful calories while still flagging portions that may not hold appetite well.',
         note: 'Very high-volume foods can blunt appetite, so pair them with denser sides when calories are short.',
       }
     case 'maintain':
       return {
         label: 'Maintain',
         title: 'Build meals that hold steady',
-        body: 'Balances fullness, protein, and reasonable calorie density for repeatable everyday choices.',
+        body: 'Balances logged portion size, protein, fiber, calories, and density for repeatable everyday choices.',
       }
     default:
       return {
         label: 'Guide',
-        title: 'Choose foods that are likely to feel filling',
-        body: 'Uses your logged foods when available, plus general patterns that tend to satisfy appetite.',
+        title: 'Choose servings that are likely to hold you',
+        body: 'Uses your logged portions when available, plus general meal-building patterns that tend to satisfy appetite.',
       }
   }
 }
@@ -189,27 +189,27 @@ export const FILLING_FOOD_IDEAS: GuideExampleGroup[] = [
 export const LESS_FILLING_PATTERNS: LessFillingPattern[] = [
   {
     title: 'Caloric drinks',
-    badge: { label: 'Low fullness', tone: 'low' },
-    body: 'Juice, soda, alcohol, sweet coffee drinks, and shakes are capped low because liquids tend to satisfy less.',
+    badge: { label: 'Light support', tone: 'light' },
+    body: 'Juice, soda, alcohol, sweet coffee drinks, and shakes are counted separately because liquids tend to satisfy less.',
   },
   {
     title: 'Oils and spreads',
-    badge: { label: 'Low fullness', tone: 'low' },
+    badge: { label: 'Light support', tone: 'light' },
     body: 'Olive oil, butter, dressings, and sauces add calories quickly without much protein, fiber, or chewing.',
   },
   {
     title: 'Nuts and nut butters',
-    badge: { label: 'Low fullness', tone: 'low' },
+    badge: { label: 'Light support', tone: 'light' },
     body: 'Nutritious and useful for calories, but easy to overshoot because the calorie density is high.',
   },
   {
     title: 'Desserts and snack foods',
-    badge: { label: 'Low fullness', tone: 'low' },
+    badge: { label: 'Light support', tone: 'light' },
     body: 'Chips, candy, pastries, and similar snacks often combine high calories with low protein and low fiber.',
   },
   {
     title: 'High-fat mains',
-    badge: { label: 'Light', tone: 'light' },
-    body: 'Foods like pizza, burgers, creamy pasta, and fried dishes can fit, but portions matter for fullness per calorie.',
+    badge: { label: 'Moderate support', tone: 'moderate' },
+    body: 'Foods like pizza, burgers, creamy pasta, and fried dishes can fit, but portions matter because density moves calories quickly.',
   },
 ]

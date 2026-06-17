@@ -5,11 +5,17 @@ import { dayKeyOf, formatTime, localDayKey, withDayKey } from '../lib/date'
 import { composeServingSize, parseServingSize } from '../lib/serving'
 import { round } from '../lib/totals'
 import { isBeverageForFullness } from '../lib/fullness'
+import {
+  mealStayingPower,
+  STAYING_POWER_LABELS,
+  type StayingPowerTier,
+} from '../lib/stayingPower'
 import { MacroEditorFields } from './MacroEditorFields'
 import { MacroBar } from './MacroBar'
-import { FullnessBadge } from './FullnessBadge'
 import { NutritionLegend } from './NutritionLegend'
+import { Popover } from './Popover'
 import { ServingsStepper } from './ServingsStepper'
+import { StayingPowerExplainer } from './StayingPowerExplainer'
 
 /** Secondary nutrients that do not share the macro/fiber color language. */
 function detailNutrients(e: Entry): string {
@@ -19,12 +25,40 @@ function detailNutrients(e: Entry): string {
   return parts.join(' · ')
 }
 
+const SUPPORT_CLASS: Record<StayingPowerTier, string> = {
+  strong: 'entry-support--strong',
+  solid: 'entry-support--solid',
+  moderate: 'entry-support--moderate',
+  light: 'entry-support--light',
+}
+
+function EntrySupport({ entry }: { entry: Entry }) {
+  const support = mealStayingPower([entry])
+  if (!support) return null
+  const label = STAYING_POWER_LABELS[support.tier]
+  const pill = (
+    <span
+      className={`entry-support ${SUPPORT_CLASS[support.tier]}`}
+      title="How much this logged portion supports meal staying power"
+    >
+      {label} support
+    </span>
+  )
+  return (
+    <Popover
+      label="Why this item supports fullness"
+      content={<StayingPowerExplainer power={support} title={`${label} support`} scope="item" />}
+    >
+      {pill}
+    </Popover>
+  )
+}
+
 interface Props {
   entry: Entry
   saving: boolean
   onSave: (id: number, patch: Partial<EntryCreate>) => void
   onDelete: (id: number) => void
-  cohort?: number[] // recent-food FF scores, for the badge's "more filling than X%" explainer
 }
 
 interface EditForm {
@@ -69,7 +103,7 @@ function formFromEntry(e: Entry): EditForm {
 }
 
 /** One logged entry: a compact display row that expands into an edit form. */
-export function EntryRow({ entry, saving, onSave, onDelete, cohort }: Props) {
+export function EntryRow({ entry, saving, onSave, onDelete }: Props) {
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState<EditForm>(() => formFromEntry(entry))
 
@@ -184,7 +218,6 @@ export function EntryRow({ entry, saving, onSave, onDelete, cohort }: Props) {
   }
 
   const details = detailNutrients(entry)
-  const hasFullness = entry.weight_g != null && entry.weight_g > 0
   return (
     <li className="card entry">
       <div className="entry__main">
@@ -195,12 +228,10 @@ export function EntryRow({ entry, saving, onSave, onDelete, cohort }: Props) {
         </span>
         <MacroBar protein_g={entry.protein_g} carbs_g={entry.carbs_g} fat_g={entry.fat_g} />
         <NutritionLegend food={entry} />
-        {(hasFullness || details) && (
-          <span className="entry__signals">
-            <FullnessBadge food={entry} variant="compact" explain cohort={cohort} />
-            {details && <span className="entry__details">{details}</span>}
-          </span>
-        )}
+        <span className="entry__signals">
+          <EntrySupport entry={entry} />
+          {details && <span className="entry__details">{details}</span>}
+        </span>
       </div>
       <div className="entry__right">
         <span className="entry__cal">{round(entry.calories)}</span>
