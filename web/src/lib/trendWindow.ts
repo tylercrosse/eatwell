@@ -14,6 +14,13 @@ export function windowSize(w: TrendWindow): number {
   return Math.max(0, w.endIndex - w.startIndex + 1)
 }
 
+export function integerWindowBounds(w: TrendWindow, total: number): TrendWindow {
+  if (total <= 1) return { startIndex: 0, endIndex: 0 }
+  const start = clamp(Math.floor(Math.min(w.startIndex, w.endIndex)), 0, total - 1)
+  const end = clamp(Math.ceil(Math.max(w.startIndex, w.endIndex)), start, total - 1)
+  return { startIndex: start, endIndex: end }
+}
+
 export function allTrendWindow(total: number): TrendWindow {
   const last = Math.max(0, total - 1)
   return { startIndex: 0, endIndex: last }
@@ -25,7 +32,7 @@ export function clampTrendWindow(w: TrendWindow, total: number, minSize = MIN_TR
   const requestedStart = Math.min(w.startIndex, w.endIndex)
   const requestedEnd = Math.max(w.startIndex, w.endIndex)
   const size = clamp(requestedEnd - requestedStart + 1, Math.min(minSize, total), total)
-  const start = clamp(Math.round(requestedStart), 0, total - size)
+  const start = clamp(requestedStart, 0, total - size)
   return { startIndex: start, endIndex: start + size - 1 }
 }
 
@@ -42,14 +49,14 @@ export function trailingTrendWindow(total: number, days: number): TrendWindow {
 export function trendWindowEndingAt(total: number, endIndex: number, days: number): TrendWindow {
   if (total <= 1) return { startIndex: 0, endIndex: 0 }
   const size = Math.min(Math.max(1, Math.round(days)), total)
-  const end = clamp(Math.round(endIndex), size - 1, total - 1)
+  const end = clamp(endIndex, size - 1, total - 1)
   return { startIndex: end - size + 1, endIndex: end }
 }
 
 export function panTrendWindow(w: TrendWindow, total: number, deltaDays: number): TrendWindow {
   const size = windowSize(w)
   if (total <= size) return allTrendWindow(total)
-  const start = clamp(Math.round(w.startIndex + deltaDays), 0, total - size)
+  const start = clamp(w.startIndex + deltaDays, 0, total - size)
   return { startIndex: start, endIndex: start + size - 1 }
 }
 
@@ -62,10 +69,10 @@ export function zoomTrendWindow(
   if (total <= 1) return { startIndex: 0, endIndex: 0 }
 
   const currentSize = Math.max(1, windowSize(w))
-  const size = clamp(Math.round(nextSize), Math.min(MIN_TREND_WINDOW_DAYS, total), total)
+  const size = clamp(nextSize, Math.min(MIN_TREND_WINDOW_DAYS, total), total)
   const anchor = clamp(anchorIndex, w.startIndex, w.endIndex)
   const ratio = currentSize <= 1 ? 0.5 : (anchor - w.startIndex) / (currentSize - 1)
-  const start = clamp(Math.round(anchor - ratio * (size - 1)), 0, total - size)
+  const start = clamp(anchor - ratio * (size - 1), 0, total - size)
   return { startIndex: start, endIndex: start + size - 1 }
 }
 
@@ -81,7 +88,7 @@ export function resizeTrendWindowEdge(
 ): TrendWindow {
   if (total <= 1) return { startIndex: 0, endIndex: 0 }
   const minSize = Math.min(MIN_TREND_WINDOW_DAYS, total)
-  const delta = Math.round(deltaDays)
+  const delta = deltaDays
 
   if (edge === 'start') {
     const start = clamp(w.startIndex + delta, 0, w.endIndex - minSize + 1)

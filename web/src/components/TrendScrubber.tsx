@@ -24,8 +24,10 @@ export function TrendScrubber({ axis, windowRange, onWindowChange }: Props) {
   const last = Math.max(1, total - 1)
   const leftPct = (windowRange.startIndex / last) * 100
   const rightPct = 100 - (windowRange.endIndex / last) * 100
-  const startLabel = axis[windowRange.startIndex] ? formatShortDay(axis[windowRange.startIndex]) : ''
-  const endLabel = axis[windowRange.endIndex] ? formatShortDay(axis[windowRange.endIndex]) : ''
+  const startIndex = Math.max(0, Math.min(total - 1, Math.floor(windowRange.startIndex)))
+  const endIndex = Math.max(0, Math.min(total - 1, Math.ceil(windowRange.endIndex)))
+  const startLabel = axis[startIndex] ? formatShortDay(axis[startIndex]) : ''
+  const endLabel = axis[endIndex] ? formatShortDay(axis[endIndex]) : ''
 
   const pxPerDay = () => {
     const rect = trackRef.current?.getBoundingClientRect()
@@ -54,7 +56,7 @@ export function TrendScrubber({ axis, windowRange, onWindowChange }: Props) {
           const rect = event.currentTarget.getBoundingClientRect()
           const center = indexFromTrackX(event.clientX, rect.left, rect.width, total)
           const size = windowSize(windowRange)
-          const start = Math.round(center - (size - 1) / 2)
+          const start = center - (size - 1) / 2
           onWindowChange(clampTrendWindow({ startIndex: start, endIndex: start + size - 1 }, total))
         }}
         onPointerMove={(event) => {

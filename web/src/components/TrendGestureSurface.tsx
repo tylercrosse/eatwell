@@ -21,12 +21,14 @@ interface Props {
   windowRange: TrendWindow
   totalDays: number
   onWindowChange: (windowRange: TrendWindow) => void
+  onGestureActiveChange?: (active: boolean) => void
   suppressClickUntilRef: MutableRefObject<number>
   children: ReactNode
 }
 
 const PAN_INTENT_PX = 8
 const CLICK_SUPPRESS_MS = 350
+const WHEEL_IDLE_MS = 120
 
 function distance(a: Point, b: Point): number {
   return Math.hypot(a.x - b.x, a.y - b.y)
@@ -40,6 +42,7 @@ export function TrendGestureSurface({
   windowRange,
   totalDays,
   onWindowChange,
+  onGestureActiveChange,
   suppressClickUntilRef,
   children,
 }: Props) {
@@ -50,9 +53,10 @@ export function TrendGestureSurface({
   const gestureRef = useRef<Gesture | null>(null)
   const pendingWindowRef = useRef<TrendWindow | null>(null)
   const frameRef = useRef<number | null>(null)
-  const wheelRemainderRef = useRef(0)
   const wheelZoomSizeRef = useRef<number | null>(null)
   const latestTotalDaysRef = useRef(totalDays)
+  const activeRef = useRef(false)
+  const wheelIdleTimerRef = useRef<number | null>(null)
 
   useEffect(() => {
     latestWindowRef.current = windowRange
@@ -66,8 +70,27 @@ export function TrendGestureSurface({
   useEffect(() => {
     return () => {
       if (frameRef.current != null) cancelAnimationFrame(frameRef.current)
+      if (wheelIdleTimerRef.current != null) window.clearTimeout(wheelIdleTimerRef.current)
     }
   }, [])
+
+  const setGestureActive = useCallback(
+    (active: boolean) => {
+      if (activeRef.current === active) return
+      activeRef.current = active
+      onGestureActiveChange?.(active)
+    },
+    [onGestureActiveChange],
+  )
+
+  const markWheelActive = useCallback(() => {
+    setGestureActive(true)
+    if (wheelIdleTimerRef.current != null) window.clearTimeout(wheelIdleTimerRef.current)
+    wheelIdleTimerRef.current = window.setTimeout(() => {
+      wheelIdleTimerRef.current = null
+      setGestureActive(false)
+    }, WHEEL_IDLE_MS)
+  }, [setGestureActive])
 
   const suppressClick = useCallback(() => {
     suppressClickUntilRef.current = Date.now() + CLICK_SUPPRESS_MS
@@ -103,6 +126,7 @@ export function TrendGestureSurface({
       startWindow: latestWindowRef.current,
       anchorIndex: indexFromClientX(midpoint(a, b).x, rect.left, rect.width, latestWindowRef.current),
     }
+    setGestureActive(true)
     suppressClick()
   }
 
@@ -128,6 +152,7 @@ export function TrendGestureSurface({
         const nextSize = baseSize * Math.exp(clampedDelta * 0.01)
         wheelZoomSizeRef.current = Math.min(Math.max(nextSize, Math.min(MIN_TREND_WINDOW_DAYS, total)), total)
         scheduleWindow(zoomTrendWindow(currentWindow, total, wheelZoomSizeRef.current, anchor))
+        markWheelActive()
         suppressClick()
         return
       }
@@ -137,18 +162,15 @@ export function TrendGestureSurface({
 
       wheelZoomSizeRef.current = null
       const pxPerDay = rect.width / Math.max(windowSize(currentWindow) - 1, 1)
-      wheelRemainderRef.current += horizontal / pxPerDay
-      const wholeDays = Math.trunc(wheelRemainderRef.current)
-      if (wholeDays === 0) return
-      wheelRemainderRef.current -= wholeDays
       event.preventDefault()
-      scheduleWindow(panTrendWindow(currentWindow, total, wholeDays))
+      scheduleWindow(panTrendWindow(currentWindow, total, horizontal / pxPerDay))
+      markWheelActive()
       suppressClick()
     }
 
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
-  }, [scheduleWindow, suppressClick])
+  }, [markWheelActive, scheduleWindow, suppressClick])
 
   return (
     <div
@@ -205,6 +227,7 @@ export function TrendGestureSurface({
             return
           }
           gestureRef.current = { ...g, type: 'pan' }
+          setGestureActive(true)
         }
 
         const pxPerDay = rect.width / Math.max(windowSize(g.startWindow) - 1, 1)
@@ -215,11 +238,17 @@ export function TrendGestureSurface({
       }}
       onPointerUpCapture={(event) => {
         pointersRef.current.delete(event.pointerId)
-        if (pointersRef.current.size === 0) gestureRef.current = null
+        if (pointersRef.current.size === 0) {
+          gestureRef.current = null
+          setGestureActive(false)
+        }
       }}
       onPointerCancelCapture={(event) => {
         pointersRef.current.delete(event.pointerId)
-        if (pointersRef.current.size === 0) gestureRef.current = null
+        if (pointersRef.current.size === 0) {
+          gestureRef.current = null
+          setGestureActive(false)
+        }
       }}
     >
       {children}
