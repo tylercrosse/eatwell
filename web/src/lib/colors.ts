@@ -18,7 +18,7 @@ export interface ChartPalette {
   fat: string // --macro-fat — also the body-fat line
   accent: string // --accent — trend of actuals + on-target/deficit
   danger: string // --danger — off-target / surplus
-  expenditure: string // --exp-exercise (burn) — the expenditure line
+  burned: string // --exp-exercise (burn) — the burned line
   goal: string // --exp-bmr — dashed goal-pace projection (where you're aiming)
   projection: string // balance accumulation: "Cumulative" + "Predicted" (its kin)
   muted: string // --muted — axis ticks, zero line
@@ -35,7 +35,7 @@ export const CHART_PALETTES: Record<ResolvedTheme, ChartPalette> = {
     fat: '#f472b6',
     accent: '#34d399',
     danger: '#f87171',
-    expenditure: '#fb923c',
+    burned: '#fb923c',
     goal: '#a78bfa',
     projection: '#38bdf8',
     muted: '#94a3b8',
@@ -50,7 +50,7 @@ export const CHART_PALETTES: Record<ResolvedTheme, ChartPalette> = {
     fat: '#db2777',
     accent: '#4d7c0f',
     danger: '#dc2626',
-    expenditure: '#ea580c',
+    burned: '#ea580c',
     goal: '#7c3aed',
     projection: '#0284c7',
     muted: '#64748b',
@@ -65,7 +65,7 @@ export const CHART_PALETTES: Record<ResolvedTheme, ChartPalette> = {
     fat: '#db61a2',
     accent: '#3fb950',
     danger: '#f85149',
-    expenditure: '#f0883e',
+    burned: '#f0883e',
     goal: '#a371f7',
     projection: '#39c5cf',
     muted: '#8b949e',
@@ -80,7 +80,7 @@ export const CHART_PALETTES: Record<ResolvedTheme, ChartPalette> = {
     fat: '#d33682',
     accent: '#859900',
     danger: '#dc322f',
-    expenditure: '#cb4b16',
+    burned: '#cb4b16',
     goal: '#6c71c4',
     projection: '#2aa198',
     muted: '#657b83',
@@ -95,7 +95,7 @@ export const CHART_PALETTES: Record<ResolvedTheme, ChartPalette> = {
     fat: '#d3869b',
     accent: '#b8bb26',
     danger: '#fb4934',
-    expenditure: '#fe8019',
+    burned: '#fe8019',
     goal: '#b16286',
     projection: '#8ec07c',
     muted: '#a89984',

@@ -79,7 +79,7 @@ SEARCH_FOODS_TOOL = {
 }
 
 _ACTIVITY_SYSTEM_PROMPT = (
-    "You estimate energy expenditure for a described physical activity (e.g. '30 min easy "
+    "You estimate energy burned for a described physical activity (e.g. '30 min easy "
     "weight lifting' or '20 min light jog'). Estimate the duration in minutes, the total "
     "calories burned, and a short activity name, using standard MET values for an adult of "
     "about {weight} kg. Return ONLY data matching the schema. If unsure, still give your best "

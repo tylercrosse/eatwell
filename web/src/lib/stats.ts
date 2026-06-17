@@ -1,5 +1,7 @@
 // Small time-series helpers for the trend charts.
 
+import { daysBetween } from './date'
+
 /** Trailing simple moving average over `window` points. Same length; null until full. */
 export function movingAverage(values: number[], window: number): (number | null)[] {
   return values.map((_, i) => {
@@ -18,6 +20,29 @@ export function ema(values: number[], alpha: number): number[] {
   const out: number[] = []
   values.forEach((v, i) => {
     out.push(i === 0 ? v : alpha * v + (1 - alpha) * out[i - 1])
+  })
+  return out
+}
+
+/**
+ * Time-aware EMA over dated samples. `alpha` is the per-day weight on a new reading; across a
+ * gap of Δ days the prior trend decays geometrically, so the effective weight on the new value
+ * is `1 - (1 - alpha)^Δ` (→ 1 across a long gap, where the stale trend is all but forgotten).
+ * Samples must be ascending by date. Same length as the input.
+ *
+ * This is what keeps an isolated old weigh-in from blending with a recent cluster as if the two
+ * were adjacent days — the plain `ema` above treats every sample as one step regardless of time.
+ */
+export function emaByDate(samples: { date: string; value: number }[], alpha: number): number[] {
+  const out: number[] = []
+  samples.forEach((s, i) => {
+    if (i === 0) {
+      out.push(s.value)
+      return
+    }
+    const gap = Math.max(1, daysBetween(samples[i - 1].date, s.date))
+    const a = 1 - Math.pow(1 - alpha, gap)
+    out.push(a * s.value + (1 - a) * out[i - 1])
   })
   return out
 }

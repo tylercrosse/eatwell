@@ -3,16 +3,16 @@ import type { MacroTotals } from './totals'
 import { ATWATER } from './targets'
 import { mifflinStJeorBmr, KCAL_PER_KG } from './tdee'
 
-// ---- Expenditure: BMR + baseline activity + exercise (Cronometer-style) ----
+// ---- Burned: BMR + baseline activity + exercise (Cronometer-style) ----
 
-export interface ExpenditureBreakdown {
+export interface BurnedBreakdown {
   bmr: number
   baseline: number // non-exercise activity implied by the activity factor
   exercise: number // logged exercise + step-derived burn
   total: number
 }
 
-export interface ExpenditureInputs {
+export interface BurnedInputs {
   weightKg: number | null | undefined
   heightCm: number | null | undefined
   birthYear: number | null | undefined
@@ -23,7 +23,7 @@ export interface ExpenditureInputs {
 }
 
 /**
- * A day's total energy expenditure split into BMR / baseline activity / exercise. Returns null when
+ * A day's total energy burned split into BMR / baseline activity / exercise. Returns null when
  * the profile is incomplete — same guard as `staticTdee`: without weight, height, birth year and sex
  * we can't compute BMR, so the caller falls back to the simpler Consumed/Remaining view.
  *
@@ -31,7 +31,7 @@ export interface ExpenditureInputs {
  * a high activity factor already bakes in some exercise, so adding logged exercise on top can
  * over-count. v1 keeps it simple and additive; an "adjusted baseline" correction is deferred.
  */
-export function expenditureBreakdown(p: ExpenditureInputs): ExpenditureBreakdown | null {
+export function burnedBreakdown(p: BurnedInputs): BurnedBreakdown | null {
   if (!p.weightKg || !p.heightCm || !p.birthYear || (p.sex !== 'male' && p.sex !== 'female')) return null
   const bmr = mifflinStJeorBmr(p.weightKg, p.heightCm, p.currentYear - p.birthYear, p.sex)
   const baseline = bmr * ((p.activityFactor ?? 1.2) - 1)
@@ -93,7 +93,7 @@ export interface BalanceProjection {
 }
 
 export interface BalanceInputs {
-  expenditureTotal: number
+  burnedTotal: number
   consumed: number
   calorieTarget: number
   isToday: boolean
@@ -102,13 +102,13 @@ export interface BalanceInputs {
 
 /**
  * Energy balance expressed as a weekly weight rate. For *today* we project against the calorie
- * target (intake is lumpy and incomplete, while expenditure accrues smoothly all day), so the number
+ * target (intake is lumpy and incomplete, while energy burned accrues smoothly all day), so the number
  * is stable through the day. For a *finished* day we use the realized intake. `KCAL_PER_KG` (7700)
  * converts kcal/day to kg/week. Sign matches `weekly_rate_kg`: negative = loss.
  */
 export function balanceProjection(p: BalanceInputs): BalanceProjection {
   const intake = p.isToday ? p.calorieTarget : p.consumed
-  const kcalPerDay = intake - p.expenditureTotal
+  const kcalPerDay = intake - p.burnedTotal
   return {
     kcalPerDay,
     weeklyKg: (kcalPerDay * 7) / KCAL_PER_KG,

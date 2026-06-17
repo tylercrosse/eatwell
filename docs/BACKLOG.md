@@ -14,14 +14,14 @@ original calorie-density indicator); recent-food quick re-log (search + frecency
 **barcode scanning**; **Google-OAuth multi-user (allowlist, per-user scoping)**; **weight/body-fat logging
 
 + body goals**; **Recharts trends**; calorie/macro targets; editable entry dates; **activity/exercise
-  logging + expenditure** (manual + free-text AI estimate + steps→kcal) with a **net/gross energy toggle**;
+  logging + burned** (manual + free-text AI estimate + steps→kcal) with a **net/gross energy toggle**;
   **TDEE/BMR target recommender** (basic + adaptive); a **folded-in "Add" flow** (capture lives on the Log
   page; tabs are Log / Trends / Goals) with a **calendar day-picker** and **click-a-Trends-value → open that
-  day**; and Trends charts for **expenditure, energy balance, predicted weight, a weight forecast, and goal
+  day**; and Trends charts for **burned, energy balance, predicted weight, a weight forecast, and goal
   progress**.
 
 **Decisions:** quick wins first → auth → health metrics/charts → activity; auth via **Google OAuth +
-email allowlist** (closed access, no public signup); expenditure shown as **net = intake − expenditure
+email allowlist** (closed access, no public signup); burned shown as **net = intake − burned
 with a gross/net toggle**; charts via **Recharts**.
 
 ## Status legend
@@ -34,9 +34,9 @@ with a gross/net toggle**; charts via **Recharts**.
 | M2 Multi-user auth                                        | ✅                                                                              |
 | M3 Health metrics & insights                              | ✅ (3.1 + 3.2 + 3.3 all shipped)                                                |
 | M4 IA & navigation                                        | ✅                                                                              |
-| M5 Activity & expenditure                                 | ✅                                                                              |
+| M5 Activity & burned                                      | ✅                                                                              |
 | M6 Per-item entries (split captures)                      | ✅ (live-classification tuning pending)                                         |
-| M7 Trends: expenditure line + balance weight prediction   | ✅ (+ weight-forecast & goal-progress, beyond original plan)                    |
+| M7 Trends: burned line + balance weight prediction        | ✅ (+ weight-forecast & goal-progress, beyond original plan)                    |
 | M8 Food Guide + Menu scanner                              | ✅                                                                              |
 | M9 UI theming (5 themes) + Settings menu                  | ✅ (+ System picks a dark variant)                                              |
 | M10 IA pass: unified nutrition/fullness + FF transparency | ⬜                                                                              |
@@ -171,7 +171,7 @@ trend ([web/src/lib/stats.ts](web/src/lib/stats.ts)); a 7/30/90-day range select
 `height_cm`, `birth_year`, `sex`, `activity_factor` added to the profile/`Targets`; Mifflin-St Jeor BMR ×
 activity = TDEE in [tdee.ts](web/src/lib/tdee.ts); [GoalsPage](web/src/pages/GoalsPage.tsx) recommends a
 calorie target for the chosen `weekly_rate_kg` (rate signed by the goal direction), and the **adaptive**
-variant infers real TDEE from the trailing 28-day weight trend vs intake. The same `expenditureBreakdown`
+variant infers real TDEE from the trailing 28-day weight trend vs intake. The same `burnedBreakdown`
 ([energy.ts](web/src/lib/energy.ts)) feeds the Log-page net energy and the M7 Trends charts.
 
 ### Shipped beyond the original M3 plan
@@ -239,9 +239,9 @@ lifted to [App.tsx](web/src/App.tsx) (sets `tab='log'` + the day) and threaded i
 
 ---
 
-## Milestone 5 — Activity & expenditure — ✅
+## Milestone 5 — Activity & burned — ✅
 
-→ **Shipped** (model landed differently than the original sketch: no single `Expenditure` row — instead
+→ **Shipped** (model landed differently than the original sketch: no single `Burned` row — instead
 **steps live on `BodyMetric`** and **workouts are their own `ExerciseEntry` table**, which made per-workout
 edit/delete and the M7 range endpoint natural).
 
@@ -255,8 +255,8 @@ edit/delete and the M7 range endpoint natural).
   name; [openrouter.py](app/openrouter.py), [analyze.py](app/routers/analyze.py)). Double-count guard left to
   the user as planned (GoalsPage advises keeping the activity factor at "Sedentary").
 - **Net-calorie integration:** ✅ [EnergySummary](web/src/components/EnergySummary.tsx) has a persistent
-  **net/gross toggle** (`net-mode`) built on `expenditureBreakdown` (BMR + activity + exercise + step burn);
-  per-day expenditure is threaded through [LogPage](web/src/pages/LogPage.tsx).
+  **net/gross toggle** (`net-mode`) built on `burnedBreakdown` (BMR + activity + exercise + step burn);
+  per-day burned is threaded through [LogPage](web/src/pages/LogPage.tsx).
 - **Tests:** [test_exercise.py](tests/test_exercise.py), [test_analyze_activity.py](tests/test_analyze_activity.py).
 
 ---
@@ -355,10 +355,10 @@ Builds on the shipped fullness / `is_beverage` work. **Sequence:** 6.1 → 6.2 �
 
 ---
 
-## Milestone 7 — Trends: expenditure line + energy-balance weight prediction — ✅
+## Milestone 7 — Trends: burned line + energy-balance weight prediction — ✅
 
 → **Shipped (7.1–7.5):** the `GET /exercise/range` endpoint (7.1, [exercise.py](app/routers/exercise.py)); a
-shared per-day `expenditure` memo (7.2); an **expenditure line** on the calories chart (7.3); an
+shared per-day `burned` memo (7.2); an **burned line** on the calories chart (7.3); an
 **Energy-balance chart** with sign-colored net bars + a cumulative line and a `≈ kg` readout (7.4); and a
 **Predicted-weight line** on the weight chart (7.5), all in [TrendsPage](web/src/pages/TrendsPage.tsx) gated on
 profile completeness. Backend tests: [test_exercise.py](tests/test_exercise.py).
@@ -377,19 +377,19 @@ profile completeness. Backend tests: [test_exercise.py](tests/test_exercise.py).
 
 ### Context — the gap
 
-Trends (3.2) plots consumed calories and weight, and activity/expenditure has shipped (exercise CRUD,
-[`expenditureBreakdown`](web/src/lib/energy.ts), [`balanceProjection`](web/src/lib/energy.ts)) — but
-**expenditure never made it onto the Trends charts**. It's only shown for "today" in
-[EnergySummary](web/src/components/EnergySummary.tsx). This surfaces expenditure across the range and uses
-the daily **intake − expenditure** balance to predict weight change, so the modeled trajectory can be read
+Trends (3.2) plots consumed calories and weight, and activity/burned has shipped (exercise CRUD,
+[`burnedBreakdown`](web/src/lib/energy.ts), [`balanceProjection`](web/src/lib/energy.ts)) — but
+**burned never made it onto the Trends charts**. It's only shown for "today" in
+[EnergySummary](web/src/components/EnergySummary.tsx). This surfaces burned across the range and uses
+the daily **intake − burned** balance to predict weight change, so the modeled trajectory can be read
 against the actual scale.
 
-**Decisions (this session):** show expenditure **both** as a line on the calories chart *and* as a dedicated
+**Decisions (this session):** show burned **both** as a line on the calories chart *and* as a dedicated
 energy-balance chart with net bars; predict weight via a **cumulative-balance predicted-weight line overlaid
-on the weight chart** (anchored at the first logged weight; `Δkg = Σ(consumed − expenditure) / 7700`), so the
+on the weight chart** (anchored at the first logged weight; `Δkg = Σ(consumed − burned) / 7700`), so the
 model is compared against actual weigh-ins rather than projected on its own.
 
-All math reuses existing helpers — no new formulas: [`expenditureBreakdown`](web/src/lib/energy.ts),
+All math reuses existing helpers — no new formulas: [`burnedBreakdown`](web/src/lib/energy.ts),
 [`stepsToKcal`](web/src/lib/activity.ts), `KCAL_PER_KG` (7700, [tdee.ts](web/src/lib/tdee.ts)). The dashed
 goal-pace projection (commit `26125e2`, [TrendsPage](web/src/pages/TrendsPage.tsx)) is the rendering template.
 
@@ -402,28 +402,28 @@ rows by `date`, sum `calories`, return a sparse `list[ExerciseDaySummary]` (`{da
 `getExerciseRange(from, to)` in [api/exercise.ts](web/src/api/exercise.ts); `ExerciseDaySummary` type in
 [types/index.ts](web/src/types/index.ts). Add tests mirroring [test_entries.py](tests/test_entries.py).
 
-### 7.2 Per-day expenditure series (frontend) — M
+### 7.2 Per-day burned series (frontend) — M
 
-In [TrendsPage](web/src/pages/TrendsPage.tsx) add an `exercise-range` query and a shared `expenditureByDay`
+In [TrendsPage](web/src/pages/TrendsPage.tsx) add an `exercise-range` query and a shared `burnedByDay`
 memo (consumed by 7.3/7.4/7.5):
 
 - **Weight per day:** forward-fill the last known `weight_kg` ≤ that day (fall back to earliest logged) —
   BMR needs a weight every day but weigh-ins are sparse.
 - **Exercise per day:** `exerciseRange[day].total_calories + stepsToKcal(metric.steps, weightForDay)`.
-- **Total:** `expenditureBreakdown({ weightKg, heightCm, birthYear, sex, activityFactor, exerciseKcal, currentYear: new Date().getFullYear() }).total`. Returns `null` on incomplete profile → expenditure
+- **Total:** `burnedBreakdown({ weightKg, heightCm, birthYear, sex, activityFactor, exerciseKcal, currentYear: new Date().getFullYear() }).total`. Returns `null` on incomplete profile → burned
   features hide and the charts degrade to today's behavior.
 
 Same baseline+exercise additive caveat as EnergySummary — no change.
 
-### 7.3 Expenditure line on the calories chart (frontend) — S
+### 7.3 Burned line on the calories chart (frontend) — S
 
-Add `expenditure` to each `calData` row; render `<Line dataKey="expenditure" name="Expenditure" .../>` on the
+Add `burned` to each `calData` row; render `<Line dataKey="burned" name="Burned" .../>` on the
 existing `ComposedChart` (new `burn: '#fb923c'` color), gated on profile completeness. The gap between the
 stacked-bar top (consumed) and the line is the day's deficit/surplus at a glance.
 
 ### 7.4 Energy-balance chart (frontend) — M
 
-New chart card after the calories chart: `net = consumed − expenditure` per day as bars colored by sign
+New chart card after the calories chart: `net = consumed − burned` per day as bars colored by sign
 (deficit green / surplus red via per-point `<Cell>`), a zero `ReferenceLine`, and a cumulative-net line.
 Header readout: total net kcal over the range and `≈ kg` via `KCAL_PER_KG`. Empty state when profile is
 incomplete.
@@ -433,16 +433,20 @@ incomplete.
 Add `predWeight` to `weightData.rows`:
 
 - Anchor at the first logged weight in range (`anchorKg`, `anchorDate`).
-- Walk the axis accumulating `dailyNet = consumed − expenditure` **only on days with logged intake**
+- Walk the axis accumulating `dailyNet = consumed − burned` **only on days with logged intake**
   (`entry_count > 0`) — never treat an unlogged day as a giant deficit; forward-fill the predicted value
   across gaps and `connectNulls`.
 - `predWeight(day) = round1(kgToDisplay(anchorKg + cumNet / KCAL_PER_KG, unit))`.
 - Render `<Line yAxisId="w" dataKey="predWeight" name="Predicted (balance)" stroke={COLORS.burn} strokeDasharray="2 3" .../>`. Visually distinct from the dashed-purple "Goal pace" (target rate) — this is
   the *actual-intake* model; divergence from `weight`/`trend` exposes TDEE or logging error.
+- **Superseded:** the anchor now sits at the *most recent* (smoothed) weigh-in and projects **forward only**
+  — not the first weight in range — via [predictWeightSeries](web/src/lib/forecast.ts) +
+  [emaByDate](web/src/lib/stats.ts), so the line re-anchors to recent scale readings across travel gaps. The
+  forecast chart also shades an uncertainty cone (see the unsequenced backlog item).
 
 ### Edge cases / decisions
 
-- **Incomplete profile** (no height / birth year / sex) → expenditure line, balance chart, and predicted
+- **Incomplete profile** (no height / birth year / sex) → burned line, balance chart, and predicted
   line all hidden; existing charts unchanged.
 - **Unlogged-intake days** excluded from the prediction (and shown as gaps in net bars), so a missed day
   doesn't fabricate a huge deficit.
@@ -456,14 +460,14 @@ Add `predWeight` to `weightData.rows`:
 - **Backend:** `pytest` — `/exercise/range` per-day grouping, user scoping, and empty-range, mirroring
   [test_entries.py](tests/test_entries.py).
 - **Frontend / e2e:** `tsc -b && vite build` + `eslint`. Run `uvicorn` + `vite dev`, log a few days of food +
-  exercise + weights, open Trends → expenditure line tracks on the calories chart; energy-balance chart shows
+  exercise + weights, open Trends → burned line tracks on the calories chart; energy-balance chart shows
   green/red net bars + cumulative line; weight chart shows the dashed "Predicted (balance)" line near the
   actual trend. Toggle kg/lb and the 7/30/90 range.
 
 ### Dependency
 
-Builds on shipped 3.1 (weight), 3.2 (Trends/Recharts), and activity/expenditure
-(`expenditureBreakdown`, exercise CRUD). **Sequence:** 7.1 → 7.2 → (7.3 ∥ 7.4 ∥ 7.5).
+Builds on shipped 3.1 (weight), 3.2 (Trends/Recharts), and activity/burned
+(`burnedBreakdown`, exercise CRUD). **Sequence:** 7.1 → 7.2 → (7.3 ∥ 7.4 ∥ 7.5).
 
 ---
 
@@ -525,7 +529,7 @@ new fiber/satiety hues, those tokens must be added to all five `[data-theme]` bl
 Requested: theme the UI — **Light, Dark (current), GitHub dark, Solarized dark, Gruvbox dark**.
 
 **Context — today.** Every color is a CSS custom property in a single `:root` block
-([index.css](web/src/index.css)): `--bg / --surface / --surface-2 / --border / --text / --muted / --accent / --accent-strong / --danger`, the macro colors, the expenditure colors, and `color-scheme: dark`.
+([index.css](web/src/index.css)): `--bg / --surface / --surface-2 / --border / --text / --muted / --accent / --accent-strong / --danger`, the macro colors, the burned colors, and `color-scheme: dark`.
 The one hard-coupled exception: **chart colors are duplicated as hex literals in
 [CHART_COLORS](web/src/lib/colors.ts)** because Recharts writes `fill`/`stroke` as SVG presentation
 attributes that can't read `var()`. So a theme has **two surfaces to drive**: the CSS variables and the
@@ -554,7 +558,7 @@ JS chart palette. Prefs today are boolean-only ([usePersistentToggle](web/src/li
 - **9.5 All five palettes — S (data).** Ship tokens for all five at once: Light; Dark (current slate); GitHub
   dark (`#0d1117` bg / `#161b22` surface / `#c9d1d9` text); Solarized dark (base03 `#002b36` / base02 `#073642`
   / base0 `#839496`); Gruvbox dark (`#282828` / `#3c3836` / `#ebdbb2` + its red/green/yellow/aqua). Map the
-  macro / expenditure / fullness hues into each palette's spirit (not just the neutrals) so charts stay legible.
+  macro / burned / fullness hues into each palette's spirit (not just the neutrals) so charts stay legible.
   Mirror each palette in the JS chart map (9.2).
 - Themed PWA `theme-color` meta + manifest background should follow the active theme (iOS status bar).
 
@@ -755,6 +759,11 @@ compute correctly; taste rating persists per user and shifts Guide order; build/
 - **Offline robustness** — audit the installed `vite-plugin-pwa`: cache the shell, queue entry writes offline. (M)
 - **Photo history gallery** — photos are already stored under `/data/photos`. (S)
 - **Timezone note** — timestamps are naive local time; fine single-device, revisit if used across devices.
+- **Data-driven forecast cone** — the Trends weight forecast now shades a heuristic uncertainty band
+  ([bandHalfWidthKg](web/src/lib/forecast.ts): daily-noise floor + a linear systematic-bias term, capped).
+  Once enough daily weigh-ins exist, estimate the user's own daily-weight σ from trend residuals and widen
+  the band as √t (random-walk CI) instead of the fixed heuristic; consider asymmetric bounds when intake
+  logging is sparse. (S–M)
 
 ---
 
@@ -783,7 +792,7 @@ compute correctly; taste rating persists per user and shifts Guide order; build/
 2 (auth) ── foundational, before 3/4/5                      [done]
 3.1 (weight) ──> 3.2 charts ──> 3.3 TDEE ──> M5 steps→kcal  [done]
 M4.2 (lift `day` to App) ──> Trends value → day navigation  [done]
-M5 (activity/expenditure) ──> M7 (expenditure on Trends)    [done]
+M5 (activity/burned) ──> M7 (burned on Trends)    [done]
 remaining: M1 1.4 v2/v3 (saved foods/meals), 1.4r c/g; backlog extras (export, water, …)
 
 new work (M8–M13) — recommended order: M8 → M9 → M10 → M11 → M12 → M13

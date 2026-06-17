@@ -17,10 +17,13 @@ import { formatDayLabel, localDayKey, shiftDay } from '../lib/date'
 import { sumTotals } from '../lib/totals'
 import { dayStayingPower, mealStayingPower } from '../lib/stayingPower'
 import { stepsToKcal } from '../lib/activity'
-import { expenditureBreakdown } from '../lib/energy'
+import { burnedBreakdown } from '../lib/energy'
 import { groupByMeal } from '../lib/meals'
 import { DEFAULT_TARGETS } from '../lib/targets'
 import type { EntryCreate } from '../types'
+
+// How far back to look for the previous weigh-in that the day's weight delta is measured against.
+const WEIGHT_DELTA_LOOKBACK_DAYS = 365
 
 interface Props {
   day: string
@@ -35,6 +38,11 @@ export function LogPage({ day, setDay }: Props) {
   const entriesQuery = useQuery({ queryKey: ['entries', day], queryFn: () => getEntries(day) })
   const targetsQuery = useQuery({ queryKey: ['targets'], queryFn: getTargets })
   const metricQuery = useQuery({ queryKey: ['metrics', day, day], queryFn: () => getMetrics(day, day) })
+  const weightHistoryFrom = shiftDay(day, -WEIGHT_DELTA_LOOKBACK_DAYS)
+  const weightHistoryQuery = useQuery({
+    queryKey: ['metrics', weightHistoryFrom, day],
+    queryFn: () => getMetrics(weightHistoryFrom, day),
+  })
   const latestWeightQuery = useQuery({ queryKey: ['metrics', 'latest'], queryFn: getLatestMetric })
   const exerciseQuery = useQuery({ queryKey: ['exercise', day], queryFn: () => getExercise(day) })
 
@@ -60,21 +68,26 @@ export function LogPage({ day, setDay }: Props) {
   const isToday = day === localDayKey()
   const metric = metricQuery.data?.[0]
 
-  // Net-calorie expenditure for the day: logged exercise + step-derived burn. Steps use the
+  // Most recent weigh-in strictly before this day, for the "since last time" weight delta. Metrics
+  // come back ascending by date, so the last match is the closest prior weigh-in.
+  const priorWeighIn =
+    [...(weightHistoryQuery.data ?? [])].reverse().find((m) => m.weight_kg != null && m.date < day) ?? null
+
+  // Net calories burned for the day: logged exercise + step-derived burn. Steps use the
   // most recent logged weight (you needn't weigh in daily), not just this day's.
   const exerciseKcal = (exerciseQuery.data ?? []).reduce((sum, e) => sum + e.calories, 0)
-  const expenditure = exerciseKcal + stepsToKcal(metric?.steps, latestWeightQuery.data?.weight_kg)
+  const burned = exerciseKcal + stepsToKcal(metric?.steps, latestWeightQuery.data?.weight_kg)
 
-  // Full expenditure split (BMR + baseline + exercise) for the 3-ring view; null if the profile is
+  // Full burned split (BMR + baseline + exercise) for the 3-ring view; null if the profile is
   // incomplete, in which case EnergySummary falls back to the Consumed/Remaining view.
   const targets = targetsQuery.data ?? DEFAULT_TARGETS
-  const expenditureDetail = expenditureBreakdown({
+  const burnedDetail = burnedBreakdown({
     weightKg: latestWeightQuery.data?.weight_kg,
     heightCm: targets.height_cm,
     birthYear: targets.birth_year,
     sex: targets.sex,
     activityFactor: targets.activity_factor,
-    exerciseKcal: expenditure,
+    exerciseKcal: burned,
     currentYear: new Date().getFullYear(),
   })
 
@@ -113,15 +126,20 @@ export function LogPage({ day, setDay }: Props) {
         totals={totals}
         targets={targets}
         stayingPower={stayingPower}
-        expenditure={expenditure}
-        expenditureBreakdown={expenditureDetail}
+        burned={burned}
+        burnedBreakdown={burnedDetail}
         entries={entries}
         isToday={isToday}
         currentWeightKg={latestWeightQuery.data?.weight_kg ?? null}
       />
 
       {metric && (metric.weight_kg != null || metric.body_fat_pct != null) && (
-        <MetricCard day={day} metric={metric} />
+        <MetricCard
+          day={day}
+          metric={metric}
+          previousWeightKg={priorWeighIn?.weight_kg ?? null}
+          previousWeighInDate={priorWeighIn?.date ?? null}
+        />
       )}
 
       {entriesQuery.isLoading ? (

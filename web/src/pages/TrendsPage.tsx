@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
+  Area,
   Bar,
   CartesianGrid,
   Cell,
@@ -14,6 +15,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
+import type { TooltipContentProps } from 'recharts'
 import { UnitToggle } from '../components/UnitToggle'
 import { GoalProgressTrack, type GoalMetric } from '../components/GoalProgress'
 import { getEntriesRange } from '../api/entries'
@@ -21,11 +23,12 @@ import { getExerciseRange } from '../api/exercise'
 import { getMetrics } from '../api/metrics'
 import { getTargets } from '../api/targets'
 import { ATWATER, signedWeeklyRateKg } from '../lib/targets'
-import { expenditureBreakdown, balanceColor } from '../lib/energy'
+import { burnedBreakdown, balanceColor } from '../lib/energy'
 import { MACRO_ORDER, NUTRITION_DISPLAY, type MacroKey } from '../lib/nutritionDisplay'
 import { stepsToKcal } from '../lib/activity'
 import { KCAL_PER_KG } from '../lib/tdee'
-import { ema, movingAverage } from '../lib/stats'
+import { emaByDate, movingAverage } from '../lib/stats'
+import { bandHalfWidthKg, predictWeightSeries } from '../lib/forecast'
 import { daysBetween, formatFullDay, formatShortDay, lastNDays, localDayKey, shiftDay } from '../lib/date'
 import { kgToDisplay, useWeightUnit } from '../lib/units'
 import { round1 } from '../lib/totals'
@@ -91,31 +94,37 @@ export function TrendsPage({ goToDay }: Props) {
   const metricsQuery = useQuery({ queryKey: ['metrics', metricsFrom, to], queryFn: () => getMetrics(metricsFrom, to) })
   const targetsQuery = useQuery({ queryKey: ['targets'], queryFn: getTargets })
 
-  // Weight baseline from the full weigh-in history (range-independent): the weight at the window
-  // start (forward-filled, since weigh-ins are sparse) plus the earliest and latest on record. This
-  // is what lets the weight / expenditure / goal charts work when the last weigh-in predates a short
-  // window — the predicted line then anchors at the window-start weight and accrues the window's net.
+  // Seed weight for the per-day burned (BMR) calc: the weigh-in at or before the window start
+  // (forward-filled, since weigh-ins are sparse). When none precedes the window we fall back to the
+  // LATEST weigh-in — body mass is the best available estimate for BMR, never the stale first entry.
   const baseline = useMemo(() => {
     const loggedW = (metricsQuery.data ?? []).filter((m) => m.weight_kg != null)
     const onBefore = loggedW.filter((m) => m.date <= from)
     const windowStartKg = onBefore.length
       ? (onBefore[onBefore.length - 1].weight_kg as number)
       : loggedW.length
-        ? (loggedW[0].weight_kg as number)
+        ? (loggedW[loggedW.length - 1].weight_kg as number)
         : null
-    return {
-      windowStartKg,
-      firstKg: loggedW.length ? (loggedW[0].weight_kg as number) : null,
-      latestKg: loggedW.length ? (loggedW[loggedW.length - 1].weight_kg as number) : null,
-    }
+    return { windowStartKg }
   }, [metricsQuery.data, from])
 
-  // Per-day total energy expenditure (BMR + baseline activity + exercise + step burn), keyed by day.
+  // "Where you are now": the smoothed value at the most recent weigh-in, range-independent. The
+  // predicted line, the goal-pace line, and goal progress all start from this one point, so the
+  // energy-balance forecast re-anchors to recent scale readings instead of the first entry ever —
+  // and a single noisy reading (hydration, etc.) is damped by the time-aware EMA.
+  const anchor = useMemo(() => {
+    const loggedW = (metricsQuery.data ?? []).filter((m) => m.weight_kg != null)
+    if (!loggedW.length) return { anchorKg: null as number | null, anchorDate: null as string | null }
+    const smoothed = emaByDate(loggedW.map((m) => ({ date: m.date, value: m.weight_kg as number })), WEIGHT_EMA_ALPHA)
+    return { anchorKg: smoothed[smoothed.length - 1], anchorDate: loggedW[loggedW.length - 1].date }
+  }, [metricsQuery.data])
+
+  // Per-day total energy burned (BMR + baseline activity + exercise + step burn), keyed by day.
   // Weight is forward-filled across the axis (BMR needs a weight every day, but weigh-ins are sparse):
   // seed with the weight at the window start, then carry the latest in-window weigh-in forward.
   // `available` is false when the profile is incomplete (no height/birth-year/sex) or there's no
-  // weight on record — the expenditure-derived features then stay hidden.
-  const expenditure = useMemo(() => {
+  // weight on record — the burned-derived features then stay hidden.
+  const burned = useMemo(() => {
     const t = targetsQuery.data
     const exByDate = new Map((exerciseQuery.data ?? []).map((d) => [d.date, d.total_calories]))
     const metricByDate = new Map((metricsQuery.data ?? []).map((m) => [m.date, m]))
@@ -127,7 +136,7 @@ export function TrendsPage({ goToDay }: Props) {
       const m = metricByDate.get(dk)
       if (m?.weight_kg != null) carriedWeight = m.weight_kg
       const exerciseKcal = (exByDate.get(dk) ?? 0) + stepsToKcal(m?.steps, carriedWeight)
-      const b = expenditureBreakdown({
+      const b = burnedBreakdown({
         weightKg: carriedWeight,
         heightCm: t?.height_cm,
         birthYear: t?.birth_year,
@@ -145,14 +154,14 @@ export function TrendsPage({ goToDay }: Props) {
   }, [targetsQuery.data, metricsQuery.data, exerciseQuery.data, baseline, axis, currentYear])
 
   // Calories per day, split by macro contribution (kcal), with a 7-day total-calorie average and
-  // (when the profile is complete) an expenditure line — the gap above the bars is the day's balance.
+  // (when the profile is complete) a burned line — the gap above the bars is the day's balance.
   const calData = useMemo(() => {
     const byDate = new Map((entriesQuery.data ?? []).map((d) => [d.date, d]))
     const totals = axis.map((day) => byDate.get(day)?.total_calories ?? 0)
     const ma = movingAverage(totals, MA_WINDOW)
     return axis.map((day, i) => {
       const d = byDate.get(day)
-      const exp = expenditure.byDay.get(day)
+      const exp = burned.byDay.get(day)
       return {
         dayKey: day,
         date: formatShortDay(day),
@@ -160,12 +169,12 @@ export function TrendsPage({ goToDay }: Props) {
         Fat: Math.round((d?.total_fat_g ?? 0) * ATWATER.fat),
         Carbs: Math.round((d?.total_carbs_g ?? 0) * ATWATER.carbs),
         avg: ma[i] == null ? null : Math.round(ma[i] as number),
-        expenditure: exp == null ? null : Math.round(exp),
+        burned: exp == null ? null : Math.round(exp),
       }
     })
-  }, [entriesQuery.data, axis, expenditure])
+  }, [entriesQuery.data, axis, burned])
 
-  // Daily balance (consumed − expenditure) + a running cumulative, for the energy-balance chart. Only
+  // Daily balance (consumed − burned) + a running cumulative, for the energy-balance chart. Only
   // days with logged intake count — an unlogged day is a gap, never a phantom full-day deficit. The
   // goal daily balance (from the goal's weekly rate) is what each bar is colored against.
   const balanceData = useMemo(() => {
@@ -182,7 +191,7 @@ export function TrendsPage({ goToDay }: Props) {
     let started = false
     for (const dk of axis) {
       const d = byDate.get(dk)
-      const exp = expenditure.byDay.get(dk)
+      const exp = burned.byDay.get(dk)
       let net: number | null = null
       if (d != null && d.entry_count > 0 && exp != null) {
         net = d.total_calories - exp
@@ -204,25 +213,25 @@ export function TrendsPage({ goToDay }: Props) {
       loggedDays,
       goalDailyKcal,
       predictedKg: round1(kgToDisplay(netKcal / KCAL_PER_KG, unit)),
-      hasData: expenditure.available && loggedDays > 0,
+      hasData: burned.available && loggedDays > 0,
     }
-  }, [entriesQuery.data, metricsQuery.data, targetsQuery.data, axis, expenditure, unit])
+  }, [entriesQuery.data, metricsQuery.data, targetsQuery.data, axis, burned, unit])
 
-  // Weight + body-fat on the same daily axis as the calories chart. Actuals + EMA trend, a dashed
-  // goal-pace projection drawn forward from the LAST logged weight at the goal rate (clamped at the
-  // goal; body fat glides to its goal over the same timeline), and a dashed "Predicted" line:
-  // anchored at the window-start weight, adding the running energy balance (Σ net / 7700).
+  // Weight + body-fat on the same daily axis as the calories chart. Actuals + a time-aware EMA
+  // trend, a dashed goal-pace projection drawn forward from your most recent weigh-in at the goal
+  // rate (clamped at the goal; body fat glides to its goal over the same timeline), and a dashed
+  // "Predicted" line: anchored at that same most-recent (smoothed) weight, adding the running
+  // energy balance accrued since (Σ net / 7700). Both projections share one origin point.
   const weightData = useMemo(() => {
     const metrics = metricsQuery.data ?? []
     const byDate = new Map(metrics.map((m) => [m.date, m]))
     const logged = metrics.filter((m) => m.weight_kg != null)
-    const emaVals = ema(logged.map((m) => m.weight_kg as number), WEIGHT_EMA_ALPHA)
-    const emaByDate = new Map(logged.map((m, i) => [m.date, emaVals[i]]))
+    const emaVals = emaByDate(logged.map((m) => ({ date: m.date, value: m.weight_kg as number })), WEIGHT_EMA_ALPHA)
+    const trendByDate = new Map(logged.map((m, i) => [m.date, emaVals[i]]))
 
     const t = targetsQuery.data
-    const last = logged.length ? logged[logged.length - 1] : null
-    const currentKg = last?.weight_kg ?? null
-    const anchorWeightDate = last?.date ?? null
+    const currentKg = anchor.anchorKg // smoothed most-recent weight
+    const anchorWeightDate = anchor.anchorDate
     const goalKg = t?.goal_weight_kg ?? null
     const magKg = Math.abs(t?.weekly_rate_kg ?? 0)
     const dir = goalKg != null && currentKg != null && magKg > 0 ? Math.sign(goalKg - currentKg) : 0
@@ -236,11 +245,24 @@ export function TrendsPage({ goToDay }: Props) {
     const bfDaily =
       dir !== 0 && goalBf != null && currentBf != null && daysToGoal > 0 ? (goalBf - currentBf) / daysToGoal : null
 
-    // Predicted-weight line: from the weight at the window start, add the running energy balance
-    // (Σ net / 7700) — the same cumulative the energy-balance chart plots, mapped onto the scale.
-    const windowStartKg = baseline.windowStartKg
-    const cumByDay = new Map(balanceData.rows.map((r) => [r.dayKey, r.cumNet]))
-    const hasPrediction = expenditure.available && windowStartKg != null
+    // Predicted-weight line: from the most-recent (smoothed) weight, add the energy balance accrued
+    // since — forward only (nothing drawn across the pre-anchor gap). This in-window axis ends today,
+    // so there are no future days here and `avgDailyKg` is unused.
+    const netByDay = new Map(balanceData.rows.flatMap((r) => (r.net == null ? [] : [[r.dayKey, r.net] as const])))
+    const hasPrediction = burned.available && currentKg != null && anchorWeightDate != null
+    const predSeries = hasPrediction
+      ? predictWeightSeries({
+          axis,
+          anchorKg: currentKg as number,
+          anchorDate: anchorWeightDate as string,
+          todayKey: localDayKey(),
+          netByDay,
+          avgDailyKg: 0,
+          goalKg,
+          dir,
+        })
+      : null
+
     type WeightRow = {
       dayKey: string
       date: string
@@ -252,7 +274,7 @@ export function TrendsPage({ goToDay }: Props) {
       predWeight: number | null
     }
     const rows: WeightRow[] = []
-    for (const dk of axis) {
+    axis.forEach((dk, i) => {
       const m = byDate.get(dk)
       let projWeight: number | null = null
       if (dir !== 0 && currentKg != null && goalKg != null && anchorWeightDate != null && dk >= anchorWeightDate) {
@@ -264,40 +286,37 @@ export function TrendsPage({ goToDay }: Props) {
         const raw = currentBf + bfDaily * daysBetween(anchorBfDate, dk)
         projBodyFat = round1(bfDaily < 0 ? Math.max(goalBf, raw) : Math.min(goalBf, raw))
       }
-      let predWeight: number | null = null
-      if (hasPrediction) {
-        predWeight = round1(kgToDisplay((windowStartKg as number) + (cumByDay.get(dk) ?? 0) / KCAL_PER_KG, unit))
-      }
+      const predKg = predSeries?.[i] ?? null
       rows.push({
         dayKey: dk,
         date: formatShortDay(dk),
         weight: m?.weight_kg == null ? null : round1(kgToDisplay(m.weight_kg, unit)),
-        trend: emaByDate.has(dk) ? round1(kgToDisplay(emaByDate.get(dk) as number, unit)) : null,
+        trend: trendByDate.has(dk) ? round1(kgToDisplay(trendByDate.get(dk) as number, unit)) : null,
         bodyFat: m?.body_fat_pct ?? null,
         projWeight,
         projBodyFat,
-        predWeight,
+        predWeight: predKg == null ? null : round1(kgToDisplay(predKg, unit)),
       })
-    }
+    })
     const hasBodyFat = metrics.some((m) => m.body_fat_pct != null)
     return { rows, hasProjection: dir !== 0, hasPrediction, hasBodyFat }
-  }, [metricsQuery.data, targetsQuery.data, balanceData, baseline, expenditure, unit, axis])
+  }, [metricsQuery.data, targetsQuery.data, balanceData, anchor, burned, unit, axis])
 
   // Weight forecast: the same weight/body-fat picture, but the axis runs from the past window out to
-  // the goal-pace finish date. Past = actuals + EMA trend (as in the weight chart). Future = the two
-  // projections continued to the goal: "Goal pace" at the target rate, "Predicted" at the recent
-  // average daily balance — so you can see both lines converge on (or miss) the goal line, and when.
+  // the goal-pace finish date. Past = actuals + the time-aware EMA trend (as in the weight chart).
+  // Future = the two projections continued to the goal: "Goal pace" at the target rate, "Predicted"
+  // at the recent average daily balance (both from your most-recent weight), plus a shaded
+  // uncertainty band around the future Predicted line that widens with the horizon.
   const forecastData = useMemo(() => {
     const metrics = metricsQuery.data ?? []
     const t = targetsQuery.data
     const byDate = new Map(metrics.map((m) => [m.date, m]))
     const loggedW = metrics.filter((m) => m.weight_kg != null)
-    const emaVals = ema(loggedW.map((m) => m.weight_kg as number), WEIGHT_EMA_ALPHA)
-    const emaByDate = new Map(loggedW.map((m, i) => [m.date, emaVals[i]]))
+    const emaVals = emaByDate(loggedW.map((m) => ({ date: m.date, value: m.weight_kg as number })), WEIGHT_EMA_ALPHA)
+    const trendByDate = new Map(loggedW.map((m, i) => [m.date, emaVals[i]]))
 
-    const last = loggedW.length ? loggedW[loggedW.length - 1] : null
-    const currentKg = last?.weight_kg ?? null
-    const anchorWeightDate = last?.date ?? null
+    const currentKg = anchor.anchorKg // smoothed most-recent weight
+    const anchorWeightDate = anchor.anchorDate
     const goalKg = t?.goal_weight_kg ?? null
     const magKg = Math.abs(t?.weekly_rate_kg ?? 0)
     const dir = goalKg != null && currentKg != null && magKg > 0 ? Math.sign(goalKg - currentKg) : 0
@@ -328,13 +347,24 @@ export function TrendsPage({ goToDay }: Props) {
     const bfDaily =
       dir !== 0 && goalBf != null && currentBf != null && daysToGoalBf > 0 ? (goalBf - currentBf) / daysToGoalBf : null
 
-    // Predicted (energy balance): past = window-start weight + running net (reusing the balance
-    // chart's cumulative); future = extrapolate at the recent average daily net.
-    const windowStartKg = baseline.windowStartKg
-    const cumByDay = new Map(balanceData.rows.map((r) => [r.dayKey, r.cumNet]))
-    const hasPrediction = expenditure.available && windowStartKg != null
-    const predNowKg = windowStartKg != null ? windowStartKg + balanceData.netKcal / KCAL_PER_KG : null
+    // Predicted (energy balance), forward-only from the most-recent (smoothed) weight: past =
+    // anchor + net accrued since; future = extrapolate at the recent average daily net.
+    const netByDay = new Map(balanceData.rows.flatMap((r) => (r.net == null ? [] : [[r.dayKey, r.net] as const])))
     const avgDailyKg = balanceData.loggedDays > 0 ? balanceData.netKcal / balanceData.loggedDays / KCAL_PER_KG : 0
+    const hasPrediction = burned.available && currentKg != null && anchorWeightDate != null
+    const predSeries = hasPrediction
+      ? predictWeightSeries({
+          axis: axisF,
+          anchorKg: currentKg as number,
+          anchorDate: anchorWeightDate as string,
+          todayKey,
+          netByDay,
+          avgDailyKg,
+          goalKg,
+          dir,
+        })
+      : null
+    const predNowKg = predSeries ? predSeries[axisF.indexOf(todayKey)] ?? null : null
 
     type ForecastRow = {
       dayKey: string
@@ -345,9 +375,10 @@ export function TrendsPage({ goToDay }: Props) {
       projWeight: number | null
       projBodyFat: number | null
       predWeight: number | null
+      band: [number, number] | null
     }
     const rows: ForecastRow[] = []
-    for (const dk of axisF) {
+    axisF.forEach((dk, i) => {
       const m = byDate.get(dk)
       const isFuture = dk > todayKey
 
@@ -360,24 +391,25 @@ export function TrendsPage({ goToDay }: Props) {
         const raw = currentBf + bfDaily * daysBetween(anchorBfDate, dk)
         projBodyFat = round1(bfDaily < 0 ? Math.max(goalBf, raw) : Math.min(goalBf, raw))
       }
-      let predWeight: number | null = null
-      if (hasPrediction && !isFuture) {
-        predWeight = round1(kgToDisplay((windowStartKg as number) + (cumByDay.get(dk) ?? 0) / KCAL_PER_KG, unit))
-      } else if (hasPrediction && isFuture && predNowKg != null) {
-        const raw = predNowKg + avgDailyKg * daysBetween(todayKey, dk)
-        predWeight = round1(kgToDisplay(dir !== 0 ? clampGoal(raw) : raw, unit))
+      // Uncertainty band around the future Predicted line only — actuals already show past noise.
+      const predKg = predSeries?.[i] ?? null
+      let band: [number, number] | null = null
+      if (isFuture && predKg != null) {
+        const hw = bandHalfWidthKg(daysBetween(todayKey, dk))
+        band = [round1(kgToDisplay(predKg - hw, unit)), round1(kgToDisplay(predKg + hw, unit))]
       }
       rows.push({
         dayKey: dk,
         date: formatShortDay(dk),
         weight: m?.weight_kg == null ? null : round1(kgToDisplay(m.weight_kg, unit)),
-        trend: emaByDate.has(dk) ? round1(kgToDisplay(emaByDate.get(dk) as number, unit)) : null,
+        trend: trendByDate.has(dk) ? round1(kgToDisplay(trendByDate.get(dk) as number, unit)) : null,
         bodyFat: m?.body_fat_pct ?? null,
         projWeight,
         projBodyFat,
-        predWeight,
+        predWeight: predKg == null ? null : round1(kgToDisplay(predKg, unit)),
+        band,
       })
-    }
+    })
 
     // ETA at the recent intake pace — only if you're actually moving toward the goal.
     let predGoalKey: string | null = null
@@ -392,16 +424,17 @@ export function TrendsPage({ goToDay }: Props) {
       hasPrediction,
       hasBodyFat: metrics.some((m) => m.body_fat_pct != null),
       paceLabel,
+      anchorLabel: anchorWeightDate ? formatShortDay(anchorWeightDate) : null,
       goalDisplay: goalKg != null ? round1(kgToDisplay(goalKg, unit)) : null,
       goalDateLabel: goalDateKey ? formatFullDay(goalDateKey) : null,
       predGoalLabel: predGoalKey ? formatFullDay(predGoalKey) : null,
       todayLabel: formatShortDay(todayKey),
     }
-  }, [metricsQuery.data, targetsQuery.data, expenditure, balanceData, baseline, unit, days])
+  }, [metricsQuery.data, targetsQuery.data, burned, balanceData, anchor, unit, days])
 
   // Goal progress on each metric's own scale (non-date x-axis), range-independent. start = earliest
-  // weigh-in on record, now = latest, predicted = the window-start weight plus the window's energy
-  // balance (Σ net / 7700) — a predicted "now". All in the active weight unit.
+  // weigh-in on record, now = the smoothed most-recent weight, predicted = that weight plus the
+  // energy balance accrued since (Σ net / 7700) — a predicted "now". All in the active weight unit.
   const goalProgress = useMemo(() => {
     const metrics = metricsQuery.data ?? []
     const t = targetsQuery.data
@@ -410,10 +443,13 @@ export function TrendsPage({ goToDay }: Props) {
     const disp = (kg: number) => round1(kgToDisplay(kg, unit))
 
     const startKg = loggedW.length ? (loggedW[0].weight_kg as number) : null
-    const nowKg = loggedW.length ? (loggedW[loggedW.length - 1].weight_kg as number) : null
+    const nowKg = anchor.anchorKg // smoothed most-recent weight
     const goalKg = t?.goal_weight_kg ?? null
-    const predKg =
-      baseline.windowStartKg != null && expenditure.available ? baseline.windowStartKg + balanceData.netKcal / KCAL_PER_KG : null
+    const netSinceAnchor =
+      anchor.anchorDate != null
+        ? balanceData.rows.reduce((s, r) => (r.net != null && r.dayKey > (anchor.anchorDate as string) ? s + r.net : s), 0)
+        : 0
+    const predKg = nowKg != null && burned.available ? nowKg + netSinceAnchor / KCAL_PER_KG : null
 
     const startBf = loggedBf.length ? (loggedBf[0].body_fat_pct as number) : null
     const nowBf = loggedBf.length ? (loggedBf[loggedBf.length - 1].body_fat_pct as number) : null
@@ -435,16 +471,16 @@ export function TrendsPage({ goToDay }: Props) {
       metricsOut.push({ key: 'bodyfat', label: 'Body fat', unit: '%', start: round1(startBf), now: round1(nowBf), goal: round1(goalBf) })
     }
     return { metrics: metricsOut, hasGoal: metricsOut.length > 0 }
-  }, [metricsQuery.data, targetsQuery.data, expenditure, balanceData, baseline, unit])
+  }, [metricsQuery.data, targetsQuery.data, burned, balanceData, anchor, unit])
 
   const hasEntries = (entriesQuery.data?.length ?? 0) > 0
   const hasWeight = (metricsQuery.data ?? []).some((r) => r.weight_kg != null)
   const target = targetsQuery.data?.calorie_target
 
   // Tight y-axis for the calories chart: ~200 kcal of headroom above the tallest thing drawn — a
-  // day's stacked macro total, the expenditure line, or the intake target — rounded up to 100.
+  // day's stacked macro total, the burned line, or the intake target — rounded up to 100.
   const calDomainMax = useMemo(() => {
-    const peak = calData.reduce((m, r) => Math.max(m, r.Protein + r.Fat + r.Carbs, r.expenditure ?? 0), target ?? 0)
+    const peak = calData.reduce((m, r) => Math.max(m, r.Protein + r.Fat + r.Carbs, r.burned ?? 0), target ?? 0)
     return peak > 0 ? Math.ceil((peak + 200) / 100) * 100 : 'auto'
   }, [calData, target])
 
@@ -464,6 +500,28 @@ export function TrendsPage({ goToDay }: Props) {
   const barColor = (net: number | null): string => {
     if (goalAware && net != null) return balanceColor(net - (balanceData.goalDailyKcal as number)) as string
     return (net ?? 0) < 0 ? C.accent : C.danger
+  }
+
+  // Forecast tooltip: fold the uncertainty band into the Predicted row as "± half-width" and drop
+  // its own row, so one concept reads as one line (e.g. "Predicted : 197.2 ± 2.1").
+  const renderForecastTooltip = ({ active, payload, label }: TooltipContentProps) => {
+    if (!active || !payload?.length) return null
+    return (
+      <div style={{ ...TOOLTIP.contentStyle, padding: '8px 10px', lineHeight: 1.5 }}>
+        <p style={{ ...TOOLTIP.labelStyle, margin: '0 0 4px' }}>{label}</p>
+        {payload.map((p) => {
+          if (p.dataKey === 'band' || p.value == null) return null
+          const band = (p.payload as { band?: [number, number] | null } | undefined)?.band
+          const pm = p.dataKey === 'predWeight' && band ? ` ± ${round1((band[1] - band[0]) / 2)}` : ''
+          return (
+            <p key={String(p.dataKey)} style={{ ...TOOLTIP.itemStyle, margin: 0 }}>
+              {p.name} : {p.value}
+              {pm}
+            </p>
+          )
+        })}
+      </div>
+    )
   }
 
   return (
@@ -504,7 +562,7 @@ export function TrendsPage({ goToDay }: Props) {
               <XAxis dataKey="date" tick={AXIS_TICK} tickLine={false} axisLine={{ stroke: C.grid }} minTickGap={24} />
               <YAxis tick={AXIS_TICK} tickLine={false} axisLine={false} width={52} domain={[0, calDomainMax]} allowDataOverflow />
               <Tooltip {...TOOLTIP} />
-              {/* itemSorter={null} keeps declaration order (Protein, Fat, Carbs, Trend, Expenditure)
+              {/* itemSorter={null} keeps declaration order (Protein, Fat, Carbs, Trend, Burned)
                   so the macros stay grouped; the default 'value' sorter alphabetizes and splits them. */}
               <Legend wrapperStyle={{ fontSize: 11 }} itemSorter={null} />
               {MACRO_ORDER.map((key, i) => (
@@ -518,11 +576,11 @@ export function TrendsPage({ goToDay }: Props) {
                 />
               ))}
               <Line dataKey="avg" name="Trend" stroke={C.accent} strokeWidth={2} dot={false} connectNulls legendType="line" />
-              {expenditure.available && (
+              {burned.available && (
                 <Line
-                  dataKey="expenditure"
-                  name="Expenditure"
-                  stroke={C.expenditure}
+                  dataKey="burned"
+                  name="Burned"
+                  stroke={C.burned}
                   strokeWidth={2}
                   dot={false}
                   connectNulls
@@ -634,7 +692,8 @@ export function TrendsPage({ goToDay }: Props) {
             {(weightData.hasPrediction || weightData.hasProjection) && (
               <p className="chart-card__note">
                 {weightData.hasProjection && 'Goal pace = your target rate. '}
-                {weightData.hasPrediction && 'Predicted = projected from what you’ve actually eaten vs burned.'}
+                {weightData.hasPrediction &&
+                  'Predicted = from your most recent weigh-in, projected by what you’ve eaten vs burned since.'}
               </p>
             )}
           </>
@@ -662,7 +721,7 @@ export function TrendsPage({ goToDay }: Props) {
               </p>
             )}
             <ResponsiveContainer width="100%" height={240}>
-              <LineChart
+              <ComposedChart
                 data={forecastData.rows}
                 syncId="trends"
                 syncMethod="value"
@@ -680,8 +739,13 @@ export function TrendsPage({ goToDay }: Props) {
                 {forecastData.hasBodyFat && (
                   <YAxis yAxisId="bf" orientation="right" tick={AXIS_TICK} tickLine={false} axisLine={false} width={32} domain={padDomain(0.3)} />
                 )}
-                <Tooltip {...TOOLTIP} />
+                {/* Custom content folds the band into the Predicted row (see renderForecastTooltip). */}
+                <Tooltip content={renderForecastTooltip} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
+                {/* Declared before the lines so the shaded cone sits underneath them. */}
+                {forecastData.hasPrediction && (
+                  <Area yAxisId="w" dataKey="band" name="Forecast range" stroke="none" fill={C.projection} fillOpacity={0.12} connectNulls isAnimationActive={false} legendType="none" activeDot={false} />
+                )}
                 {forecastData.goalDisplay != null && (
                   <ReferenceLine yAxisId="w" y={forecastData.goalDisplay} stroke={C.goal} strokeDasharray="4 4" label={{ value: 'goal', fill: C.muted, fontSize: 10, position: 'insideBottomRight' }} />
                 )}
@@ -698,8 +762,13 @@ export function TrendsPage({ goToDay }: Props) {
                 {forecastData.hasBodyFat && (
                   <Line yAxisId="bf" dataKey="projBodyFat" name="BF goal" stroke={C.fat} strokeWidth={1.5} strokeDasharray="5 4" dot={false} connectNulls />
                 )}
-              </LineChart>
+              </ComposedChart>
             </ResponsiveContainer>
+            <p className="chart-card__note">
+              Goal pace = your target; Predicted = your recent intake
+              {forecastData.anchorLabel ? `, from your ${forecastData.anchorLabel} weigh-in` : ''}. Shaded = forecast
+              uncertainty, widening the further out you look.
+            </p>
           </>
         ) : (
           <p className="muted chart-card__empty">Set a goal weight and weekly rate in Goals to project your finish date.</p>

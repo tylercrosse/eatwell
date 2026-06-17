@@ -1421,7 +1421,7 @@ body {
   border-radius: 50%;
 }
 
-/* Two-column "calc" variant (Expenditure − Consumed = Deficit). */
+/* Two-column "calc" variant (Burned − Consumed = Deficit). */
 .contrib-table--calc .contrib-table__row,
 .contrib-table--terms .contrib-table__row {
   grid-template-columns: 1fr auto;
@@ -2730,6 +2730,12 @@ body {
 
 .entry__cal--burn {
   color: var(--exp-exercise);
+}
+
+/* Weight change vs the previous weigh-in — same prominent figure as a calorie value, but neutral
+   in color since a gain/loss isn't inherently good or bad (depends on the goal). */
+.entry__cal--neutral {
+  color: var(--text);
 }
 
 .goals__rec {

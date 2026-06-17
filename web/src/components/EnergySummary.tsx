@@ -20,7 +20,7 @@ import {
   type ContribKey,
   type Contributor,
   type MacroEnergy,
-  type ExpenditureBreakdown,
+  type BurnedBreakdown,
   type BalanceProjection,
 } from '../lib/energy'
 import { KCAL_PER_KG } from '../lib/tdee'
@@ -39,19 +39,19 @@ interface Props {
   totals: MacroTotals
   targets: Targets
   stayingPower: DayStayingPower
-  expenditure: number // kcal burned this day (steps + exercise); 0 if none
-  expenditureBreakdown: ExpenditureBreakdown | null // null when the profile is incomplete
+  burned: number // kcal burned this day (steps + exercise); 0 if none
+  burnedBreakdown: BurnedBreakdown | null // null when the profile is incomplete
   entries: Entry[]
   isToday: boolean
   currentWeightKg: number | null // latest weigh-in; gives the goal rate its lose/gain direction
 }
 
-/** Cronometer-inspired daily energy summary: Consumed / Expenditure / Deficit rings with macro and
+/** Cronometer-inspired daily energy summary: Consumed / Burned / Deficit rings with macro and
  *  per-food breakdown popovers. Falls back to the simpler Consumed/Remaining view when the profile
- *  is incomplete (no BMR → no expenditure breakdown). */
-export function EnergySummary({ totals, targets, stayingPower, expenditure, expenditureBreakdown: eb, entries, isToday, currentWeightKg }: Props) {
+ *  is incomplete (no BMR → no burned breakdown). */
+export function EnergySummary({ totals, targets, stayingPower, burned, burnedBreakdown: eb, entries, isToday, currentWeightKg }: Props) {
   if (!eb) {
-    return <LegacyEnergySummary totals={totals} targets={targets} stayingPower={stayingPower} expenditure={expenditure} />
+    return <LegacyEnergySummary totals={totals} targets={targets} stayingPower={stayingPower} burned={burned} />
   }
 
   const grams = macroGramTargets(targets)
@@ -61,7 +61,7 @@ export function EnergySummary({ totals, targets, stayingPower, expenditure, expe
   const me = macroEnergy(totals)
   const balanceKcal = consumed - eb.total
   const bp = balanceProjection({
-    expenditureTotal: eb.total,
+    burnedTotal: eb.total,
     consumed,
     calorieTarget: target,
     isToday,
@@ -72,7 +72,7 @@ export function EnergySummary({ totals, targets, stayingPower, expenditure, expe
     value: macroEnergyValue(me, key),
     color: cssVar(NUTRITION_DISPLAY[key].colorVar),
   }))
-  const expSegments = [
+  const burnedSegments = [
     { value: eb.bmr, color: 'var(--exp-bmr)' },
     { value: eb.baseline, color: 'var(--exp-baseline)' },
     { value: eb.exercise, color: 'var(--exp-exercise)' },
@@ -80,7 +80,7 @@ export function EnergySummary({ totals, targets, stayingPower, expenditure, expe
 
   // Accounting view: energy in (+) and out (−) sum to the balance (+1853 and −3308 → −1455).
   const consumedValue = signedKcal(consumed)
-  const expenditureValue = signedKcal(-eb.total)
+  const burnedValue = signedKcal(-eb.total)
   // "Balance" dial: top is the plan balance; left/right show a steeper deficit or higher intake.
   const balanceLabel = `Balance${isToday ? ' (so far)' : ''}`
   const balanceValue = signedKcal(balanceKcal)
@@ -96,15 +96,15 @@ export function EnergySummary({ totals, targets, stayingPower, expenditure, expe
         <Popover label="Calories consumed breakdown" placement="bottom" content={<ConsumedDetail me={me} />}>
           <SegmentedRing label="Consumed" value={consumedValue} unit="kcal" segments={consumedSegments} />
         </Popover>
-        <Popover label="Energy expenditure breakdown" placement="bottom" content={<ExpenditureDetail eb={eb} />}>
-          <SegmentedRing label="Expenditure" value={expenditureValue} unit="kcal" segments={expSegments} />
+        <Popover label="Energy burned breakdown" placement="bottom" content={<BurnedDetail eb={eb} />}>
+          <SegmentedRing label="Burned" value={burnedValue} unit="kcal" segments={burnedSegments} />
         </Popover>
         <Popover
           label="Energy balance details"
           placement="bottom"
           content={
             <DeficitDetail
-              expenditure={eb.total}
+              burned={eb.total}
               consumed={consumed}
               balanceKcal={balanceKcal}
               balanceGapKcal={balanceGapKcal}
@@ -160,32 +160,32 @@ export function EnergySummary({ totals, targets, stayingPower, expenditure, expe
   )
 }
 
-/** The pre-redesign view, shown when there's no expenditure breakdown (incomplete profile). */
+/** The pre-redesign view, shown when there's no burned breakdown (incomplete profile). */
 function LegacyEnergySummary({
   totals,
   targets,
   stayingPower,
-  expenditure,
+  burned,
 }: {
   totals: MacroTotals
   targets: Targets
   stayingPower: DayStayingPower
-  expenditure: number
+  burned: number
 }) {
   const [netMode, setNetMode] = usePersistentToggle('net-mode', true)
   const grams = macroGramTargets(targets)
   const fiberTarget = fiberGramTarget(targets)
   const target = targets.calorie_target
   const consumed = totals.calories
-  const useNet = expenditure > 0 && netMode
-  const remaining = useNet ? target - consumed + expenditure : target - consumed
+  const useNet = burned > 0 && netMode
+  const remaining = useNet ? target - consumed + burned : target - consumed
   const consumedFrac = target > 0 ? consumed / target : 0
 
   return (
     <div className="card energy-summary">
-      {expenditure > 0 && (
+      {burned > 0 && (
         <div className="energy-summary__net">
-          <span className="muted">🔥 {round(expenditure)} kcal burned</span>
+          <span className="muted">🔥 {round(burned)} kcal burned</span>
           <div className="seg" role="group" aria-label="Calorie mode">
             <button className={`seg__btn ${!netMode ? 'is-active' : ''}`} onClick={() => setNetMode(false)}>
               Gross
@@ -215,7 +215,7 @@ function LegacyEnergySummary({
         />
       </div>
 
-      <p className="muted energy-summary__hint">Add your height, age &amp; sex in Goals to see expenditure &amp; deficit.</p>
+      <p className="muted energy-summary__hint">Add your height, age &amp; sex in Goals to see calories burned &amp; deficit.</p>
 
       <div className="energy-summary__bars">
         {NUTRIENT_ORDER.map((key) => {
@@ -271,7 +271,7 @@ function ConsumedDetail({ me }: { me: MacroEnergy }) {
   )
 }
 
-function ExpenditureDetail({ eb }: { eb: ExpenditureBreakdown }) {
+function BurnedDetail({ eb }: { eb: BurnedBreakdown }) {
   const rows = [
     { label: 'Basal metabolic rate (BMR)', kcal: eb.bmr, color: 'var(--exp-bmr)' },
     { label: 'Baseline activity', kcal: eb.baseline, color: 'var(--exp-baseline)' },
@@ -279,7 +279,7 @@ function ExpenditureDetail({ eb }: { eb: ExpenditureBreakdown }) {
   ]
   return (
     <div>
-      <div className="popover__title">Energy expenditure</div>
+      <div className="popover__title">Energy burned</div>
       <div className="contrib-table">
         {rows.map((r) => (
           <div className="contrib-table__row" key={r.label}>
@@ -298,7 +298,7 @@ function ExpenditureDetail({ eb }: { eb: ExpenditureBreakdown }) {
 }
 
 function DeficitDetail({
-  expenditure,
+  burned,
   consumed,
   balanceKcal,
   balanceGapKcal,
@@ -306,7 +306,7 @@ function DeficitDetail({
   isToday,
   guidance,
 }: {
-  expenditure: number
+  burned: number
   consumed: number
   balanceKcal: number
   balanceGapKcal: number
@@ -329,8 +329,8 @@ function DeficitDetail({
           <span className="contrib-table__val">{signedKcal(consumed)} kcal</span>
         </div>
         <div className="contrib-table__row">
-          <span className="contrib-table__name">Expenditure</span>
-          <span className="contrib-table__val">{signedKcal(-expenditure)} kcal</span>
+          <span className="contrib-table__name">Burned</span>
+          <span className="contrib-table__val">{signedKcal(-burned)} kcal</span>
         </div>
         <div className="contrib-table__row contrib-table__row--total">
           <span className="contrib-table__name">{word}</span>
@@ -515,7 +515,7 @@ interface Segment {
   color: string
 }
 
-/** A donut whose arc is split into consecutive macro/expenditure segments. */
+/** A donut whose arc is split into consecutive macro/burned segments. */
 function SegmentedRing({
   label,
   value,
