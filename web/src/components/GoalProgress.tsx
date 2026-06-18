@@ -11,6 +11,8 @@ export interface GoalMetric {
   now: number
   goal: number
   predicted?: number | null // where the energy-balance line lands; weight only
+  nowLabel?: string // what `now` represents, e.g. 'trend' for the smoothed weight (default 'now')
+  nowHint?: string // tooltip explaining how `now` is derived
 }
 
 /** Signed fraction of the way from start → goal (1 = at goal, <0 = moved the wrong way). */
@@ -21,6 +23,12 @@ function frac(m: { start: number; now: number; goal: number }): number {
 const pct = (f: number) => Math.round(f * 100)
 const clampPct = (f: number) => Math.min(Math.max(f, 0), 1) * 100
 const fmtVal = (v: number, unit: string) => (unit === '%' ? `${v}%` : `${v} ${unit}`)
+/** Signed change from start → now, e.g. "−5.1 lb" / "+0.4%". */
+function fmtDelta(start: number, now: number, unit: string): string {
+  const d = Math.round((now - start) * 10) / 10
+  const sign = d > 0 ? '+' : d < 0 ? '−' : ''
+  return `${sign}${fmtVal(Math.abs(d), unit)}`
+}
 
 export function GoalProgressTrack({ metrics }: { metrics: GoalMetric[] }) {
   const C = useChartColors()
@@ -38,7 +46,10 @@ export function GoalProgressTrack({ metrics }: { metrics: GoalMetric[] }) {
             <div className="goal-track__head">
               <span className="goal-track__label">{m.label}</span>
               <span className="goal-track__pct">
-                now {fmtVal(m.now, m.unit)} · {pct(f)}% there
+                <span title={m.nowHint}>
+                  {m.nowLabel ?? 'now'} {fmtVal(m.now, m.unit)}
+                </span>{' '}
+                <span className="goal-track__delta">{fmtDelta(m.start, m.now, m.unit)}</span> · {pct(f)}% there
                 {predFrac != null && (
                   <>
                     {' '}·{' '}

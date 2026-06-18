@@ -2421,9 +2421,17 @@ body {
 }
 
 .chart-card {
+  --chart-bleed-left: 4px;
+  --chart-bleed-right: 4px;
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.chart-card > .trend-gesture-surface {
+  width: calc(100% + var(--chart-bleed-left) + var(--chart-bleed-right));
+  margin-left: calc(0px - var(--chart-bleed-left));
+  margin-right: calc(0px - var(--chart-bleed-right));
 }
 
 .chart-card__title {
@@ -2486,6 +2494,11 @@ body {
   font-size: 0.8rem;
   color: var(--muted);
   text-align: right;
+}
+
+.goal-track__delta {
+  color: var(--text);
+  font-weight: 600;
 }
 
 .goal-track__rail {
