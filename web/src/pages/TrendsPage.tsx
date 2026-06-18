@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   Area,
@@ -53,7 +53,103 @@ const CHART_RIGHT_AXIS_WIDTH = 32
 const CHART_MARGIN_SINGLE_AXIS = { top: 8, right: 4, bottom: 0, left: 0 }
 const CHART_MARGIN_DUAL_AXIS = { top: 8, right: 4, bottom: 0, left: 0 }
 
+type TrendChartId = 'calories' | 'balance' | 'weight'
+type TrendChartMode = 'card' | 'fullscreen'
+
 const macroChartKey = (key: MacroKey) => NUTRITION_DISPLAY[key].label
+
+function ExpandIcon() {
+  return (
+    <svg className="chart-card__expand-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M8 4H4v4" />
+      <path d="M4 4l6 6" />
+      <path d="M16 4h4v4" />
+      <path d="M20 4l-6 6" />
+      <path d="M8 20H4v-4" />
+      <path d="M4 20l6-6" />
+      <path d="M16 20h4v-4" />
+      <path d="M20 20l-6-6" />
+    </svg>
+  )
+}
+
+function ContractIcon() {
+  return (
+    <svg className="trend-fullscreen__contract-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M9 4v5H4" />
+      <path d="M4 4l5 5" />
+      <path d="M15 4v5h5" />
+      <path d="M20 4l-5 5" />
+      <path d="M9 20v-5H4" />
+      <path d="M4 20l5-5" />
+      <path d="M15 20v-5h5" />
+      <path d="M20 20l-5-5" />
+    </svg>
+  )
+}
+
+interface TrendFullscreenOverlayProps {
+  title: string
+  rangeLabel: string
+  readout?: ReactNode
+  note?: ReactNode
+  controls: ReactNode
+  scrubber: ReactNode
+  onClose: () => void
+  children: ReactNode
+}
+
+function TrendFullscreenOverlay({
+  title,
+  rangeLabel,
+  readout,
+  note,
+  controls,
+  scrubber,
+  onClose,
+  children,
+}: TrendFullscreenOverlayProps) {
+  const closeRef = useRef<HTMLButtonElement | null>(null)
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    closeRef.current?.focus()
+
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [onClose])
+
+  return (
+    <div className="trend-fullscreen" role="dialog" aria-modal="true" aria-labelledby="trend-fullscreen-title" onClick={onClose}>
+      <section className="trend-fullscreen__panel" onClick={(event) => event.stopPropagation()}>
+        <header className="trend-fullscreen__head">
+          <span aria-hidden="true" />
+          <div className="trend-fullscreen__heading">
+            <h2 id="trend-fullscreen-title" className="trend-fullscreen__title">
+              {title}
+            </h2>
+            <p className="trend-fullscreen__range">{rangeLabel}</p>
+          </div>
+          <button ref={closeRef} type="button" className="trend-fullscreen__close" aria-label="Exit fullscreen chart" onClick={onClose}>
+            <ContractIcon />
+          </button>
+        </header>
+        {readout && <div className="trend-fullscreen__readout">{readout}</div>}
+        <div className="trend-fullscreen__chart">{children}</div>
+        {note && <div className="trend-fullscreen__note">{note}</div>}
+        <div className="trend-fullscreen__controls">{controls}</div>
+        <div className="trend-fullscreen__scrubber">{scrubber}</div>
+      </section>
+    </div>
+  )
+}
 
 function dayAxis(start: string, end: string): string[] {
   const span = Math.max(daysBetween(start, end), 0)
@@ -143,9 +239,16 @@ export function TrendsPage({ goToDay }: Props) {
   const today = useMemo(() => localDayKey(), [])
   const [windowRange, setWindowRange] = useState<TrendWindow>({ startIndex: 0, endIndex: 29 })
   const [isGestureActive, setGestureActive] = useState(false)
+  const [fullscreenChart, setFullscreenChart] = useState<TrendChartId | null>(null)
   const trendsRootRef = useRef<HTMLDivElement | null>(null)
   const historyBoundsRef = useRef<string | null>(null)
   const suppressClickUntilRef = useRef(0)
+  const fullscreenChartRef = useRef<TrendChartId | null>(null)
+  const expandButtonRefs = useRef<Record<TrendChartId, HTMLButtonElement | null>>({
+    calories: null,
+    balance: null,
+    weight: null,
+  })
   const currentYear = new Date().getFullYear()
 
   const historyQuery = useQuery({
@@ -153,6 +256,19 @@ export function TrendsPage({ goToDay }: Props) {
     queryFn: () => getTrendsHistory(today),
   })
   const targetsQuery = useQuery({ queryKey: ['targets'], queryFn: getTargets })
+
+  useEffect(() => {
+    fullscreenChartRef.current = fullscreenChart
+  }, [fullscreenChart])
+
+  const closeFullscreenChart = useCallback(() => {
+    const closingChart = fullscreenChartRef.current
+    setFullscreenChart(null)
+    if (closingChart) {
+      window.requestAnimationFrame(() => expandButtonRefs.current[closingChart]?.focus())
+    }
+  }, [])
+  const shouldSuppressChartClick = useCallback(() => Date.now() < suppressClickUntilRef.current, [suppressClickUntilRef])
 
   useEffect(() => {
     const el = trendsRootRef.current
@@ -647,216 +763,403 @@ export function TrendsPage({ goToDay }: Props) {
   const canZoomOut = displayedDays < historyAxis.length - 0.01
   const isAllHistory = visibleWindow.startIndex <= 0.01 && visibleWindow.endIndex >= historyAxis.length - 1.01
   const displayedRange = `${rangeLabel(historyAxis, visibleWindow)} · ${displayedDaysLabel}d`
-  const shouldSuppressChartClick = () => Date.now() < suppressClickUntilRef.current
+  const chartModeProps = (mode: TrendChartMode) => ({
+    syncId: mode === 'fullscreen' ? 'trends-fullscreen' : 'trends',
+    height: mode === 'fullscreen' ? ('100%' as const) : undefined,
+  })
+
+  const renderTrendControls = (ariaLabel: string) => (
+    <div className="trend-window__controls" role="group" aria-label={ariaLabel}>
+      <button
+        type="button"
+        className="trend-window__btn"
+        aria-label="Older dates"
+        disabled={!canPanOlder}
+        onClick={() => setWindowRange((w) => panTrendWindow(clampTrendWindow(w, historyAxis.length), historyAxis.length, -panStep))}
+      >
+        ‹
+      </button>
+      <button
+        type="button"
+        className="trend-window__btn"
+        aria-label="Zoom out"
+        disabled={!canZoomOut}
+        onClick={() => setWindowRange((w) => zoomTrendWindowByFactor(clampTrendWindow(w, historyAxis.length), historyAxis.length, 1.35))}
+      >
+        −
+      </button>
+      <button
+        type="button"
+        className="trend-window__btn"
+        aria-label="Zoom in"
+        disabled={!canZoomIn}
+        onClick={() => setWindowRange((w) => zoomTrendWindowByFactor(clampTrendWindow(w, historyAxis.length), historyAxis.length, 0.7))}
+      >
+        +
+      </button>
+      {availablePresets.map((days) => (
+        <button
+          key={days}
+          type="button"
+          className={`trend-window__btn trend-window__btn--text ${Math.abs(displayedDays - days) < 0.25 ? 'is-active' : ''}`}
+          onClick={() => setWindowRange(trendWindowEndingAt(historyAxis.length, todayIndex, days))}
+        >
+          {days}d
+        </button>
+      ))}
+      <button
+        type="button"
+        className={`trend-window__btn trend-window__btn--text ${isAllHistory ? 'is-active' : ''}`}
+        disabled={isAllHistory}
+        onClick={() => setWindowRange(allTrendWindow(historyAxis.length))}
+      >
+        All
+      </button>
+      <button
+        type="button"
+        className="trend-window__btn"
+        aria-label="Newer dates"
+        disabled={!canPanNewer}
+        onClick={() => setWindowRange((w) => panTrendWindow(clampTrendWindow(w, historyAxis.length), historyAxis.length, panStep))}
+      >
+        ›
+      </button>
+    </div>
+  )
+
+  const renderChartHeader = (id: TrendChartId, title: string, canExpand: boolean) => (
+    <div className="chart-card__head">
+      <h3 className="chart-card__title">{title}</h3>
+      {canExpand && (
+        <button
+          ref={(node) => {
+            expandButtonRefs.current[id] = node
+          }}
+          type="button"
+          className="chart-card__expand"
+          aria-label={`Expand ${title} chart`}
+          title={`Expand ${title} chart`}
+          onClick={() => setFullscreenChart(id)}
+        >
+          <ExpandIcon />
+        </button>
+      )}
+    </div>
+  )
+
+  const renderCaloriesChart = (mode: TrendChartMode) => {
+    const { syncId, height } = chartModeProps(mode)
+    return (
+      <TrendGestureSurface {...chartGestureProps}>
+        <ResponsiveContainer width="100%" height={height ?? 220}>
+          <ComposedChart
+            data={calData}
+            syncId={syncId}
+            syncMethod="value"
+            margin={CHART_MARGIN_SINGLE_AXIS}
+            onClick={(state) => {
+              if (shouldSuppressChartClick()) return
+              const dk = activeDayKey(state, calData)
+              if (dk) goToDay(dk)
+            }}
+          >
+            <CartesianGrid stroke={C.grid} strokeOpacity={0.4} vertical={false} />
+            <XAxis
+              type="number"
+              dataKey="x"
+              domain={xDomain}
+              ticks={xTicks}
+              tickFormatter={formatDayIndex}
+              tick={AXIS_TICK}
+              tickLine={false}
+              axisLine={{ stroke: C.grid }}
+              minTickGap={24}
+              allowDataOverflow
+            />
+            <YAxis tick={AXIS_TICK} tickLine={false} axisLine={false} width={CHART_LEFT_AXIS_WIDTH} domain={[0, calDomainMax]} allowDataOverflow />
+            {!isGestureActive && <Tooltip {...TOOLTIP} labelFormatter={formatDayIndex} />}
+            {/* itemSorter={null} keeps declaration order (Protein, Fat, Carbs, Trend, Burned)
+                so the macros stay grouped; the default 'value' sorter alphabetizes and splits them. */}
+            <Legend wrapperStyle={{ fontSize: 11 }} itemSorter={null} />
+            {MACRO_ORDER.map((key, i) => (
+              <Bar
+                key={key}
+                dataKey={macroChartKey(key)}
+                stackId="m"
+                fill={key === 'fat' ? C.fat : key === 'protein' ? C.protein : C.carbs}
+                legendType="circle"
+                radius={i === MACRO_ORDER.length - 1 ? [3, 3, 0, 0] : undefined}
+                isAnimationActive={false}
+              />
+            ))}
+            <Line dataKey="avg" name="Trend" stroke={C.accent} strokeWidth={2} dot={false} connectNulls legendType="line" isAnimationActive={false} />
+            {burned.available && (
+              <Line
+                dataKey="burned"
+                name="Burned"
+                stroke={C.burned}
+                strokeWidth={2}
+                dot={false}
+                connectNulls
+                legendType="line"
+                isAnimationActive={false}
+              />
+            )}
+            {target ? (
+              <ReferenceLine
+                y={target}
+                stroke={C.muted}
+                strokeDasharray="4 4"
+                label={isGestureActive ? undefined : { value: 'intake target', fill: C.muted, fontSize: 10, position: 'insideTopRight' }}
+              />
+            ) : null}
+          </ComposedChart>
+        </ResponsiveContainer>
+      </TrendGestureSurface>
+    )
+  }
+
+  const balanceReadout = balanceData.hasData ? (
+    <p className="chart-card__readout">
+      Balance <strong>{signed(balanceData.netKcal)} kcal</strong> over {balanceData.loggedDays} logged{' '}
+      {balanceData.loggedDays === 1 ? 'day' : 'days'} · predicted <strong>≈ {signed1(balanceData.predictedKg)} {unit}</strong>
+    </p>
+  ) : (
+    <p className="chart-card__readout muted">No logged days in this range.</p>
+  )
+  const balanceNote = (
+    <p className="chart-card__note">
+      {goalAware
+        ? 'Bars: green = on your goal pace, red = off it. Line: running total.'
+        : 'Bars: green = deficit (under), red = surplus (over). Line: running total.'}
+    </p>
+  )
+
+  const renderBalanceChart = (mode: TrendChartMode) => {
+    const { syncId, height } = chartModeProps(mode)
+    return (
+      <TrendGestureSurface {...chartGestureProps}>
+        <ResponsiveContainer width="100%" height={height ?? 200}>
+          <ComposedChart
+            data={balanceData.rows}
+            syncId={syncId}
+            syncMethod="value"
+            margin={CHART_MARGIN_DUAL_AXIS}
+            onClick={(state) => {
+              if (shouldSuppressChartClick()) return
+              const dk = activeDayKey(state, balanceData.rows)
+              if (dk) goToDay(dk)
+            }}
+          >
+            <CartesianGrid stroke={C.grid} strokeOpacity={0.4} vertical={false} />
+            <XAxis
+              type="number"
+              dataKey="x"
+              domain={xDomain}
+              ticks={xTicks}
+              tickFormatter={formatDayIndex}
+              tick={AXIS_TICK}
+              tickLine={false}
+              axisLine={{ stroke: C.grid }}
+              minTickGap={24}
+              allowDataOverflow
+            />
+            <YAxis yAxisId="net" tick={AXIS_TICK} tickLine={false} axisLine={false} width={CHART_LEFT_AXIS_WIDTH} />
+            <YAxis
+              yAxisId="cum"
+              orientation="right"
+              tick={AXIS_TICK}
+              tickLine={false}
+              axisLine={false}
+              width={CHART_RIGHT_AXIS_WIDTH}
+              tickMargin={2}
+              tickFormatter={formatCompactAxisNumber}
+            />
+            {!isGestureActive && <Tooltip {...TOOLTIP} labelFormatter={formatDayIndex} />}
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            <ReferenceLine yAxisId="net" y={0} stroke={C.muted} />
+            <Bar yAxisId="net" dataKey="net" name="Balance (kcal)" fill={C.muted} isAnimationActive={false}>
+              {balanceData.rows.map((r) => (
+                <Cell key={r.dayKey} fill={barColor(r.net)} />
+              ))}
+            </Bar>
+            <Line yAxisId="cum" dataKey="cumNet" name="Cumulative" stroke={C.projection} strokeWidth={2} dot={false} connectNulls isAnimationActive={false} />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </TrendGestureSurface>
+    )
+  }
+
+  const weightReadout = weightData.goalDateLabel ? (
+    <p className="chart-card__readout">
+      Goal pace{weightData.paceLabel ? <> (<strong>{weightData.paceLabel}</strong>)</> : null} reaches{' '}
+      <strong>{weightData.goalDisplay} {unit}</strong> by <strong>{weightData.goalDateLabel}</strong>
+      {weightData.hasPrediction &&
+        (weightData.predGoalLabel ? (
+          <>
+            {' '}· at your recent intake, about <strong>{weightData.predGoalLabel}</strong>
+          </>
+        ) : (
+          <> · at your recent intake you’re not on track to reach it</>
+        ))}
+    </p>
+  ) : null
+  const weightNote =
+    weightData.hasPrediction || weightData.hasProjection ? (
+      <p className="chart-card__note">
+        {weightData.hasProjection && 'Goal pace = your target rate. '}
+        {weightData.hasPrediction &&
+          `Predicted = recent intake${weightData.anchorLabel ? `, from your ${weightData.anchorLabel} weigh-in` : ''}. Shaded = forecast uncertainty.`}
+      </p>
+    ) : null
+
+  const renderWeightChart = (mode: TrendChartMode) => {
+    const { syncId, height } = chartModeProps(mode)
+    return (
+      <TrendGestureSurface {...chartGestureProps}>
+        <ResponsiveContainer width="100%" height={height ?? 240}>
+          <ComposedChart
+            data={weightData.rows}
+            syncId={syncId}
+            syncMethod="value"
+            margin={CHART_MARGIN_DUAL_AXIS}
+            onClick={(state) => {
+              if (shouldSuppressChartClick()) return
+              const dk = activeDayKey(state, weightData.rows)
+              if (dk) goToDay(dk)
+            }}
+          >
+            <CartesianGrid stroke={C.grid} strokeOpacity={0.4} vertical={false} />
+            <XAxis
+              type="number"
+              dataKey="x"
+              domain={xDomain}
+              ticks={xTicks}
+              tickFormatter={formatDayIndex}
+              tick={AXIS_TICK}
+              tickLine={false}
+              axisLine={{ stroke: C.grid }}
+              minTickGap={24}
+              allowDataOverflow
+            />
+            <YAxis yAxisId="w" tick={AXIS_TICK} tickLine={false} axisLine={false} width={CHART_LEFT_AXIS_WIDTH} domain={padDomain(unit === 'kg' ? 0.3 : 0.6)} tickFormatter={formatOneDecimalAxis} />
+            <YAxis
+              yAxisId="bf"
+              orientation="right"
+              tick={AXIS_TICK}
+              tickLine={false}
+              axisLine={false}
+              width={CHART_RIGHT_AXIS_WIDTH}
+              domain={padDomain(0.3)}
+              tickMargin={2}
+              tickFormatter={formatOneDecimalAxis}
+            />
+            {!isGestureActive && <Tooltip content={renderForecastTooltip} />}
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            {weightData.hasPrediction && (
+              <Area yAxisId="w" dataKey="band" name="Forecast range" stroke="none" fill={C.projection} fillOpacity={0.12} connectNulls isAnimationActive={false} legendType="none" activeDot={false} />
+            )}
+            {weightData.goalDisplay != null && (
+              <ReferenceLine
+                yAxisId="w"
+                y={weightData.goalDisplay}
+                stroke={C.goal}
+                strokeDasharray="4 4"
+                label={isGestureActive ? undefined : { value: 'goal', fill: C.muted, fontSize: 10, position: 'insideBottomRight' }}
+              />
+            )}
+            <ReferenceLine
+              yAxisId="w"
+              x={weightData.todayIndex}
+              stroke={C.muted}
+              strokeOpacity={0.6}
+              label={isGestureActive ? undefined : { value: 'today', fill: C.muted, fontSize: 10, position: 'insideTopLeft' }}
+            />
+            <Line yAxisId="w" dataKey="weight" name={`Weight (${unit})`} stroke={C.muted} strokeWidth={1} dot={isGestureActive ? false : { r: 2 }} connectNulls isAnimationActive={false} />
+            <Line yAxisId="w" dataKey="trend" name={`Weight trend (${unit})`} stroke={C.accent} strokeWidth={2.5} dot={false} connectNulls isAnimationActive={false} />
+            {weightData.hasPrediction && (
+              <Line yAxisId="w" dataKey="predWeight" name="Predicted" stroke={C.projection} strokeWidth={2} strokeDasharray="2 3" dot={false} connectNulls isAnimationActive={false} />
+            )}
+            {weightData.hasProjection && (
+              <Line yAxisId="w" dataKey="projWeight" name="Goal pace" stroke={C.goal} strokeWidth={2} strokeDasharray="5 4" dot={false} connectNulls isAnimationActive={false} />
+            )}
+            {weightData.hasBodyFat && (
+              <Line yAxisId="bf" dataKey="bodyFatTrend" name="Body fat trend %" stroke={C.fat} strokeWidth={1.5} dot={false} connectNulls isAnimationActive={false} />
+            )}
+            {weightData.hasBodyFat && (
+              <Line
+                yAxisId="bf"
+                dataKey="bodyFat"
+                name="Body fat measurement %"
+                stroke="transparent"
+                strokeWidth={0}
+                dot={isGestureActive ? false : { r: 2, fill: C.fat, stroke: C.fat }}
+                tooltipType="none"
+                legendType="none"
+                isAnimationActive={false}
+              />
+            )}
+            {weightData.hasBodyFat && weightData.hasProjection && (
+              <Line yAxisId="bf" dataKey="projBodyFat" name="BF goal" stroke={C.fat} strokeWidth={1.5} strokeDasharray="5 4" dot={false} connectNulls isAnimationActive={false} />
+            )}
+          </ComposedChart>
+        </ResponsiveContainer>
+      </TrendGestureSurface>
+    )
+  }
+
+  const fullscreenContent =
+    fullscreenChart === 'calories' && hasEntries
+      ? { title: 'Calories by macro', readout: null, note: null, chart: renderCaloriesChart('fullscreen') }
+      : fullscreenChart === 'balance' && balanceData.canRender
+        ? { title: 'Energy balance', readout: balanceReadout, note: balanceNote, chart: renderBalanceChart('fullscreen') }
+        : fullscreenChart === 'weight' && hasWeight
+          ? { title: 'Weight & forecast', readout: weightReadout, note: weightNote, chart: renderWeightChart('fullscreen') }
+          : null
+  const fullscreenOpen = fullscreenContent != null
 
   return (
     <div ref={trendsRootRef} className="page trends">
       <div className="trends__bar">
         <div className="trend-window">
           <div className="trend-window__label">{displayedRange}</div>
-          <div className="trend-window__controls" role="group" aria-label="Timeline controls">
-            <button
-              type="button"
-              className="trend-window__btn"
-              aria-label="Older dates"
-              disabled={!canPanOlder}
-              onClick={() => setWindowRange((w) => panTrendWindow(clampTrendWindow(w, historyAxis.length), historyAxis.length, -panStep))}
-            >
-              ‹
-            </button>
-            <button
-              type="button"
-              className="trend-window__btn"
-              aria-label="Zoom out"
-              disabled={!canZoomOut}
-              onClick={() => setWindowRange((w) => zoomTrendWindowByFactor(clampTrendWindow(w, historyAxis.length), historyAxis.length, 1.35))}
-            >
-              −
-            </button>
-            <button
-              type="button"
-              className="trend-window__btn"
-              aria-label="Zoom in"
-              disabled={!canZoomIn}
-              onClick={() => setWindowRange((w) => zoomTrendWindowByFactor(clampTrendWindow(w, historyAxis.length), historyAxis.length, 0.7))}
-            >
-              +
-            </button>
-            {availablePresets.map((days) => (
-              <button
-                key={days}
-                type="button"
-                className={`trend-window__btn trend-window__btn--text ${Math.abs(displayedDays - days) < 0.25 ? 'is-active' : ''}`}
-                onClick={() => setWindowRange(trendWindowEndingAt(historyAxis.length, todayIndex, days))}
-              >
-                {days}d
-              </button>
-            ))}
-            <button
-              type="button"
-              className={`trend-window__btn trend-window__btn--text ${isAllHistory ? 'is-active' : ''}`}
-              disabled={isAllHistory}
-              onClick={() => setWindowRange(allTrendWindow(historyAxis.length))}
-            >
-              All
-            </button>
-            <button
-              type="button"
-              className="trend-window__btn"
-              aria-label="Newer dates"
-              disabled={!canPanNewer}
-              onClick={() => setWindowRange((w) => panTrendWindow(clampTrendWindow(w, historyAxis.length), historyAxis.length, panStep))}
-            >
-              ›
-            </button>
-          </div>
+          {renderTrendControls('Timeline controls')}
         </div>
         <UnitToggle unit={unit} onChange={setUnit} />
       </div>
 
       <TrendScrubber axis={historyAxis} windowRange={visibleWindow} onWindowChange={setWindowRange} />
 
+      {fullscreenContent && (
+        <TrendFullscreenOverlay
+          title={fullscreenContent.title}
+          rangeLabel={displayedRange}
+          readout={fullscreenContent.readout}
+          note={fullscreenContent.note}
+          controls={renderTrendControls('Fullscreen timeline controls')}
+          scrubber={<TrendScrubber axis={historyAxis} windowRange={visibleWindow} onWindowChange={setWindowRange} />}
+          onClose={closeFullscreenChart}
+        >
+          {fullscreenContent.chart}
+        </TrendFullscreenOverlay>
+      )}
+
       <div className="card chart-card">
-        <h3 className="chart-card__title">Calories by macro</h3>
+        {renderChartHeader('calories', 'Calories by macro', hasEntries)}
         {hasEntries ? (
-          <TrendGestureSurface {...chartGestureProps}>
-            <ResponsiveContainer width="100%" height={220}>
-              <ComposedChart
-                data={calData}
-                syncId="trends"
-                syncMethod="value"
-                margin={CHART_MARGIN_SINGLE_AXIS}
-                onClick={(state) => {
-                  if (shouldSuppressChartClick()) return
-                  const dk = activeDayKey(state, calData)
-                  if (dk) goToDay(dk)
-                }}
-              >
-              <CartesianGrid stroke={C.grid} strokeOpacity={0.4} vertical={false} />
-              <XAxis
-                type="number"
-                dataKey="x"
-                domain={xDomain}
-                ticks={xTicks}
-                tickFormatter={formatDayIndex}
-                tick={AXIS_TICK}
-                tickLine={false}
-                axisLine={{ stroke: C.grid }}
-                minTickGap={24}
-                allowDataOverflow
-              />
-              <YAxis tick={AXIS_TICK} tickLine={false} axisLine={false} width={CHART_LEFT_AXIS_WIDTH} domain={[0, calDomainMax]} allowDataOverflow />
-              {!isGestureActive && <Tooltip {...TOOLTIP} labelFormatter={formatDayIndex} />}
-              {/* itemSorter={null} keeps declaration order (Protein, Fat, Carbs, Trend, Burned)
-                  so the macros stay grouped; the default 'value' sorter alphabetizes and splits them. */}
-              <Legend wrapperStyle={{ fontSize: 11 }} itemSorter={null} />
-              {MACRO_ORDER.map((key, i) => (
-                <Bar
-                  key={key}
-                  dataKey={macroChartKey(key)}
-                  stackId="m"
-                  fill={key === 'fat' ? C.fat : key === 'protein' ? C.protein : C.carbs}
-                  legendType="circle"
-                  radius={i === MACRO_ORDER.length - 1 ? [3, 3, 0, 0] : undefined}
-                  isAnimationActive={false}
-                />
-              ))}
-              <Line dataKey="avg" name="Trend" stroke={C.accent} strokeWidth={2} dot={false} connectNulls legendType="line" isAnimationActive={false} />
-              {burned.available && (
-                <Line
-                  dataKey="burned"
-                  name="Burned"
-                  stroke={C.burned}
-                  strokeWidth={2}
-                  dot={false}
-                  connectNulls
-                  legendType="line"
-                  isAnimationActive={false}
-                />
-              )}
-              {target ? (
-                <ReferenceLine
-                  y={target}
-                  stroke={C.muted}
-                  strokeDasharray="4 4"
-                  label={isGestureActive ? undefined : { value: 'intake target', fill: C.muted, fontSize: 10, position: 'insideTopRight' }}
-                />
-              ) : null}
-              </ComposedChart>
-            </ResponsiveContainer>
-          </TrendGestureSurface>
+          fullscreenOpen ? null : renderCaloriesChart('card')
         ) : (
           <p className="muted chart-card__empty">No entries in this range yet.</p>
         )}
       </div>
 
       <div className="card chart-card">
-        <h3 className="chart-card__title">Energy balance</h3>
+        {renderChartHeader('balance', 'Energy balance', balanceData.canRender)}
         {balanceData.canRender ? (
           <>
-            {balanceData.hasData ? (
-              <p className="chart-card__readout">
-                Balance <strong>{signed(balanceData.netKcal)} kcal</strong> over {balanceData.loggedDays} logged{' '}
-                {balanceData.loggedDays === 1 ? 'day' : 'days'} · predicted{' '}
-                <strong>≈ {signed1(balanceData.predictedKg)} {unit}</strong>
-              </p>
-            ) : (
-              <p className="chart-card__readout muted">No logged days in this range.</p>
-            )}
-            <TrendGestureSurface {...chartGestureProps}>
-              <ResponsiveContainer width="100%" height={200}>
-                <ComposedChart
-                  data={balanceData.rows}
-                  syncId="trends"
-                  syncMethod="value"
-                  margin={CHART_MARGIN_DUAL_AXIS}
-                  onClick={(state) => {
-                    if (shouldSuppressChartClick()) return
-                    const dk = activeDayKey(state, balanceData.rows)
-                    if (dk) goToDay(dk)
-                  }}
-                >
-                <CartesianGrid stroke={C.grid} strokeOpacity={0.4} vertical={false} />
-                <XAxis
-                  type="number"
-                  dataKey="x"
-                  domain={xDomain}
-                  ticks={xTicks}
-                  tickFormatter={formatDayIndex}
-                  tick={AXIS_TICK}
-                  tickLine={false}
-                  axisLine={{ stroke: C.grid }}
-                  minTickGap={24}
-                  allowDataOverflow
-                />
-                <YAxis yAxisId="net" tick={AXIS_TICK} tickLine={false} axisLine={false} width={CHART_LEFT_AXIS_WIDTH} />
-                <YAxis
-                  yAxisId="cum"
-                  orientation="right"
-                  tick={AXIS_TICK}
-                  tickLine={false}
-                  axisLine={false}
-                  width={CHART_RIGHT_AXIS_WIDTH}
-                  tickMargin={2}
-                  tickFormatter={formatCompactAxisNumber}
-                />
-                {!isGestureActive && <Tooltip {...TOOLTIP} labelFormatter={formatDayIndex} />}
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                <ReferenceLine yAxisId="net" y={0} stroke={C.muted} />
-                <Bar yAxisId="net" dataKey="net" name="Balance (kcal)" fill={C.muted} isAnimationActive={false}>
-                  {balanceData.rows.map((r) => (
-                    <Cell key={r.dayKey} fill={barColor(r.net)} />
-                  ))}
-                </Bar>
-                <Line yAxisId="cum" dataKey="cumNet" name="Cumulative" stroke={C.projection} strokeWidth={2} dot={false} connectNulls isAnimationActive={false} />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </TrendGestureSurface>
-            <p className="chart-card__note">
-              {goalAware
-                ? 'Bars: green = on your goal pace, red = off it. Line: running total.'
-                : 'Bars: green = deficit (under), red = surplus (over). Line: running total.'}
-            </p>
+            {balanceReadout}
+            {!fullscreenOpen && renderBalanceChart('card')}
+            {balanceNote}
           </>
         ) : (
           <p className="muted chart-card__empty">
@@ -866,119 +1169,12 @@ export function TrendsPage({ goToDay }: Props) {
       </div>
 
       <div className="card chart-card">
-        <h3 className="chart-card__title">Weight &amp; forecast</h3>
+        {renderChartHeader('weight', 'Weight & forecast', hasWeight)}
         {hasWeight ? (
           <>
-            {weightData.goalDateLabel && (
-              <p className="chart-card__readout">
-                Goal pace{weightData.paceLabel ? <> (<strong>{weightData.paceLabel}</strong>)</> : null} reaches{' '}
-                <strong>{weightData.goalDisplay} {unit}</strong> by <strong>{weightData.goalDateLabel}</strong>
-                {weightData.hasPrediction &&
-                  (weightData.predGoalLabel ? (
-                    <>
-                      {' '}· at your recent intake, about <strong>{weightData.predGoalLabel}</strong>
-                    </>
-                  ) : (
-                    <> · at your recent intake you’re not on track to reach it</>
-                  ))}
-              </p>
-            )}
-            <TrendGestureSurface {...chartGestureProps}>
-              <ResponsiveContainer width="100%" height={240}>
-                <ComposedChart
-                  data={weightData.rows}
-                  syncId="trends"
-                  syncMethod="value"
-                  margin={CHART_MARGIN_DUAL_AXIS}
-                  onClick={(state) => {
-                    if (shouldSuppressChartClick()) return
-                    const dk = activeDayKey(state, weightData.rows)
-                    if (dk) goToDay(dk)
-                  }}
-                >
-                <CartesianGrid stroke={C.grid} strokeOpacity={0.4} vertical={false} />
-                <XAxis
-                  type="number"
-                  dataKey="x"
-                  domain={xDomain}
-                  ticks={xTicks}
-                  tickFormatter={formatDayIndex}
-                  tick={AXIS_TICK}
-                  tickLine={false}
-                  axisLine={{ stroke: C.grid }}
-                  minTickGap={24}
-                  allowDataOverflow
-                />
-                <YAxis yAxisId="w" tick={AXIS_TICK} tickLine={false} axisLine={false} width={CHART_LEFT_AXIS_WIDTH} domain={padDomain(unit === 'kg' ? 0.3 : 0.6)} tickFormatter={formatOneDecimalAxis} />
-                <YAxis
-                  yAxisId="bf"
-                  orientation="right"
-                  tick={AXIS_TICK}
-                  tickLine={false}
-                  axisLine={false}
-                  width={CHART_RIGHT_AXIS_WIDTH}
-                  domain={padDomain(0.3)}
-                  tickMargin={2}
-                  tickFormatter={formatOneDecimalAxis}
-                />
-                {!isGestureActive && <Tooltip content={renderForecastTooltip} />}
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                {weightData.hasPrediction && (
-                  <Area yAxisId="w" dataKey="band" name="Forecast range" stroke="none" fill={C.projection} fillOpacity={0.12} connectNulls isAnimationActive={false} legendType="none" activeDot={false} />
-                )}
-                {weightData.goalDisplay != null && (
-                  <ReferenceLine
-                    yAxisId="w"
-                    y={weightData.goalDisplay}
-                    stroke={C.goal}
-                    strokeDasharray="4 4"
-                    label={isGestureActive ? undefined : { value: 'goal', fill: C.muted, fontSize: 10, position: 'insideBottomRight' }}
-                  />
-                )}
-                <ReferenceLine
-                  yAxisId="w"
-                  x={weightData.todayIndex}
-                  stroke={C.muted}
-                  strokeOpacity={0.6}
-                  label={isGestureActive ? undefined : { value: 'today', fill: C.muted, fontSize: 10, position: 'insideTopLeft' }}
-                />
-                <Line yAxisId="w" dataKey="weight" name={`Weight (${unit})`} stroke={C.muted} strokeWidth={1} dot={isGestureActive ? false : { r: 2 }} connectNulls isAnimationActive={false} />
-                <Line yAxisId="w" dataKey="trend" name={`Weight trend (${unit})`} stroke={C.accent} strokeWidth={2.5} dot={false} connectNulls isAnimationActive={false} />
-                {weightData.hasPrediction && (
-                  <Line yAxisId="w" dataKey="predWeight" name="Predicted" stroke={C.projection} strokeWidth={2} strokeDasharray="2 3" dot={false} connectNulls isAnimationActive={false} />
-                )}
-                {weightData.hasProjection && (
-                  <Line yAxisId="w" dataKey="projWeight" name="Goal pace" stroke={C.goal} strokeWidth={2} strokeDasharray="5 4" dot={false} connectNulls isAnimationActive={false} />
-                )}
-                {weightData.hasBodyFat && (
-                  <Line yAxisId="bf" dataKey="bodyFatTrend" name="Body fat trend %" stroke={C.fat} strokeWidth={1.5} dot={false} connectNulls isAnimationActive={false} />
-                )}
-                {weightData.hasBodyFat && (
-                  <Line
-                    yAxisId="bf"
-                    dataKey="bodyFat"
-                    name="Body fat measurement %"
-                    stroke="transparent"
-                    strokeWidth={0}
-                    dot={isGestureActive ? false : { r: 2, fill: C.fat, stroke: C.fat }}
-                    tooltipType="none"
-                    legendType="none"
-                    isAnimationActive={false}
-                  />
-                )}
-                {weightData.hasBodyFat && weightData.hasProjection && (
-                  <Line yAxisId="bf" dataKey="projBodyFat" name="BF goal" stroke={C.fat} strokeWidth={1.5} strokeDasharray="5 4" dot={false} connectNulls isAnimationActive={false} />
-                )}
-                </ComposedChart>
-              </ResponsiveContainer>
-            </TrendGestureSurface>
-            {(weightData.hasPrediction || weightData.hasProjection) && (
-              <p className="chart-card__note">
-                {weightData.hasProjection && 'Goal pace = your target rate. '}
-                {weightData.hasPrediction &&
-                  `Predicted = recent intake${weightData.anchorLabel ? `, from your ${weightData.anchorLabel} weigh-in` : ''}. Shaded = forecast uncertainty.`}
-              </p>
-            )}
+            {weightReadout}
+            {!fullscreenOpen && renderWeightChart('card')}
+            {weightNote}
           </>
         ) : (
           <p className="muted chart-card__empty">Log your weight to see the trend.</p>
