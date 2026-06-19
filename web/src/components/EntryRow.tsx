@@ -11,6 +11,7 @@ import {
   type StayingPowerTier,
 } from '../lib/stayingPower'
 import { MacroEditorFields } from './MacroEditorFields'
+import { CalorieValue } from './CalorieValue'
 import { MacroBar } from './MacroBar'
 import { NutritionLegend } from './NutritionLegend'
 import { Popover } from './Popover'
@@ -233,10 +234,7 @@ export function EntryRow({ entry, saving, onSave, onDelete }: Props) {
           {details && <span className="entry__details">{details}</span>}
         </span>
       </div>
-      <div className="entry__right">
-        <span className="entry__cal">{round(entry.calories)}</span>
-        <span className="entry__cal-unit">kcal</span>
-      </div>
+      <CalorieValue calories={entry.calories} />
       <button className="entry__action" aria-label="Edit entry" onClick={startEdit}>
         ✎
       </button>

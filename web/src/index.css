@@ -1760,6 +1760,7 @@ body {
 }
 
 .guide-food__main {
+  flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -1785,11 +1786,9 @@ body {
   line-height: 1.4;
 }
 
-.guide-food__nutrition {
-  display: flex;
-  align-items: center;
-  gap: 5px 10px;
-  flex-wrap: wrap;
+.guide-food__main .macro-comp {
+  margin-top: 4px;
+  max-width: 240px;
 }
 
 .guide-food__why {
@@ -2148,7 +2147,8 @@ body {
 
 .choice-row {
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr);
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: start;
   gap: 10px;
   padding: 13px 0;
   border-bottom: 1px solid var(--border);
@@ -2209,11 +2209,9 @@ body {
   line-height: 1.35;
 }
 
-.choice-row__nutrition {
-  display: flex;
-  align-items: center;
-  gap: 5px 10px;
-  flex-wrap: wrap;
+.choice-row__main .macro-comp {
+  margin-top: 4px;
+  max-width: 240px;
 }
 
 .choice-row__desc,
@@ -2228,12 +2226,12 @@ body {
   color: var(--text);
 }
 
-.choice-row__side {
-  grid-column: 2;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 7px;
+.choice-row__right {
+  gap: 6px;
+}
+
+.choice-row__right .choice-row__conf {
+  align-self: flex-end;
 }
 
 /* ---- Segmented control (range + unit toggles) ---- */

@@ -1,6 +1,8 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { MenuScanner } from '../components/MenuScanner'
+import { CalorieValue } from '../components/CalorieValue'
+import { MacroBar } from '../components/MacroBar'
 import { NutritionLegend } from '../components/NutritionLegend'
 import { StayingPowerBadge } from '../components/StayingPowerBadge'
 import { getRecentFoods } from '../api/foods'
@@ -20,7 +22,6 @@ import {
 } from '../lib/guide'
 import { isBeverageForFullness } from '../lib/fullness'
 import { DEFAULT_TARGETS, goalDirection } from '../lib/targets'
-import { round } from '../lib/totals'
 import type { RecentFood } from '../types'
 
 const EMPTY_RECENT: RecentFood[] = []
@@ -40,7 +41,7 @@ const ROLE_BADGE_CLASS: Record<GuideRoleBadgeTone, string> = {
 
 function guideServingMeta(food: RecentFood): string {
   const serving = food.serving_size?.trim() || 'logged serving'
-  const parts = [serving, `${round(food.calories)} kcal`]
+  const parts = [serving]
   if (food.times_logged && food.times_logged > 1) parts.push(`${food.times_logged}x logged`)
   return parts.join(' · ')
 }
@@ -55,12 +56,12 @@ function GuideFoodRow({ item }: { item: RankedGuideFood }) {
           <StayingPowerBadge power={item.stayingPower} variant="compact" explain />
           {isBeverageForFullness(food) && <span className="guide-tag guide-tag--warn">Drink</span>}
         </div>
-        <div className="guide-food__nutrition">
-          <span className="guide-food__meta">{guideServingMeta(food)}</span>
-          <NutritionLegend food={food} />
-        </div>
+        <span className="guide-food__meta">{guideServingMeta(food)}</span>
+        <MacroBar protein_g={food.protein_g} carbs_g={food.carbs_g} fat_g={food.fat_g} />
+        <NutritionLegend food={food} />
         <p className="guide-food__why">{reason}</p>
       </div>
+      <CalorieValue calories={food.calories} />
     </div>
   )
 }

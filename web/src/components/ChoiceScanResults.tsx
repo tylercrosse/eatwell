@@ -1,3 +1,5 @@
+import { CalorieValue } from './CalorieValue'
+import { MacroBar } from './MacroBar'
 import { NutritionLegend } from './NutritionLegend'
 import {
   choiceConfidenceCopy,
@@ -6,7 +8,6 @@ import {
   type ScoredFoodChoice,
 } from '../lib/choiceScan'
 import { isBeverageForFullness } from '../lib/fullness'
-import { round } from '../lib/totals'
 import { StayingPowerBadge } from './StayingPowerBadge'
 
 const CONF_CLASS = {
@@ -16,7 +17,7 @@ const CONF_CLASS = {
 } as const
 
 function choiceServingMeta(choice: ScoredFoodChoice['choice']): string {
-  return [choice.servingSize?.trim() || 'estimated serving', `${round(choice.calories)} kcal`].join(' · ')
+  return choice.servingSize?.trim() || 'estimated serving'
 }
 
 interface Props {
@@ -47,20 +48,17 @@ export function ChoiceScanResults({ items, emptyText = 'No comparable options fo
               </div>
               {location && <span className="choice-row__details">{location}</span>}
               {choice.description && <p className="choice-row__desc">{choice.description}</p>}
-              <div className="choice-row__nutrition">
-                <span className="choice-row__meta">{choiceServingMeta(choice)}</span>
-                <NutritionLegend food={choice} />
-              </div>
+              <span className="choice-row__meta">{choiceServingMeta(choice)}</span>
+              <MacroBar protein_g={choice.protein_g} carbs_g={choice.carbs_g} fat_g={choice.fat_g} />
+              <NutritionLegend food={choice} />
               <p className="choice-row__why">{reason}</p>
               {choice.sourceText && <span className="choice-row__source">Menu text: {choice.sourceText}</span>}
             </div>
-            {showConfidence && (
-              <div className="choice-row__side">
-                <span className={`conf choice-row__conf ${CONF_CLASS[confidence.tone]}`}>
-                  {confidence.label}
-                </span>
-              </div>
-            )}
+            <CalorieValue calories={choice.calories} className="choice-row__right">
+              {showConfidence && (
+                <span className={`conf choice-row__conf ${CONF_CLASS[confidence.tone]}`}>{confidence.label}</span>
+              )}
+            </CalorieValue>
           </div>
         )
       })}
