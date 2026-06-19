@@ -28,6 +28,7 @@ import { stepsToKcal } from '../lib/activity'
 import { KCAL_PER_KG } from '../lib/tdee'
 import { emaByDate, interpolateByDate, movingAverage } from '../lib/stats'
 import { bandHalfWidthKg, predictWeightSeries } from '../lib/forecast'
+import { fatMassKg, leanMassKg, predictBodyFatSeries } from '../lib/composition'
 import { daysBetween, formatFullDay, formatShortDay, localDayKey, shiftDay } from '../lib/date'
 import { kgToDisplay, useWeightUnit } from '../lib/units'
 import { round1 } from '../lib/totals'
@@ -53,7 +54,7 @@ const CHART_RIGHT_AXIS_WIDTH = 32
 const CHART_MARGIN_SINGLE_AXIS = { top: 8, right: 4, bottom: 0, left: 0 }
 const CHART_MARGIN_DUAL_AXIS = { top: 8, right: 4, bottom: 0, left: 0 }
 
-type TrendChartId = 'calories' | 'balance' | 'weight'
+type TrendChartId = 'calories' | 'balance' | 'weight' | 'composition'
 type TrendChartMode = 'card' | 'fullscreen'
 
 const macroChartKey = (key: MacroKey) => NUTRITION_DISPLAY[key].label
@@ -248,6 +249,7 @@ export function TrendsPage({ goToDay }: Props) {
     calories: null,
     balance: null,
     weight: null,
+    composition: null,
   })
   const currentYear = new Date().getFullYear()
 
@@ -521,11 +523,11 @@ export function TrendsPage({ goToDay }: Props) {
 
     const lastBf = [...metrics].reverse().find((m) => m.body_fat_pct != null) ?? null
     const currentBf = lastBf?.body_fat_pct ?? null
-    const anchorBfDate = lastBf?.date ?? null
     const goalBf = t?.goal_body_fat_pct ?? null
-    const daysToGoal = dir !== 0 ? (Math.abs((goalKg as number) - (currentKg as number)) / magKg) * 7 : 0
-    const bfDaily =
-      dir !== 0 && goalBf != null && currentBf != null && daysToGoal > 0 ? (goalBf - currentBf) / daysToGoal : null
+    // Fat-free mass at the anchor (smoothed current weight + latest body fat). The body-fat
+    // forecast holds this constant, so the predicted BF line is derived from — and stays
+    // consistent with — the predicted-weight line instead of gliding to its goal on its own.
+    const leanKg = currentKg != null && currentBf != null ? leanMassKg(currentKg, currentBf) : null
 
     let goalDateKey: string | null = null
     if (dir !== 0 && currentKg != null && goalKg != null && anchorWeightDate != null) {
@@ -556,6 +558,10 @@ export function TrendsPage({ goToDay }: Props) {
     const todayIndexInWeight = Math.max(0, historyAxis.indexOf(todayKey))
     const predNowKg = predSeries ? predSeries[todayIndexInWeight] ?? null : null
 
+    // Predicted body fat, derived from the predicted weight by holding lean mass constant
+    // (every kg the forecast removes is treated as fat). Same origin as the weight forecast.
+    const predBfSeries = predSeries != null && leanKg != null ? predictBodyFatSeries({ predWeightKg: predSeries, leanKg }) : null
+
     type WeightRow = {
       x: number
       dayKey: string
@@ -565,7 +571,7 @@ export function TrendsPage({ goToDay }: Props) {
       bodyFat: number | null
       bodyFatTrend: number | null
       projWeight: number | null
-      projBodyFat: number | null
+      predBodyFat: number | null
       predWeight: number | null
       band: [number, number] | null
     }
@@ -577,11 +583,7 @@ export function TrendsPage({ goToDay }: Props) {
       if (dir !== 0 && currentKg != null && goalKg != null && anchorWeightDate != null && dk >= anchorWeightDate) {
         projWeight = round1(kgToDisplay(clampGoal(currentKg + dailyKg * daysBetween(anchorWeightDate, dk)), unit))
       }
-      let projBodyFat: number | null = null
-      if (bfDaily != null && currentBf != null && goalBf != null && anchorBfDate != null && dk >= anchorBfDate) {
-        const raw = currentBf + bfDaily * daysBetween(anchorBfDate, dk)
-        projBodyFat = round1(bfDaily < 0 ? Math.max(goalBf, raw) : Math.min(goalBf, raw))
-      }
+      const predBf = predBfSeries?.[i] ?? null
       const predKg = predSeries?.[i] ?? null
       let band: [number, number] | null = null
       if (isFuture && predKg != null) {
@@ -597,7 +599,7 @@ export function TrendsPage({ goToDay }: Props) {
         bodyFat: m?.body_fat_pct ?? null,
         bodyFatTrend: bodyFatTrendVals[i] == null ? null : round1(bodyFatTrendVals[i] as number),
         projWeight,
-        projBodyFat,
+        predBodyFat: predBf == null ? null : round1(predBf),
         predWeight: predKg == null ? null : round1(kgToDisplay(predKg, unit)),
         band,
       })
@@ -615,6 +617,9 @@ export function TrendsPage({ goToDay }: Props) {
       hasProjection: dir !== 0,
       hasPrediction,
       hasBodyFat,
+      hasPredBodyFat: predBfSeries != null,
+      goalBodyFat: goalBf,
+      leanDisplay: leanKg != null ? round1(kgToDisplay(leanKg, unit)) : null,
       paceLabel,
       anchorLabel: anchorWeightDate ? formatShortDay(anchorWeightDate) : null,
       goalDisplay: goalKg != null ? round1(kgToDisplay(goalKg, unit)) : null,
@@ -626,6 +631,55 @@ export function TrendsPage({ goToDay }: Props) {
   const weightData = useMemo(
     () => ({ ...weightBase, rows: weightBase.rows.slice(visibleBounds.startIndex, visibleBounds.endIndex + 1) }),
     [weightBase, visibleBounds],
+  )
+
+  // Body composition: weight split into fat mass and lean (fat-free) mass, reusing the smoothed
+  // weight trend and interpolated body-fat trend already computed for the weight chart. Where a
+  // measured composition exists we plot it; forward of that we extend the same forecast as the
+  // weight chart — lean held steady, fat absorbing the predicted weight change. Stacked, the two
+  // bands sum to total weight, so you can see whether a change is fat or muscle, not just kilos.
+  const compositionBase = useMemo(() => {
+    // Measured composition and the forecast are separate series (own stack ids) so the forecast can
+    // be drawn lighter + dashed. They share the boundary day (see the bridge below) so the two halves
+    // of each band meet seamlessly.
+    const rows = weightBase.rows.map((r) => {
+      let fatMass: number | null = null
+      let leanMass: number | null = null
+      let fatForecast: number | null = null
+      let leanForecast: number | null = null
+      if (r.trend != null && r.bodyFatTrend != null) {
+        fatMass = round1(fatMassKg(r.trend, r.bodyFatTrend))
+        leanMass = round1(r.trend - fatMass)
+      } else if (r.predWeight != null && weightBase.leanDisplay != null) {
+        leanForecast = weightBase.leanDisplay
+        fatForecast = round1(Math.max(0, r.predWeight - weightBase.leanDisplay))
+      }
+      return { x: r.x, dayKey: r.dayKey, date: r.date, fatMass, leanMass, fatForecast, leanForecast }
+    })
+    // "Now" = the most recent *measured* composition (last day with both a weight trend and a body-fat
+    // value), not the end of the forecast band — which would read out at the goal/extrapolated weight.
+    const lastMeasuredIdx = rows.reduce((acc, r, i) => (r.fatMass != null && r.leanMass != null ? i : acc), -1)
+    const lastMeasured = lastMeasuredIdx >= 0 ? rows[lastMeasuredIdx] : null
+    // Bridge: anchor the forecast band at the last measured day so it starts exactly where the solid
+    // band ends (no notch). Separate stack ids keep this from double-counting at the shared day.
+    if (lastMeasured) {
+      lastMeasured.fatForecast = lastMeasured.fatMass
+      lastMeasured.leanForecast = lastMeasured.leanMass
+    }
+    const leanNow = lastMeasured?.leanMass ?? null
+    const fatNow = lastMeasured?.fatMass ?? null
+    return {
+      rows,
+      todayIndex: weightBase.todayIndex,
+      hasData: leanNow != null && fatNow != null,
+      leanNow,
+      fatNow,
+      totalNow: leanNow != null && fatNow != null ? round1(leanNow + fatNow) : null,
+    }
+  }, [weightBase])
+  const compositionData = useMemo(
+    () => ({ ...compositionBase, rows: compositionBase.rows.slice(visibleBounds.startIndex, visibleBounds.endIndex + 1) }),
+    [compositionBase, visibleBounds],
   )
 
   // Goal progress on each metric's own scale (non-date x-axis), range-independent. start = earliest
@@ -676,6 +730,7 @@ export function TrendsPage({ goToDay }: Props) {
 
   const hasEntries = entriesData.length > 0
   const hasWeight = metricsData.some((r) => r.weight_kg != null)
+  const hasComposition = compositionBase.hasData
   const target = targetsQuery.data?.calorie_target
 
   // Tight y-axis for the calories chart: ~200 kcal of headroom above the tallest thing drawn — a
@@ -707,7 +762,7 @@ export function TrendsPage({ goToDay }: Props) {
   // its own row, so one concept reads as one line (e.g. "Predicted : 197.2 ± 2.1").
   const renderForecastTooltip = ({ active, payload, label }: TooltipContentProps) => {
     if (!active || !payload?.length) return null
-    const orderedKeys = ['weight', 'trend', 'predWeight', 'projWeight', 'bodyFat', 'bodyFatTrend', 'projBodyFat']
+    const orderedKeys = ['weight', 'trend', 'predWeight', 'projWeight', 'bodyFat', 'bodyFatTrend', 'predBodyFat']
     const byKey = new Map(payload.map((p) => [String(p.dataKey), p]))
     const orderedPayload = [
       ...orderedKeys.flatMap((key) => {
@@ -724,10 +779,10 @@ export function TrendsPage({ goToDay }: Props) {
       projWeight: 'Goal pace',
       bodyFat: 'Body fat %',
       bodyFatTrend: 'Body fat trend %',
-      projBodyFat: 'BF goal',
+      predBodyFat: 'Predicted BF %',
     }
     const tooltipLabel = (key: string, fallback: unknown): string => tooltipLabels[key] ?? String(fallback ?? key)
-    const valueGroup = (key: string) => (key === 'bodyFat' || key === 'bodyFatTrend' || key === 'projBodyFat' ? 'bf' : 'weight')
+    const valueGroup = (key: string) => (key === 'bodyFat' || key === 'bodyFatTrend' || key === 'predBodyFat' ? 'bf' : 'weight')
 
     return (
       <div style={{ ...TOOLTIP.contentStyle, padding: '8px 10px', lineHeight: 1.5 }}>
@@ -1010,8 +1065,134 @@ export function TrendsPage({ goToDay }: Props) {
         {weightData.hasProjection && 'Goal pace = your target rate. '}
         {weightData.hasPrediction &&
           `Predicted = recent intake${weightData.anchorLabel ? `, from your ${weightData.anchorLabel} weigh-in` : ''}. Shaded = forecast uncertainty.`}
+        {weightData.hasPredBodyFat && ' Predicted BF % tracks that forecast, holding lean mass steady.'}
       </p>
     ) : null
+
+  const compositionReadout = compositionData.totalNow != null ? (
+    <p className="chart-card__readout">
+      Lean <strong>{compositionData.leanNow}</strong> · fat <strong>{compositionData.fatNow}</strong> · total{' '}
+      <strong>{compositionData.totalNow}</strong> {unit}
+    </p>
+  ) : null
+  const compositionNote = (
+    <p className="chart-card__note">
+      Lean mass = weight − fat mass. Right of “today” is a forecast that holds lean steady, so projected change is all fat.
+    </p>
+  )
+
+  const renderCompositionTooltip = ({ active, payload, label }: TooltipContentProps) => {
+    if (!active || !payload?.length) return null
+    const row = payload[0]?.payload as
+      | { fatMass?: number | null; leanMass?: number | null; fatForecast?: number | null; leanForecast?: number | null }
+      | undefined
+    const fat = row?.fatMass ?? row?.fatForecast ?? null
+    const lean = row?.leanMass ?? row?.leanForecast ?? null
+    const total = fat != null && lean != null ? round1(fat + lean) : null
+    const fatPct = fat != null && total != null && total > 0 ? round1((fat / total) * 100) : null
+    const isForecast = row?.fatMass == null && row?.fatForecast != null
+    return (
+      <div style={{ ...TOOLTIP.contentStyle, padding: '8px 10px', lineHeight: 1.5 }}>
+        <p style={{ ...TOOLTIP.labelStyle, margin: '0 0 4px' }}>
+          {formatDayIndex(label)}
+          {isForecast && ' · projected'}
+        </p>
+        {total != null && (
+          <p style={{ ...TOOLTIP.itemStyle, margin: 0 }}>
+            Total : {total} {unit}
+          </p>
+        )}
+        {fat != null && (
+          <p style={{ ...TOOLTIP.itemStyle, margin: 0 }}>
+            Fat mass : {fat} {unit}
+            {fatPct != null && ` (${fatPct}%)`}
+          </p>
+        )}
+        {lean != null && (
+          <p style={{ ...TOOLTIP.itemStyle, margin: 0 }}>
+            Lean mass : {lean} {unit}
+          </p>
+        )}
+      </div>
+    )
+  }
+
+  const renderCompositionChart = (mode: TrendChartMode) => {
+    const { syncId, height } = chartModeProps(mode)
+    return (
+      <TrendGestureSurface {...chartGestureProps}>
+        <ResponsiveContainer width="100%" height={height ?? 240}>
+          <ComposedChart
+            data={compositionData.rows}
+            syncId={syncId}
+            syncMethod="value"
+            margin={CHART_MARGIN_SINGLE_AXIS}
+            onClick={(state) => {
+              if (shouldSuppressChartClick()) return
+              const dk = activeDayKey(state, compositionData.rows)
+              if (dk) goToDay(dk)
+            }}
+          >
+            <CartesianGrid stroke={C.grid} strokeOpacity={0.4} vertical={false} />
+            <XAxis
+              type="number"
+              dataKey="x"
+              domain={xDomain}
+              ticks={xTicks}
+              tickFormatter={formatDayIndex}
+              tick={AXIS_TICK}
+              tickLine={false}
+              axisLine={{ stroke: C.grid }}
+              minTickGap={24}
+              allowDataOverflow
+            />
+            <YAxis
+              tick={AXIS_TICK}
+              tickLine={false}
+              axisLine={false}
+              width={CHART_LEFT_AXIS_WIDTH}
+              domain={[0, (max: number) => Math.ceil(max + (unit === 'kg' ? 1 : 2))]}
+              tickFormatter={formatOneDecimalAxis}
+            />
+            {!isGestureActive && <Tooltip content={renderCompositionTooltip} />}
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            <ReferenceLine
+              x={compositionData.todayIndex}
+              stroke={C.muted}
+              strokeOpacity={0.6}
+              label={isGestureActive ? undefined : { value: 'today', fill: C.muted, fontSize: 10, position: 'insideTopLeft' }}
+            />
+            <Area dataKey="leanMass" name={`Lean mass (${unit})`} stackId="comp" stroke={C.protein} fill={C.protein} fillOpacity={0.5} connectNulls isAnimationActive={false} />
+            <Area dataKey="fatMass" name={`Fat mass (${unit})`} stackId="comp" stroke={C.fat} fill={C.fat} fillOpacity={0.5} connectNulls isAnimationActive={false} />
+            <Area
+              dataKey="leanForecast"
+              name="Lean mass forecast"
+              stackId="forecast"
+              stroke={C.protein}
+              strokeDasharray="5 4"
+              fill={C.protein}
+              fillOpacity={0.18}
+              connectNulls
+              legendType="none"
+              isAnimationActive={false}
+            />
+            <Area
+              dataKey="fatForecast"
+              name="Fat mass forecast"
+              stackId="forecast"
+              stroke={C.fat}
+              strokeDasharray="5 4"
+              fill={C.fat}
+              fillOpacity={0.18}
+              connectNulls
+              legendType="none"
+              isAnimationActive={false}
+            />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </TrendGestureSurface>
+    )
+  }
 
   const renderWeightChart = (mode: TrendChartMode) => {
     const { syncId, height } = chartModeProps(mode)
@@ -1099,8 +1280,18 @@ export function TrendsPage({ goToDay }: Props) {
                 isAnimationActive={false}
               />
             )}
-            {weightData.hasBodyFat && weightData.hasProjection && (
-              <Line yAxisId="bf" dataKey="projBodyFat" name="BF goal" stroke={C.fat} strokeWidth={1.5} strokeDasharray="5 4" dot={false} connectNulls isAnimationActive={false} />
+            {weightData.hasBodyFat && weightData.goalBodyFat != null && (
+              <ReferenceLine
+                yAxisId="bf"
+                y={weightData.goalBodyFat}
+                stroke={C.fat}
+                strokeDasharray="4 4"
+                strokeOpacity={0.5}
+                label={isGestureActive ? undefined : { value: 'BF goal', fill: C.muted, fontSize: 10, position: 'insideTopRight' }}
+              />
+            )}
+            {weightData.hasBodyFat && weightData.hasPredBodyFat && (
+              <Line yAxisId="bf" dataKey="predBodyFat" name="Predicted BF %" stroke={C.fat} strokeWidth={1.5} strokeDasharray="5 4" dot={false} connectNulls isAnimationActive={false} />
             )}
           </ComposedChart>
         </ResponsiveContainer>
@@ -1115,7 +1306,9 @@ export function TrendsPage({ goToDay }: Props) {
         ? { title: 'Energy balance', readout: balanceReadout, note: balanceNote, chart: renderBalanceChart('fullscreen') }
         : fullscreenChart === 'weight' && hasWeight
           ? { title: 'Weight & forecast', readout: weightReadout, note: weightNote, chart: renderWeightChart('fullscreen') }
-          : null
+          : fullscreenChart === 'composition' && hasComposition
+            ? { title: 'Body composition', readout: compositionReadout, note: compositionNote, chart: renderCompositionChart('fullscreen') }
+            : null
   const fullscreenOpen = fullscreenContent != null
 
   return (
@@ -1178,6 +1371,19 @@ export function TrendsPage({ goToDay }: Props) {
           </>
         ) : (
           <p className="muted chart-card__empty">Log your weight to see the trend.</p>
+        )}
+      </div>
+
+      <div className="card chart-card">
+        {renderChartHeader('composition', 'Body composition', hasComposition)}
+        {hasComposition ? (
+          <>
+            {compositionReadout}
+            {!fullscreenOpen && renderCompositionChart('card')}
+            {compositionNote}
+          </>
+        ) : (
+          <p className="muted chart-card__empty">Log your weight and body fat % on the same day to see lean vs. fat mass.</p>
         )}
       </div>
 

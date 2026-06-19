@@ -370,6 +370,15 @@ profile completeness. Backend tests: [test_exercise.py](tests/test_exercise.py).
   average daily balance, with a readout of both ETAs (target-rate date vs recent-intake date).
 - **Goal-progress tracks** — [GoalProgress](web/src/components/GoalProgress.tsx): per-metric (weight / body fat)
   progress bars on the metric's own scale with a predicted-pace marker, range-independent.
+- **Body composition + coherent body-fat forecast** — [composition.ts](web/src/lib/composition.ts)
+  derives lean (fat-free) and fat mass from `weight × (1 − bf/100)`. A new **Body composition** chart card
+  in [TrendsPage](web/src/pages/TrendsPage.tsx) stacks fat + lean mass (summing to weight) over the measured
+  range plus a lean-held-steady forecast, and reads out current lean/fat mass with deltas. The weight chart's
+  body-fat projection is no longer an independent glide to the BF goal: it's now **derived from the
+  predicted-weight line** (`predictBodyFatSeries`, lean held constant), so losing/gaining weight and body-fat
+  change stay consistent. Lean mass is informational (no goal field, no backend change). Tested in
+  [composition.test.ts](web/src/lib/composition.test.ts). *Possible follow-ups: data-driven lean-trend
+  partition instead of holding lean constant; an optional lean-mass goal.*
 - **Robustness/polish:** weigh-ins now load on a fixed 2-year lookback (not the range selector) so the latest
   weight is always available; the predicted line/goal progress anchor at the window-start weight; synced chart
   cursors (`syncId`); padded weight y-domains; a tight calorie y-domain; shared `CHART_COLORS`

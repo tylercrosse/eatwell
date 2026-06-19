@@ -2453,7 +2453,7 @@ body {
   height: 30px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  background: var(--surface-2);
   color: var(--muted);
   display: inline-flex;
   align-items: center;
@@ -2503,7 +2503,7 @@ body {
   position: fixed;
   inset: 0;
   z-index: 80;
-  background: var(--bg);
+  background: var(--surface);
   color: var(--text);
   padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
     max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
@@ -2529,7 +2529,7 @@ body {
   height: 44px;
   border: 1px solid var(--border);
   border-radius: 999px;
-  background: var(--surface);
+  background: var(--surface-2);
   color: var(--text);
   display: inline-flex;
   align-items: center;
@@ -2580,6 +2580,20 @@ body {
   justify-content: center;
 }
 
+/* The fullscreen panel sits on --surface, so lift its controls to --surface-2
+   (the next elevation step) to keep them distinct from the backdrop. */
+.trend-fullscreen .trend-window__btn {
+  background: var(--surface-2);
+}
+
+.trend-fullscreen .trend-window__btn:not(:disabled):active {
+  background: var(--surface);
+}
+
+.trend-fullscreen .trend-window__btn.is-active {
+  background: var(--accent-strong);
+}
+
 .trend-fullscreen__scrubber {
   margin-top: 2px;
 }
@@ -2601,7 +2615,7 @@ body {
     overflow-y: auto;
     border: 1px solid var(--border);
     border-radius: 24px;
-    background: var(--bg);
+    background: var(--surface);
     box-shadow: 0 24px 80px var(--shadow);
     padding: 18px;
   }
