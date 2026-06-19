@@ -12,6 +12,8 @@ npm run dev
 npm run build
 npm run lint
 npm run test
+npm run test:e2e
+npm run screenshots
 npm run preview
 ```
 
@@ -27,6 +29,22 @@ cd web && npm run dev
 
 Vite proxies `/api` and `/photos` to `http://localhost:8000`, so local browser calls stay
 same-origin.
+
+## Browser QA
+
+Playwright e2e tests use the local QA auth endpoint and reseed the QA personas before each
+run. The Playwright config starts FastAPI on `127.0.0.1:8010` with QA auth enabled and Vite
+on `127.0.0.1:5175`, so it does not collide with the normal dev servers.
+
+```bash
+cd web && npm run test:e2e
+cd web && npm run screenshots
+```
+
+Screenshots are written under `web/screenshots/` for `qa-loss`, `qa-gain`, and
+`qa-sporadic` using an iPhone-sized `430×932` viewport. The script clears old screenshots
+first, so rerunning it keeps the showcase captures current. Set `E2E_SEED_END_DATE=YYYY-MM-DD`
+when you need deterministic dated screenshots.
 
 ## Structure
 
@@ -67,6 +85,7 @@ For frontend changes, run:
 ```bash
 npm run build
 npm run lint
+npm run test:e2e
 ```
 
 Run `npm run test` when changing code under `src/lib/` or anything with existing Vitest

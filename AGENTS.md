@@ -113,6 +113,7 @@ SERVE_STATIC=true uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 - Implementation roadmap: `docs/BACKLOG.md`.
 - Commercial/App Store readiness: `docs/COMMERCIAL_READINESS.md`.
+- Product maturity/showcase priorities: `docs/PRODUCT_MATURITY_ROADMAP.md`.
 - Product strategy/opportunities: `docs/PRODUCT_OPPORTUNITIES.md`.
 - Setup/deploy/how to run: `README.md`.
 - Frontend-specific notes: `web/README.md`.

@@ -20,6 +20,8 @@ docs/           Product, launch, and implementation planning docs
 - [docs/BACKLOG.md](docs/BACKLOG.md) tracks implementation roadmap and feature context.
 - [docs/COMMERCIAL_READINESS.md](docs/COMMERCIAL_READINESS.md) tracks App Store, launch,
   monetization, privacy, domain, and deployment readiness.
+- [docs/PRODUCT_MATURITY_ROADMAP.md](docs/PRODUCT_MATURITY_ROADMAP.md) prioritizes work
+  that improves product credibility, demo quality, and external legibility.
 - [docs/PRODUCT_OPPORTUNITIES.md](docs/PRODUCT_OPPORTUNITIES.md) tracks market-led product
   opportunities and differentiator ideas.
 - [web/README.md](web/README.md) has frontend-specific commands and conventions.
@@ -144,20 +146,40 @@ For local browser/API testing without Google, enable the local-only QA login end
 ```bash
 QA_AUTH_ENABLED=true
 QA_AUTH_SECRET=pick-a-local-secret
-QA_AUTH_ACCOUNTS="qa1|qa1@example.test|QA One,qa2|qa2@example.test|QA Two"
+QA_AUTH_ACCOUNTS="qa-loss|qa-loss@example.test|QA Loss,qa-gain|qa-gain@example.test|QA Gain,qa-sporadic|qa-sporadic@example.test|QA Sporadic"
 ```
 
 Run the backend, open `http://localhost:8000/docs` in the same browser, and execute
 `POST /api/auth/qa` with:
 
 ```json
-{ "account": "qa1", "secret": "pick-a-local-secret" }
+{ "account": "qa-loss", "secret": "pick-a-local-secret" }
 ```
 
 That creates/reuses the configured QA user and sets the same httpOnly `ct_session` cookie
 as Google sign-in. Then open the PWA. Use the same hostname everywhere (`localhost` vs
 `127.0.0.1`) so the browser sends the cookie to the app/API. The QA endpoint rejects
 non-local hosts and is intentionally not shown in the frontend.
+
+To populate those QA accounts with local sample data, dry-run the seeder first:
+
+```bash
+uv run python scripts/seed_qa_data.py
+uv run python scripts/seed_qa_data.py --yes
+```
+
+The seeder replaces only the generated QA personas' data. It includes a dense five-year
+weight-loss history, an 18-month muscle-gain history, and a sparse six-month user.
+
+Frontend browser checks can log in through the same QA endpoint:
+
+```bash
+cd web && npm run test:e2e
+cd web && npm run screenshots
+```
+
+The screenshot script writes iPhone-sized captures for each QA persona to
+`web/screenshots/` and clears stale screenshot output each run.
 
 ## API reference
 

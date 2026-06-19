@@ -2,6 +2,8 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
+const proxyTarget = process.env.VITE_PROXY_API_TARGET ?? 'http://localhost:8000'
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
@@ -37,8 +39,8 @@ export default defineConfig({
   server: {
     // Forward /api and /photos to FastAPI so the frontend calls same-origin in dev (no CORS).
     proxy: {
-      '/api': { target: 'http://localhost:8000', changeOrigin: true },
-      '/photos': { target: 'http://localhost:8000', changeOrigin: true },
+      '/api': { target: proxyTarget, changeOrigin: true },
+      '/photos': { target: proxyTarget, changeOrigin: true },
     },
   },
 })

@@ -62,7 +62,11 @@ class Settings(BaseSettings):
     # Local-only QA auth for browser/API testing without Google. Disabled by default.
     qa_auth_enabled: bool = False
     qa_auth_secret: str = ""
-    qa_auth_accounts: str = "qa1|qa1@example.test|QA One,qa2|qa2@example.test|QA Two"
+    qa_auth_accounts: str = (
+        "qa-loss|qa-loss@example.test|QA Loss,"
+        "qa-gain|qa-gain@example.test|QA Gain,"
+        "qa-sporadic|qa-sporadic@example.test|QA Sporadic"
+    )
 
     @property
     def cors_origin_list(self) -> list[str]:

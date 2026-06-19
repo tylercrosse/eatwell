@@ -26,14 +26,21 @@ def _login(client, monkeypatch, email, sub=None, name="Tester"):
     return client.post("/api/auth/google", json={"credential": "fake-google-token"})
 
 
-def _enable_qa(monkeypatch, accounts="qa1|qa1@example.test|QA One,qa2|qa2@example.test|QA Two"):
+def _enable_qa(
+    monkeypatch,
+    accounts=(
+        "qa-loss|qa-loss@example.test|QA Loss,"
+        "qa-gain|qa-gain@example.test|QA Gain,"
+        "qa-sporadic|qa-sporadic@example.test|QA Sporadic"
+    ),
+):
     settings = get_settings()
     monkeypatch.setattr(settings, "qa_auth_enabled", True)
     monkeypatch.setattr(settings, "qa_auth_secret", QA_SECRET)
     monkeypatch.setattr(settings, "qa_auth_accounts", accounts)
 
 
-def _qa_login(client, account="qa1", secret=QA_SECRET):
+def _qa_login(client, account="qa-loss", secret=QA_SECRET):
     return client.post("/api/auth/qa", json={"account": account, "secret": secret})
 
 
@@ -111,16 +118,16 @@ def test_qa_login_succeeds_for_configured_local_account(monkeypatch):
     with TestClient(app, base_url="http://localhost") as c:
         r = _qa_login(c)
         assert r.status_code == 200, r.text
-        assert r.json()["email"] == "qa1@example.test"
-        assert r.json()["name"] == "QA One"
+        assert r.json()["email"] == "qa-loss@example.test"
+        assert r.json()["name"] == "QA Loss"
 
         me = c.get("/api/auth/me")
         assert me.status_code == 200
-        assert me.json()["email"] == "qa1@example.test"
+        assert me.json()["email"] == "qa-loss@example.test"
 
     users = _all_users()
     assert len(users) == 1
-    assert users[0].google_sub == "qa:qa1"
+    assert users[0].google_sub == "qa:qa-loss"
 
 
 def test_qa_login_rejects_invalid_secret_without_creating_user(monkeypatch):
