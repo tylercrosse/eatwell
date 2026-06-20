@@ -763,13 +763,20 @@ isn't understood. Diagnosis: the friction is real, not just mental-model anchori
   (`usePersistentToggle('simple-view', …)`, [prefs.ts](web/src/lib/prefs.ts)), default **Detailed**. In
   Simple view, per-meal/per-entry macros + the staying-power adornment collapse
   ([MealSection](web/src/components/MealSection.tsx), [EntryRow](web/src/components/EntryRow.tsx)) and the
-  energy summary drops the Consumed/Burned/Balance rings for a single **"kcal left"** hero (net of exercise),
-  reusing the existing `Ring` ([EnergySummary](web/src/components/EnergySummary.tsx)). One control answers
+  energy summary drops the Consumed/Burned/Balance rings. One control answers
   "too cluttered" + "don't care about macros" + "don't understand Balance" at once.
 - **14.2 Meal-first logging — S.** All four meals render always (even empty), each with a **"+ Add to {meal}"**
   button that scopes the capture flow to that meal up front ([LogPage](web/src/pages/LogPage.tsx) →
   `CapturePage initialMeal`), so the meal is chosen *before* logging instead of via a mid-flow dropdown. The
   global "Food" button stays as a time-defaulted quick path.
+- **14.3 Grouped entry surface — S.** A section's entries read as one bordered card with inset dividers
+  (`.entry-list--grouped`), instead of one floating card per row — applied to both meals and exercise
+  ([MealSection](web/src/components/MealSection.tsx), [ExerciseSection](web/src/components/ExerciseSection.tsx)).
+  Entry names wrap up to 3 lines, then truncate.
+- **14.4 MyNetDiary-style Simple dashboard — S.** The Simple energy view is a big "kcal left" ring over a
+  grid of at-a-glance tiles — Breakfast/Lunch/Dinner/Snacks (kcal) + Exercise + Steps
+  ([EnergySummary](web/src/components/EnergySummary.tsx) `SimpleEnergySummary`). Meal tiles are tappable
+  shortcuts into that meal's capture flow (reuse 14.2's wiring). No Water tile — the app doesn't track water.
 
 **Decisions:** one unified toggle (not two), default Detailed so the maintainer keeps full detail and the
 casual user flips Simple once (persists per device); no new per-meal/per-entry routes — the Log page already

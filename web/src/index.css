@@ -797,6 +797,7 @@ body {
 
 .field input,
 .field select,
+.field textarea,
 .macro-input input,
 .macro-input select {
   background: var(--surface-2);
@@ -810,10 +811,20 @@ body {
 
 .field input:focus,
 .field select:focus,
+.field textarea:focus,
 .macro-input input:focus,
 .macro-input select:focus {
   outline: none;
   border-color: var(--accent);
+}
+
+/* Auto-growing text field (e.g. the Food name): wraps to multiple lines and is
+ * resized to its content in JS, so it never needs an internal scroll. */
+.field__grow {
+  resize: none;
+  overflow: hidden;
+  font-family: inherit;
+  line-height: 1.4;
 }
 
 /* Hide native number spinners so the absolutely-positioned unit label (.macro-input__unit)
@@ -2970,9 +2981,75 @@ body {
   color: var(--muted);
 }
 
-/* Simple view: a single large "kcal left" hero. */
+/* Simple view: a MyNetDiary-style dashboard — a large "kcal left" ring over stat tiles. */
 .energy-summary--simple {
   align-items: center;
+  gap: 14px;
+}
+
+/* Enlarge the hero ring (the detailed view's ring stays at its smaller size). */
+.energy-summary--simple .energy-ring__chart {
+  width: clamp(180px, 56vw, 250px);
+  height: clamp(180px, 56vw, 250px);
+}
+
+.energy-summary--simple .energy-ring__value {
+  font-size: clamp(2.4rem, 12vw, 3rem);
+}
+
+.energy-summary--simple .energy-ring__unit {
+  font-size: 0.8rem;
+}
+
+/* The eaten/burn/goal context sits below the ring (full width — no overlap). */
+.energy-summary--simple .energy-ring__label {
+  font-size: 0.78rem;
+  margin-top: 2px;
+}
+
+.simple-stats {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.simple-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  text-align: left;
+}
+
+.simple-stat__label {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.simple-stat__value {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Meal tiles are tappable shortcuts into that meal's capture flow. */
+.simple-stat--meal {
+  cursor: pointer;
+  font: inherit;
+}
+
+.simple-stat--meal:hover {
+  border-color: var(--accent);
+}
+
+.simple-stat--meal:active {
+  transform: scale(0.99);
 }
 
 .trends__hint {

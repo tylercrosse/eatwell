@@ -62,3 +62,26 @@ export function signedWeeklyRateKg(t: Targets, currentWeightKg: number | null | 
       return t.weekly_rate_kg
   }
 }
+
+/**
+ * Infer the baseline for a goal-progress track from a chronological metric series.
+ *
+ * Without an explicit "goal started on" date, old history can make the denominator nonsense
+ * (for example, an old below-goal weight before a later regain). Use the current goal segment:
+ * after the last time the metric was already on the goal side, choose the high-water mark for
+ * decrease goals or the low-water mark for increase goals.
+ */
+export function goalProgressStart(values: number[], now: number, goal: number): number {
+  if (now === goal) return goal
+
+  const wantsDecrease = now > goal
+  let segmentStart = 0
+  values.forEach((value, index) => {
+    const alreadyOnGoalSide = wantsDecrease ? value <= goal : value >= goal
+    if (alreadyOnGoalSide) segmentStart = index + 1
+  })
+
+  const segment = values.slice(segmentStart).filter(Number.isFinite)
+  segment.push(now)
+  return wantsDecrease ? Math.max(...segment) : Math.min(...segment)
+}

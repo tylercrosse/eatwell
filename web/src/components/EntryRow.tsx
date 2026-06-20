@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import type { Entry, EntryCreate, Meal } from '../types'
 import { MEAL_LABELS, MEAL_ORDER, bucketOf } from '../lib/meals'
 import { dayKeyOf, formatTime, localDayKey, withDayKey } from '../lib/date'
@@ -108,6 +108,16 @@ function formFromEntry(e: Entry): EditForm {
 export function EntryRow({ entry, saving, showMacros, onSave, onDelete }: Props) {
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState<EditForm>(() => formFromEntry(entry))
+  const foodRef = useRef<HTMLTextAreaElement>(null)
+
+  // Grow the food name field to fit its content so long names wrap instead of
+  // forcing an awkward in-input scroll. Runs on open and on every keystroke.
+  useLayoutEffect(() => {
+    const el = foodRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [editing, form.food_name])
 
   function startEdit() {
     setForm(formFromEntry(entry)) // re-seed in case the entry changed since last open
@@ -144,8 +154,10 @@ export function EntryRow({ entry, saving, showMacros, onSave, onDelete }: Props)
         <div className="entry-edit">
           <label className="field">
             <span className="field__label">Food</span>
-            <input
-              type="text"
+            <textarea
+              ref={foodRef}
+              className="field__grow"
+              rows={1}
               value={form.food_name}
               onChange={(e) => setForm({ ...form, food_name: e.target.value })}
             />

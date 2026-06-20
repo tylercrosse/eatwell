@@ -24,8 +24,9 @@ import {
   type BalanceProjection,
 } from '../lib/energy'
 import { KCAL_PER_KG } from '../lib/tdee'
+import { MEAL_ORDER, MEAL_LABELS } from '../lib/meals'
 import { Popover } from './Popover'
-import type { Entry, Targets } from '../types'
+import type { Entry, Meal, Targets } from '../types'
 
 const macroEnergyValue = (me: MacroEnergy, key: MacroKey) => me[key]
 
@@ -44,15 +45,29 @@ interface Props {
   entries: Entry[]
   isToday: boolean
   currentWeightKg: number | null // latest weigh-in; gives the goal rate its lose/gain direction
-  simple: boolean // Simple view: just a "kcal left" hero, no rings/bars/balance
+  simple: boolean // Simple view: a "kcal left" hero + stat tiles, no rings/bars/balance
+  meals: { meal: Meal; calories: number }[] // per-meal kcal for the simple dashboard tiles
+  steps: number | null // step count for the simple dashboard (null = none logged)
+  exerciseKcal: number // logged workout kcal (excludes step burn) for the simple dashboard
+  onAddMeal: (meal: Meal) => void // tap a meal tile to start logging into that meal
 }
 
 /** Cronometer-inspired daily energy summary: Consumed / Burned / Deficit rings with macro and
  *  per-food breakdown popovers. Falls back to the simpler Consumed/Remaining view when the profile
  *  is incomplete (no BMR → no burned breakdown). */
-export function EnergySummary({ totals, targets, stayingPower, burned, burnedBreakdown: eb, entries, isToday, currentWeightKg, simple }: Props) {
+export function EnergySummary({ totals, targets, stayingPower, burned, burnedBreakdown: eb, entries, isToday, currentWeightKg, simple, meals, steps, exerciseKcal, onAddMeal }: Props) {
   if (simple) {
-    return <SimpleEnergySummary totals={totals} targets={targets} burned={burned} />
+    return (
+      <SimpleEnergySummary
+        totals={totals}
+        targets={targets}
+        burned={burned}
+        meals={meals}
+        steps={steps}
+        exerciseKcal={exerciseKcal}
+        onAddMeal={onAddMeal}
+      />
+    )
   }
   if (!eb) {
     return <LegacyEnergySummary totals={totals} targets={targets} stayingPower={stayingPower} burned={burned} />
@@ -164,16 +179,30 @@ export function EnergySummary({ totals, targets, stayingPower, burned, burnedBre
   )
 }
 
-/** Simple view: one "calories left" hero, no rings/bars/balance. Works even with an
- *  incomplete profile (uses the calorie target + step/exercise burn, not the BMR breakdown). */
+/** Compact step count for a stat tile: 2,533 → "2.5K". */
+function formatSteps(steps: number): string {
+  return steps >= 1000 ? `${(steps / 1000).toFixed(1)}K` : String(Math.round(steps))
+}
+
+/** Simple view: a MyNetDiary-style dashboard — a big "calories left" ring over a grid of
+ *  at-a-glance stat tiles (tap a meal to log into it). Works even with an incomplete profile
+ *  (uses the calorie target + step/exercise burn, not the BMR breakdown). */
 function SimpleEnergySummary({
   totals,
   targets,
   burned,
+  meals,
+  steps,
+  exerciseKcal,
+  onAddMeal,
 }: {
   totals: MacroTotals
   targets: Targets
   burned: number
+  meals: { meal: Meal; calories: number }[]
+  steps: number | null
+  exerciseKcal: number
+  onAddMeal: (meal: Meal) => void
 }) {
   const target = targets.calorie_target
   const consumed = totals.calories
@@ -181,16 +210,42 @@ function SimpleEnergySummary({
   const remaining = burned > 0 ? target - consumed + burned : target - consumed
   const consumedFrac = target > 0 ? consumed / target : 0
   const sub = burned > 0 ? `eaten ${round(consumed)} · 🔥 ${round(burned)} · goal ${round(target)}` : `eaten ${round(consumed)} · goal ${round(target)}`
+  const mealCal = (m: Meal) => meals.find((x) => x.meal === m)?.calories ?? 0
   return (
     <div className="card energy-summary energy-summary--simple">
       <Ring
-        label="kcal left"
+        label={sub}
         value={round(remaining)}
-        unit="kcal"
-        sub={sub}
+        unit="kcal left"
         fraction={consumedFrac}
         over={remaining < 0}
       />
+
+      <div className="simple-stats">
+        {MEAL_ORDER.map((m) => {
+          const cal = mealCal(m)
+          return (
+            <button
+              key={m}
+              type="button"
+              className="simple-stat simple-stat--meal"
+              onClick={() => onAddMeal(m)}
+              aria-label={`Add to ${MEAL_LABELS[m].toLowerCase()}`}
+            >
+              <span className="simple-stat__label">{MEAL_LABELS[m]}</span>
+              <span className="simple-stat__value">{cal > 0 ? round(cal) : '—'}</span>
+            </button>
+          )
+        })}
+        <div className="simple-stat">
+          <span className="simple-stat__label">Exercise</span>
+          <span className="simple-stat__value">{exerciseKcal > 0 ? `🔥 ${round(exerciseKcal)}` : '—'}</span>
+        </div>
+        <div className="simple-stat">
+          <span className="simple-stat__label">Steps</span>
+          <span className="simple-stat__value">{steps != null ? formatSteps(steps) : '—'}</span>
+        </div>
+      </div>
     </div>
   )
 }

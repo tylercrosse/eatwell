@@ -147,6 +147,10 @@ export function LogPage({ day, setDay }: Props) {
         isToday={isToday}
         currentWeightKg={latestWeightQuery.data?.weight_kg ?? null}
         simple={simple}
+        meals={groups.map((g) => ({ meal: g.meal, calories: g.totals.calories }))}
+        steps={metric?.steps ?? null}
+        exerciseKcal={exerciseKcal}
+        onAddMeal={(m) => setFoodMeal(m)}
       />
 
       {metric && (metric.weight_kg != null || metric.body_fat_pct != null) && (

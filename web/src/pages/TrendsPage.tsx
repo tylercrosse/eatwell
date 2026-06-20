@@ -21,7 +21,7 @@ import { TrendGestureSurface } from '../components/TrendGestureSurface'
 import { TrendScrubber } from '../components/TrendScrubber'
 import { getTargets } from '../api/targets'
 import { getTrendsHistory } from '../api/trends'
-import { ATWATER, signedWeeklyRateKg } from '../lib/targets'
+import { ATWATER, goalProgressStart, signedWeeklyRateKg } from '../lib/targets'
 import { burnedBreakdown, balanceColor } from '../lib/energy'
 import { MACRO_ORDER, NUTRITION_DISPLAY, type MacroKey } from '../lib/nutritionDisplay'
 import { stepsToKcal } from '../lib/activity'
@@ -682,9 +682,10 @@ export function TrendsPage({ goToDay }: Props) {
     [compositionBase, visibleBounds],
   )
 
-  // Goal progress on each metric's own scale (non-date x-axis), range-independent. start = earliest
-  // weigh-in on record, now = the smoothed most-recent weight, predicted = that weight plus the
-  // energy balance accrued since (Σ net / 7700) — a predicted "now". All in the active weight unit.
+  // Goal progress on each metric's own scale (non-date x-axis), range-independent. start = the
+  // inferred baseline for the current goal segment, now = the smoothed most-recent weight,
+  // predicted = that weight plus energy balance accrued since (Σ net / 7700). All weight values
+  // are in the active display unit.
   const goalProgress = useMemo(() => {
     const metrics = metricsData
     const t = targetsQuery.data
@@ -692,9 +693,16 @@ export function TrendsPage({ goToDay }: Props) {
     const loggedBf = metrics.filter((m) => m.body_fat_pct != null)
     const disp = (kg: number) => round1(kgToDisplay(kg, unit))
 
-    const startKg = loggedW.length ? (loggedW[0].weight_kg as number) : null
     const nowKg = anchor.anchorKg // smoothed most-recent weight
     const goalKg = t?.goal_weight_kg ?? null
+    const startKg =
+      loggedW.length && nowKg != null && goalKg != null
+        ? goalProgressStart(
+            loggedW.map((m) => m.weight_kg as number),
+            nowKg,
+            goalKg,
+          )
+        : null
     const netSinceAnchor =
       anchor.anchorDate != null
         ? balanceBase.rows.reduce((s, r) => (r.net != null && r.dayKey > (anchor.anchorDate as string) ? s + r.net : s), 0)
@@ -704,9 +712,16 @@ export function TrendsPage({ goToDay }: Props) {
     const weighedToday = anchor.anchorDate === today
     const predKg = nowKg != null && burned.available && !weighedToday ? nowKg + netSinceAnchor / KCAL_PER_KG : null
 
-    const startBf = loggedBf.length ? (loggedBf[0].body_fat_pct as number) : null
     const nowBf = loggedBf.length ? (loggedBf[loggedBf.length - 1].body_fat_pct as number) : null
     const goalBf = t?.goal_body_fat_pct ?? null
+    const startBf =
+      loggedBf.length && nowBf != null && goalBf != null
+        ? goalProgressStart(
+            loggedBf.map((m) => m.body_fat_pct as number),
+            nowBf,
+            goalBf,
+          )
+        : null
 
     const metricsOut: GoalMetric[] = []
     if (startKg != null && nowKg != null && goalKg != null) {
