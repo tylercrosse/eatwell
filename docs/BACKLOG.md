@@ -777,6 +777,16 @@ isn't understood. Diagnosis: the friction is real, not just mental-model anchori
   grid of at-a-glance tiles — Breakfast/Lunch/Dinner/Snacks (kcal) + Exercise + Steps
   ([EnergySummary](web/src/components/EnergySummary.tsx) `SimpleEnergySummary`). Meal tiles are tappable
   shortcuts into that meal's capture flow (reuse 14.2's wiring). No Water tile — the app doesn't track water.
+- **14.5 Explicit "Budget" calorie framing — S.** The ring's net math (`goal + exercise − eaten`) was
+  confusing because exercise silently inflated the goal. Now an explicit **`Budget = goal + exercise`** caption
+  sits above the ring, the big number is **`left`** (`budget − eaten`), the ring fills relative to the budget,
+  and the composition is spelled out below (`goal N + 🔥 N − eaten N`). **Caveat (conditional, already
+  mitigated):** `calorie_target` is a stored, user-set field (default flat 2,000), so it normally carries no
+  activity allowance and the budget is correct. Double-counting only arises if a user *both* applies the TDEE
+  recommendation (`BMR × activity_factor`, [tdee.ts](web/src/lib/tdee.ts)) *and* keeps a non-sedentary activity
+  factor — which the Goals page already warns against
+  ([GoalsPage.tsx:260](web/src/pages/GoalsPage.tsx#L260)). Possible follow-up: upgrade that always-on hint into
+  a conditional warning shown only when `activity_factor > 1.2` and activity is logged.
 
 **Decisions:** one unified toggle (not two), default Detailed so the maintainer keeps full detail and the
 casual user flips Simple once (persists per device); no new per-meal/per-entry routes — the Log page already

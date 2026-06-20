@@ -104,4 +104,21 @@ export const CHART_PALETTES: Record<ResolvedTheme, ChartPalette> = {
     border: '#665c54',
     text: '#ebdbb2',
   },
+  // High-contrast (low-vision): pure-black canvas, bright saturated hues, white text. Grid is kept
+  // mid-gray so chart lines don't overwhelm the data; everything else stays maximally legible.
+  'high-contrast': {
+    protein: '#40c4ff',
+    carbs: '#ffd740',
+    fat: '#ff80ab',
+    accent: '#00e676',
+    danger: '#ff5e5e',
+    burned: '#ffab40',
+    goal: '#b388ff',
+    projection: '#18ffff',
+    muted: '#dcdcdc',
+    grid: '#555555',
+    surface: '#0a0a0a',
+    border: '#ffffff',
+    text: '#ffffff',
+  },
 }

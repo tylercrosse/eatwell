@@ -1,9 +1,16 @@
 import { createContext, useContext } from 'react'
 import { CHART_PALETTES, type ChartPalette } from './colors'
+import type { TextSize } from './textSize'
 
 // A `ResolvedTheme` is an actual `[data-theme]` value the CSS understands. `ThemeId` adds the
 // `system` option, which resolves to light/dark from `prefers-color-scheme`.
-export type ResolvedTheme = 'light' | 'dark' | 'github-dark' | 'solarized-dark' | 'gruvbox-dark'
+export type ResolvedTheme =
+  | 'light'
+  | 'dark'
+  | 'github-dark'
+  | 'solarized-dark'
+  | 'gruvbox-dark'
+  | 'high-contrast'
 export type ThemeId = 'system' | ResolvedTheme
 
 // `id` is the stable key (localStorage value + `[data-theme]` selector + palette key) — never
@@ -15,6 +22,7 @@ export const THEMES: ReadonlyArray<{ id: ThemeId; label: string }> = [
   { id: 'github-dark', label: 'Black' },
   { id: 'solarized-dark', label: 'Cool' },
   { id: 'gruvbox-dark', label: 'Warm' },
+  { id: 'high-contrast', label: 'High contrast' },
 ]
 
 export const THEME_IDS = THEMES.map((t) => t.id) as ThemeId[]
@@ -23,7 +31,13 @@ export const DEFAULT_THEME: ThemeId = 'system'
 
 // When on "System", the OS light/dark preference is followed — but with several dark themes the
 // user picks which one is used at night (light has one option, so it isn't configurable yet).
-const DARK_IDS: readonly string[] = ['dark', 'github-dark', 'solarized-dark', 'gruvbox-dark']
+const DARK_IDS: readonly string[] = [
+  'dark',
+  'github-dark',
+  'solarized-dark',
+  'gruvbox-dark',
+  'high-contrast',
+]
 export const DARK_THEMES = THEMES.filter(
   (t): t is { id: ResolvedTheme; label: string } => DARK_IDS.includes(t.id),
 )
@@ -40,6 +54,7 @@ export const THEME_BG: Record<ResolvedTheme, string> = {
   'github-dark': '#0d1117',
   'solarized-dark': '#002b36',
   'gruvbox-dark': '#282828',
+  'high-contrast': '#000000',
 }
 
 /** Apply a resolved theme to the document: set `data-theme` + the theme-color meta. */
@@ -54,6 +69,8 @@ export interface ThemeContextValue {
   setTheme: (id: ThemeId) => void
   systemDark: ResolvedTheme // which dark theme 'system' uses when the OS is dark
   setSystemDark: (id: ResolvedTheme) => void
+  textSize: TextSize // app-wide text scaling
+  setTextSize: (id: TextSize) => void
 }
 
 export const ThemeContext = createContext<ThemeContextValue | null>(null)

@@ -206,17 +206,23 @@ function SimpleEnergySummary({
 }) {
   const target = targets.calorie_target
   const consumed = totals.calories
-  // Exercise raises what you can still eat, matching the "calorie budget" mental model.
-  const remaining = burned > 0 ? target - consumed + burned : target - consumed
-  const consumedFrac = target > 0 ? consumed / target : 0
-  const sub = burned > 0 ? `eaten ${round(consumed)} · 🔥 ${round(burned)} · goal ${round(target)}` : `eaten ${round(consumed)} · goal ${round(target)}`
+  // Budget model: exercise is added to the goal as an explicit "budget", so the only mental
+  // math is budget − eaten = left (no hidden netting). The ring fills relative to the budget.
+  const budget = burned > 0 ? target + burned : target
+  const remaining = budget - consumed
+  const consumedFrac = budget > 0 ? consumed / budget : 0
+  const breakdown =
+    burned > 0
+      ? `goal ${round(target)} + 🔥 ${round(burned)} − eaten ${round(consumed)}`
+      : `goal ${round(target)} − eaten ${round(consumed)}`
   const mealCal = (m: Meal) => meals.find((x) => x.meal === m)?.calories ?? 0
   return (
     <div className="card energy-summary energy-summary--simple">
+      {burned > 0 && <p className="simple-budget">Budget {round(budget)}</p>}
       <Ring
-        label={sub}
+        label={breakdown}
         value={round(remaining)}
-        unit="kcal left"
+        unit="left"
         fraction={consumedFrac}
         over={remaining < 0}
       />

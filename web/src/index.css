@@ -162,6 +162,40 @@
   color-scheme: dark;
 }
 
+:root[data-theme='high-contrast'] {
+  /* Low-vision theme: pure-black canvas + pure-white text (21:1), white borders to delineate
+     surfaces (they share the near-black background), and bright saturated accents. "Muted" text is
+     deliberately kept high-contrast (#dcdcdc, ~14:1) — secondary copy still has to be readable. */
+  --bg: #000000;
+  --bg-deep: #000000;
+  --surface: #0a0a0a;
+  --surface-2: #1a1a1a;
+  --border: #ffffff;
+  --text: #ffffff;
+  --muted: #dcdcdc;
+  --accent: #00e676;
+  --accent-strong: #00c853;
+  --on-accent: #000000;
+  --danger: #ff5e5e;
+  --macro-protein: #40c4ff;
+  --macro-carbs: #ffd740;
+  --macro-fat: #ff80ab;
+  --macro-fiber: #e0c9a6;
+  --energy: #b388ff;
+  --exp-bmr: #b388ff;
+  --exp-baseline: #1de9b6;
+  --exp-exercise: #ffab40;
+  --fullness-very-filling: #00e676;
+  --fullness-filling: #b2ff59;
+  --fullness-moderate: #ffd740;
+  --fullness-light: #ffab40;
+  --fullness-low: #ff5e5e;
+  --overlay: rgba(0, 0, 0, 0.8);
+  --shadow: rgba(0, 0, 0, 0.8);
+  --reticle: rgba(255, 255, 255, 1);
+  color-scheme: dark;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -258,7 +292,7 @@ body {
 
 .app__main {
   flex: 1;
-  padding: 16px;
+  padding: 8px;
   /* Reserve room for the fixed tab bar, including the home-indicator safe area it adds. */
   padding-bottom: calc(env(safe-area-inset-bottom) + 70px);
 }
@@ -2987,6 +3021,14 @@ body {
   gap: 14px;
 }
 
+/* "Budget" caption above the ring (goal + exercise); sits close to the ring. */
+.simple-budget {
+  margin: 0 0 -6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
 /* Enlarge the hero ring (the detailed view's ring stays at its smaller size). */
 .energy-summary--simple .energy-ring__chart {
   width: clamp(180px, 56vw, 250px);
@@ -3343,4 +3385,54 @@ body {
 /* "System" option: a light/dark split preview (fixed colors — it's the OS choice, not a theme). */
 .theme-swatch--system {
   background: linear-gradient(135deg, #f8fafc 0 50%, #0f172a 50% 100%);
+}
+
+/* Text-size picker: three options, each previewing the relative scale with a sized "A". Preview
+   sizes are fixed px (independent of the live root font-size) so the control reads the same at any
+   active setting. */
+.size-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.size-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  padding: 10px 8px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.size-option.is-active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.size-option__preview {
+  font-weight: 700;
+  line-height: 1;
+}
+
+.size-option__preview--default {
+  font-size: 15px;
+}
+
+.size-option__preview--large {
+  font-size: 19px;
+}
+
+.size-option__preview--larger {
+  font-size: 23px;
+}
+
+.size-option__label {
+  font-size: 0.78rem;
+  font-weight: 600;
 }

@@ -12,6 +12,13 @@ import {
   type ResolvedTheme,
   type ThemeId,
 } from './theme'
+import {
+  DEFAULT_TEXT_SIZE,
+  TEXT_SIZE_IDS,
+  TEXT_SIZE_STORAGE_KEY,
+  applyTextSize,
+  type TextSize,
+} from './textSize'
 
 const LIGHT_QUERY = '(prefers-color-scheme: light)'
 
@@ -39,6 +46,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     DARK_THEME_IDS,
     DEFAULT_SYSTEM_DARK,
   )
+  const [textSize, setTextSize] = usePersistentChoice<TextSize>(
+    TEXT_SIZE_STORAGE_KEY,
+    TEXT_SIZE_IDS,
+    DEFAULT_TEXT_SIZE,
+  )
   const system = useSystemTheme() // 'light' | 'dark' from the OS
   // `resolved` is derived during render: an explicit theme is itself; 'system' follows the OS,
   // using the chosen dark variant at night.
@@ -48,9 +60,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     applyResolvedTheme(resolved)
   }, [resolved])
 
+  useEffect(() => {
+    applyTextSize(textSize)
+  }, [textSize])
+
   const value = useMemo(
-    () => ({ theme, resolved, setTheme, systemDark, setSystemDark }),
-    [theme, resolved, setTheme, systemDark, setSystemDark],
+    () => ({ theme, resolved, setTheme, systemDark, setSystemDark, textSize, setTextSize }),
+    [theme, resolved, setTheme, systemDark, setSystemDark, textSize, setTextSize],
   )
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
 }

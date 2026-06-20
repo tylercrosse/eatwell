@@ -11,7 +11,7 @@
     <script>
       (function () {
         try {
-          var darks = ['dark', 'github-dark', 'solarized-dark', 'gruvbox-dark']
+          var darks = ['dark', 'github-dark', 'solarized-dark', 'gruvbox-dark', 'high-contrast']
           var valid = ['light'].concat(darks)
           var t = localStorage.getItem('theme') || 'system'
           if (valid.indexOf(t) === -1) {
@@ -30,9 +30,15 @@
             'github-dark': '#0d1117',
             'solarized-dark': '#002b36',
             'gruvbox-dark': '#282828',
+            'high-contrast': '#000000',
           }[t]
           var m = document.querySelector('meta[name="theme-color"]')
           if (m && bg) m.setAttribute('content', bg)
+          // Text size — mirrors TEXT_SIZE_SCALE in src/lib/textSize.ts. Applied here so larger
+          // type doesn't reflow on load.
+          var sizes = { default: '100%', large: '112.5%', larger: '125%' }
+          var fs = sizes[localStorage.getItem('text-size')]
+          if (fs) document.documentElement.style.fontSize = fs
         } catch (e) {
           /* ignore — falls back to the default dark :root */
         }

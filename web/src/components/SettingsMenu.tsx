@@ -1,5 +1,6 @@
 import { Modal } from './Modal'
 import { DARK_THEMES, THEMES, THEME_BG, useTheme, type ThemeId } from '../lib/theme'
+import { TEXT_SIZES } from '../lib/textSize'
 import { CHART_PALETTES } from '../lib/colors'
 
 /** Mini preview swatch for a theme (null = the "System" option, rendered as a light/dark split). */
@@ -52,7 +53,7 @@ function ThemeOption({
 
 /** App settings sheet. Theme is the first occupant; future prefs (units, default meal, …) land here. */
 export function SettingsMenu({ onClose }: { onClose: () => void }) {
-  const { theme, setTheme, systemDark, setSystemDark } = useTheme()
+  const { theme, setTheme, systemDark, setSystemDark, textSize, setTextSize } = useTheme()
   return (
     <Modal title="Settings" onClose={onClose}>
       <section className="settings__section">
@@ -87,6 +88,30 @@ export function SettingsMenu({ onClose }: { onClose: () => void }) {
           <p className="settings__hint">Used when your device is in dark mode.</p>
         </section>
       )}
+
+      <section className="settings__section">
+        <h3 className="settings__heading">Text size</h3>
+        <div className="size-grid">
+          {TEXT_SIZES.map((s) => {
+            const active = textSize === s.id
+            return (
+              <button
+                key={s.id}
+                type="button"
+                className={`size-option ${active ? 'is-active' : ''}`}
+                aria-pressed={active}
+                onClick={() => setTextSize(s.id)}
+              >
+                <span className={`size-option__preview size-option__preview--${s.id}`} aria-hidden>
+                  A
+                </span>
+                <span className="size-option__label">{s.label}</span>
+              </button>
+            )
+          })}
+        </div>
+        <p className="settings__hint">Scales all text in the app. Affects this device only.</p>
+      </section>
     </Modal>
   )
 }
