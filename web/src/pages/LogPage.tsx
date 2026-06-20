@@ -20,7 +20,8 @@ import { stepsToKcal } from '../lib/activity'
 import { burnedBreakdown } from '../lib/energy'
 import { groupByMeal } from '../lib/meals'
 import { DEFAULT_TARGETS } from '../lib/targets'
-import type { EntryCreate } from '../types'
+import { usePersistentToggle } from '../lib/prefs'
+import type { EntryCreate, Meal } from '../types'
 
 // How far back to look for the previous weigh-in that the day's weight delta is measured against.
 const WEIGHT_DELTA_LOOKBACK_DAYS = 365
@@ -32,8 +33,10 @@ interface Props {
 
 export function LogPage({ day, setDay }: Props) {
   const queryClient = useQueryClient()
-  const [modal, setModal] = useState<'food' | 'metric' | 'exercise' | null>(null)
+  const [modal, setModal] = useState<'metric' | 'exercise' | null>(null)
+  const [foodMeal, setFoodMeal] = useState<Meal | 'auto' | null>(null) // food capture target; null = closed, 'auto' = meal by time
   const [picker, setPicker] = useState(false)
+  const [simple, setSimple] = usePersistentToggle('simple-view', false) // false = Detailed (default)
 
   const entriesQuery = useQuery({ queryKey: ['entries', day], queryFn: () => getEntries(day) })
   const targetsQuery = useQuery({ queryKey: ['targets'], queryFn: getTargets })
@@ -112,7 +115,7 @@ export function LogPage({ day, setDay }: Props) {
       </div>
 
       <div className="log-actions">
-        <button className="btn btn--ghost" onClick={() => setModal('food')}>
+        <button className="btn btn--ghost" onClick={() => setFoodMeal('auto')}>
           🍎 Food
         </button>
         <button className="btn btn--ghost" onClick={() => setModal('exercise')}>
@@ -121,6 +124,17 @@ export function LogPage({ day, setDay }: Props) {
         <button className="btn btn--ghost" onClick={() => setModal('metric')}>
           ⚖️ Body
         </button>
+      </div>
+
+      <div className="view-toggle">
+        <div className="seg" role="group" aria-label="View detail">
+          <button className={`seg__btn ${simple ? 'is-active' : ''}`} onClick={() => setSimple(true)}>
+            Simple
+          </button>
+          <button className={`seg__btn ${!simple ? 'is-active' : ''}`} onClick={() => setSimple(false)}>
+            Detailed
+          </button>
+        </div>
       </div>
 
       <EnergySummary
@@ -132,6 +146,7 @@ export function LogPage({ day, setDay }: Props) {
         entries={entries}
         isToday={isToday}
         currentWeightKg={latestWeightQuery.data?.weight_kg ?? null}
+        simple={simple}
       />
 
       {metric && (metric.weight_kg != null || metric.body_fat_pct != null) && (
@@ -147,25 +162,30 @@ export function LogPage({ day, setDay }: Props) {
         <p className="muted">Loading…</p>
       ) : entriesQuery.isError ? (
         <p className="error-text">Couldn't load entries. Is the backend running?</p>
-      ) : entries.length === 0 ? (
-        <p className="empty">No food logged yet. Tap "Food" to start.</p>
       ) : (
+        // All four meals always render (even empty) so logging can start from any meal.
         groups.map((g) => (
           <MealSection
             key={g.meal}
             group={g}
             savingId={update.isPending ? (update.variables?.id ?? null) : null}
+            showMacros={!simple}
             onSave={(id, patch) => update.mutate({ id, patch })}
             onDelete={(id) => remove.mutate(id)}
+            onAdd={(meal) => setFoodMeal(meal)}
           />
         ))
       )}
 
       <ExerciseSection day={day} />
 
-      {modal === 'food' && (
-        <Modal onClose={() => setModal(null)}>
-          <CapturePage day={day} onLogged={() => setModal(null)} />
+      {foodMeal !== null && (
+        <Modal onClose={() => setFoodMeal(null)}>
+          <CapturePage
+            day={day}
+            initialMeal={foodMeal === 'auto' ? undefined : foodMeal}
+            onLogged={() => setFoodMeal(null)}
+          />
         </Modal>
       )}
       {modal === 'exercise' && (

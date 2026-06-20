@@ -22,6 +22,7 @@ type Status = 'idle' | 'scanning' | 'uploading' | 'review' | 'done' | 'error'
 interface Props {
   day: string // new entries default to this day (the day being viewed)
   onLogged: () => void // called after a successful save (host closes the modal)
+  initialMeal?: Meal // seed the meal when entering from a specific meal section; else time-of-day
 }
 
 // Client-only id for React keys + merge selection; never sent to the backend.
@@ -56,7 +57,7 @@ function itemFromFoodItem(it: FoodItem): ItemDraft {
 }
 
 /** One editable item-draft per detected food; falls back to a single item from the totals. */
-function draftFromAnalysis(a: AnalysisResult, day: string): CaptureDraft {
+function draftFromAnalysis(a: AnalysisResult, day: string, meal: Meal): CaptureDraft {
   const items: ItemDraft[] =
     a.items.length > 0
       ? a.items.map(itemFromFoodItem)
@@ -79,11 +80,11 @@ function draftFromAnalysis(a: AnalysisResult, day: string): CaptureDraft {
         ]
   // A lone item inherits the overall serving estimate; multi-item rows start without one.
   if (items.length === 1 && !items[0].serving_size) items[0].serving_size = a.serving_size_estimate
-  return { items, meal: mealFromTime(), logged_at: withDayKey(localDateTime(), day), source: 'ai' }
+  return { items, meal, logged_at: withDayKey(localDateTime(), day), source: 'ai' }
 }
 
 /** Prefill a single-item draft from a scanned packaged food (no AI call). */
-function draftFromBarcode(food: BarcodeFood, day: string): CaptureDraft {
+function draftFromBarcode(food: BarcodeFood, day: string, meal: Meal): CaptureDraft {
   const foodName = food.brand ? `${food.brand} ${food.name}` : food.name
   return {
     items: [
@@ -103,14 +104,14 @@ function draftFromBarcode(food: BarcodeFood, day: string): CaptureDraft {
         servings: 1,
       },
     ],
-    meal: mealFromTime(),
+    meal,
     logged_at: withDayKey(localDateTime(), day),
     source: 'barcode',
   }
 }
 
 /** Re-log a recent food: one item, no AI call. Restores the serving last used. */
-function draftFromRecent(food: RecentFood, day: string): CaptureDraft {
+function draftFromRecent(food: RecentFood, day: string, meal: Meal): CaptureDraft {
   // Stored macros are the total (baseline × servings); divide the multiplier back out so the
   // editor shows the per-serving baseline with the remembered servings count restored.
   const { base, servings } = parseServingSize(food.serving_size ?? null)
@@ -134,7 +135,7 @@ function draftFromRecent(food: RecentFood, day: string): CaptureDraft {
         servings: clampServings(s),
       },
     ],
-    meal: mealFromTime(),
+    meal,
     logged_at: withDayKey(localDateTime(), day),
     source: 'manual',
   }
@@ -212,8 +213,10 @@ function mergeItems(items: ItemDraft[], ids: string[]): ItemDraft[] {
   return out
 }
 
-export function CapturePage({ day, onLogged }: Props) {
+export function CapturePage({ day, onLogged, initialMeal }: Props) {
   const queryClient = useQueryClient()
+  // Meal chosen up front (from a meal section's "Add to …"); else default by time of day.
+  const seedMeal = initialMeal ?? mealFromTime()
   const [status, setStatus] = useState<Status>('idle')
   const [error, setError] = useState<string | null>(null)
   const [draft, setDraft] = useState<CaptureDraft | null>(null)
@@ -259,7 +262,7 @@ export function CapturePage({ day, onLogged }: Props) {
     onSuccess: (res) => {
       setAnalysis(res.analysis)
       setPhotoRef(res.photo_ref)
-      setDraft(draftFromAnalysis(res.analysis, day))
+      setDraft(draftFromAnalysis(res.analysis, day, seedMeal))
       setStatus('review')
     },
     onError: onEstimateError,
@@ -276,7 +279,7 @@ export function CapturePage({ day, onLogged }: Props) {
     onSuccess: (res) => {
       setAnalysis(res)
       setPhotoRef(null)
-      setDraft(draftFromAnalysis(res, day))
+      setDraft(draftFromAnalysis(res, day, seedMeal))
       setStatus('review')
     },
     onError: onEstimateError,
@@ -294,7 +297,7 @@ export function CapturePage({ day, onLogged }: Props) {
     onSuccess: (food) => {
       setAnalysis(null)
       setPhotoRef(null)
-      setDraft(draftFromBarcode(food, day))
+      setDraft(draftFromBarcode(food, day, seedMeal))
       setStatus('review')
     },
     onError: (e) => {
@@ -374,14 +377,14 @@ export function CapturePage({ day, onLogged }: Props) {
     setPreview(null)
     setAnalysis(null)
     setPhotoRef(null)
-    setDraft(draftFromRecent(food, day))
+    setDraft(draftFromRecent(food, day, seedMeal))
     setStatus('review')
   }
 
   // Quick-add a recent food straight to the viewed day — no review card, remembered serving.
   function onQuickAdd(food: RecentFood) {
     setError(null)
-    const d = draftFromRecent(food, day)
+    const d = draftFromRecent(food, day, seedMeal)
     const entry = itemToEntry(d.items[0], {
       meal: d.meal,
       logged_at: d.logged_at,

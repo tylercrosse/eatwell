@@ -43,6 +43,7 @@ with a gross/net toggle**; charts via **Recharts**.
 | M11 Meal photos & visual identity                         | ⬜                                                                              |
 | M12 Conversational meal/restaurant assistant & recipes    | ⬜                                                                              |
 | M13 Cost & taste optimization dimensions                  | ⬜                                                                              |
+| M14 Simple/Detailed view + meal-first logging             | 🚧                                                                              |
 
 ---
 
@@ -748,6 +749,38 @@ Effort: S (13.1, 13.2) + M (13.3). **Sequence:** 13.1 → (13.2 ∥ 13.3); depen
 from **1.4 v2 (saved foods)** as the home for a persistent taste rating. **Verification:** migration test for
 the new column(s) ([test_migration.py](tests/test_migration.py) pattern); "cost per g protein" + "value" sort
 compute correctly; taste rating persists per user and shifts Guide order; build/lint.
+
+---
+
+## Milestone 14 — Simple/Detailed view + meal-first logging — 🚧
+
+Driven by **first-time-user feedback**: the Log page reads as
+too cluttered, picking a meal *after* starting to log feels backwards, macros aren't wanted, and "Balance"
+isn't understood. Diagnosis: the friction is real, not just mental-model anchoring — but the fix is better
+*defaults and disclosure*, not stripping features.
+
+- **14.1 Simple/Detailed view toggle — S.** One persisted per-page switch
+  (`usePersistentToggle('simple-view', …)`, [prefs.ts](web/src/lib/prefs.ts)), default **Detailed**. In
+  Simple view, per-meal/per-entry macros + the staying-power adornment collapse
+  ([MealSection](web/src/components/MealSection.tsx), [EntryRow](web/src/components/EntryRow.tsx)) and the
+  energy summary drops the Consumed/Burned/Balance rings for a single **"kcal left"** hero (net of exercise),
+  reusing the existing `Ring` ([EnergySummary](web/src/components/EnergySummary.tsx)). One control answers
+  "too cluttered" + "don't care about macros" + "don't understand Balance" at once.
+- **14.2 Meal-first logging — S.** All four meals render always (even empty), each with a **"+ Add to {meal}"**
+  button that scopes the capture flow to that meal up front ([LogPage](web/src/pages/LogPage.tsx) →
+  `CapturePage initialMeal`), so the meal is chosen *before* logging instead of via a mid-flow dropdown. The
+  global "Food" button stays as a time-defaulted quick path.
+
+**Decisions:** one unified toggle (not two), default Detailed so the maintainer keeps full detail and the
+casual user flips Simple once (persists per device); no new per-meal/per-entry routes — the Log page already
+groups by meal and EntryRow expands inline, preserving meal context; keep the EstimateCard meal selector as a
+pre-filled correction affordance.
+
+**Possible fast-follows:** split into two toggles if power users want macros while simplifying Balance;
+collapse the now-redundant meal selector in EstimateCard when `initialMeal` is set.
+
+Effort: S. **Verification:** `cd web && npm run build` + lint + test; manually confirm toggle persistence,
+Simple vs Detailed rendering, and that "Add to lunch" lands an entry in Lunch without touching the dropdown.
 
 ---
 

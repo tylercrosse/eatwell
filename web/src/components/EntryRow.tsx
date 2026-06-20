@@ -58,6 +58,7 @@ function EntrySupport({ entry }: { entry: Entry }) {
 interface Props {
   entry: Entry
   saving: boolean
+  showMacros: boolean // false hides the macro/fiber + support adornment (Simple view)
   onSave: (id: number, patch: Partial<EntryCreate>) => void
   onDelete: (id: number) => void
 }
@@ -104,7 +105,7 @@ function formFromEntry(e: Entry): EditForm {
 }
 
 /** One logged entry: a compact display row that expands into an edit form. */
-export function EntryRow({ entry, saving, onSave, onDelete }: Props) {
+export function EntryRow({ entry, saving, showMacros, onSave, onDelete }: Props) {
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState<EditForm>(() => formFromEntry(entry))
 
@@ -139,7 +140,7 @@ export function EntryRow({ entry, saving, onSave, onDelete }: Props) {
     const f = form.servings // always >= SERVINGS_MIN, so safe to divide by
     const caloriesOk = form.calories * f > 0 // an entry with no calories isn't worth logging
     return (
-      <li className="card entry entry--editing">
+      <li className="entry entry--editing">
         <div className="entry-edit">
           <label className="field">
             <span className="field__label">Food</span>
@@ -220,19 +221,23 @@ export function EntryRow({ entry, saving, onSave, onDelete }: Props) {
 
   const details = detailNutrients(entry)
   return (
-    <li className="card entry">
+    <li className="entry">
       <div className="entry__main">
         <span className="entry__name">{entry.food_name}</span>
         <span className="entry__meta">
           {formatTime(entry.logged_at)}
           {entry.serving_size ? ` · ${entry.serving_size}` : ''}
         </span>
-        <MacroBar protein_g={entry.protein_g} carbs_g={entry.carbs_g} fat_g={entry.fat_g} />
-        <NutritionLegend food={entry} />
-        <span className="entry__signals">
-          <EntrySupport entry={entry} />
-          {details && <span className="entry__details">{details}</span>}
-        </span>
+        {showMacros && (
+          <>
+            <MacroBar protein_g={entry.protein_g} carbs_g={entry.carbs_g} fat_g={entry.fat_g} />
+            <NutritionLegend food={entry} />
+            <span className="entry__signals">
+              <EntrySupport entry={entry} />
+              {details && <span className="entry__details">{details}</span>}
+            </span>
+          </>
+        )}
       </div>
       <CalorieValue calories={entry.calories} />
       <button className="entry__action" aria-label="Edit entry" onClick={startEdit}>

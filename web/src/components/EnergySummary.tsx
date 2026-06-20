@@ -44,12 +44,16 @@ interface Props {
   entries: Entry[]
   isToday: boolean
   currentWeightKg: number | null // latest weigh-in; gives the goal rate its lose/gain direction
+  simple: boolean // Simple view: just a "kcal left" hero, no rings/bars/balance
 }
 
 /** Cronometer-inspired daily energy summary: Consumed / Burned / Deficit rings with macro and
  *  per-food breakdown popovers. Falls back to the simpler Consumed/Remaining view when the profile
  *  is incomplete (no BMR → no burned breakdown). */
-export function EnergySummary({ totals, targets, stayingPower, burned, burnedBreakdown: eb, entries, isToday, currentWeightKg }: Props) {
+export function EnergySummary({ totals, targets, stayingPower, burned, burnedBreakdown: eb, entries, isToday, currentWeightKg, simple }: Props) {
+  if (simple) {
+    return <SimpleEnergySummary totals={totals} targets={targets} burned={burned} />
+  }
   if (!eb) {
     return <LegacyEnergySummary totals={totals} targets={targets} stayingPower={stayingPower} burned={burned} />
   }
@@ -156,6 +160,37 @@ export function EnergySummary({ totals, targets, stayingPower, burned, burnedBre
       </div>
 
       <StayingPowerMeter day={stayingPower} />
+    </div>
+  )
+}
+
+/** Simple view: one "calories left" hero, no rings/bars/balance. Works even with an
+ *  incomplete profile (uses the calorie target + step/exercise burn, not the BMR breakdown). */
+function SimpleEnergySummary({
+  totals,
+  targets,
+  burned,
+}: {
+  totals: MacroTotals
+  targets: Targets
+  burned: number
+}) {
+  const target = targets.calorie_target
+  const consumed = totals.calories
+  // Exercise raises what you can still eat, matching the "calorie budget" mental model.
+  const remaining = burned > 0 ? target - consumed + burned : target - consumed
+  const consumedFrac = target > 0 ? consumed / target : 0
+  const sub = burned > 0 ? `eaten ${round(consumed)} · 🔥 ${round(burned)} · goal ${round(target)}` : `eaten ${round(consumed)} · goal ${round(target)}`
+  return (
+    <div className="card energy-summary energy-summary--simple">
+      <Ring
+        label="kcal left"
+        value={round(remaining)}
+        unit="kcal"
+        sub={sub}
+        fraction={consumedFrac}
+        over={remaining < 0}
+      />
     </div>
   )
 }

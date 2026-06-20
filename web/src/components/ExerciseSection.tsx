@@ -39,7 +39,7 @@ export function ExerciseSection({ day }: { day: string }) {
         <span className="meal-section__title">Exercise</span>
         <span className="meal-section__totals">−{round(burned)} kcal burned</span>
       </header>
-      <ul className="entry-list">
+      <ul className="entry-list entry-list--grouped">
         {steps != null && metric && <StepsRow metric={metric} stepKcal={stepKcal} />}
         {entries.map((e) => (
           <ExerciseRow
@@ -77,7 +77,7 @@ function ExerciseRow({ entry, saving, onSave, onDelete }: RowProps) {
 
   if (editing) {
     return (
-      <li className="card entry entry--editing">
+      <li className="entry entry--editing">
         <div className="entry-edit">
           <label className="field">
             <span className="field__label">Activity</span>
@@ -119,7 +119,7 @@ function ExerciseRow({ entry, saving, onSave, onDelete }: RowProps) {
     .join(' · ')
 
   return (
-    <li className="card entry">
+    <li className="entry">
       <div className="entry__main">
         <span className="entry__name">{entry.description}</span>
         {meta && <span className="entry__meta">{meta}</span>}
@@ -163,7 +163,7 @@ function StepsRow({ metric, stepKcal }: { metric: BodyMetric; stepKcal: number }
 
   if (editing) {
     return (
-      <li className="card entry entry--editing">
+      <li className="entry entry--editing">
         <div className="entry-edit">
           <NumberField label="Steps" min={0} step={1} value={steps} onChange={setSteps} />
           <div className="estimate__actions">
@@ -187,7 +187,7 @@ function StepsRow({ metric, stepKcal }: { metric: BodyMetric; stepKcal: number }
   }
 
   return (
-    <li className="card entry">
+    <li className="entry">
       <div className="entry__main">
         <span className="entry__name">👟 Steps</span>
         <span className="entry__meta">

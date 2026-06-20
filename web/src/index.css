@@ -2755,6 +2755,39 @@ body {
   text-overflow: ellipsis;
 }
 
+/* A section's entries read as one surface: a single bordered card, rows split by inset
+ * dividers (food + exercise lists; the standalone Body/metric card is unaffected). */
+.entry-list--grouped {
+  gap: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.entry-list--grouped .entry {
+  position: relative;
+  align-items: flex-start;
+  padding: 14px 16px;
+}
+
+.entry-list--grouped .entry:not(:first-child)::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 16px;
+  border-top: 1px solid var(--border);
+}
+
+/* Grouped entry names wrap up to 3 lines, then truncate with an ellipsis. */
+.entry-list--grouped .entry__name {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
+
 .entry__meta,
 .entry__macros {
   font-size: 0.76rem;
@@ -2905,6 +2938,41 @@ body {
   flex: 1;
   background: var(--surface);
   border: 1px solid var(--border);
+}
+
+/* Simple/Detailed view switch — its own centered row under the log actions. */
+.view-toggle {
+  display: flex;
+  justify-content: center;
+  margin-top: 10px;
+}
+
+/* "+ Add to {meal}" — a dashed full-width entry point per meal section. */
+.meal-section__add {
+  width: 100%;
+  padding: 10px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  background: none;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.meal-section__add:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+/* Empty meals are quieter — just a header + the Add button. */
+.meal-section--empty .meal-section__totals {
+  color: var(--muted);
+}
+
+/* Simple view: a single large "kcal left" hero. */
+.energy-summary--simple {
+  align-items: center;
 }
 
 .trends__hint {
