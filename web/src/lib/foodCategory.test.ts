@@ -11,6 +11,9 @@ import {
 } from './foodCategory'
 import { iconFor } from './foodCategoryIcons'
 import { SEED_FOOD_NAMES } from './foodCategory.fixtures'
+import { appIconFor, type AppIconKey } from './appIcons'
+import { mealIconFor } from './mealIcons'
+import { MEAL_ORDER } from './meals'
 
 describe('taxonomy invariants', () => {
   it('every Tier-2 key has a real parent group', () => {
@@ -19,11 +22,54 @@ describe('taxonomy invariants', () => {
     }
   })
 
-  it('every group and Tier-2 key resolves to an icon component', () => {
-    // lucide v1 icons are forwardRef objects, so assert a renderable component (not undefined).
+  it('every group and Tier-2 key resolves to an icon asset', () => {
     for (const key of [...GROUP_KEYS, ...Object.keys(TIER2_PARENTS), FOOD_GENERIC, BEVERAGE_GENERIC]) {
-      expect(iconFor(key), key).toBeTruthy()
+      const icon = iconFor(key)
+      expect(icon.src, key).toBeTruthy()
+      expect(icon.label, key).toBeTruthy()
     }
+  })
+
+  it('every meal resolves to an icon asset', () => {
+    for (const meal of MEAL_ORDER) {
+      const icon = mealIconFor(meal)
+      expect(icon.src, meal).toBeTruthy()
+      expect(icon.label, meal).toBeTruthy()
+    }
+  })
+
+  it('every app chrome icon resolves to an icon asset', () => {
+    const appIconKeys: AppIconKey[] = [
+      'body',
+      'burn',
+      'camera',
+      'exercise',
+      'food',
+      'goals',
+      'guide',
+      'log',
+      'party',
+      'settings',
+      'sparkles',
+      'steps',
+      'trends',
+    ]
+    for (const key of appIconKeys) {
+      const icon = appIconFor(key)
+      expect(icon.src, key).toBeTruthy()
+      expect(icon.label, key).toBeTruthy()
+    }
+    expect(appIconFor('exercise').label).toBe('Flexed biceps')
+    expect(appIconFor('steps').label).toBe('Running shoe')
+  })
+
+  it('uses Fluent gap refinements for visually distinct leaves', () => {
+    expect(iconFor('pancakes_waffles').label).toBe('Pancakes')
+    expect(iconFor('pie_tart').label).toBe('Pie')
+    expect(iconFor('tea').label).toBe('Teacup without handle')
+    expect(iconFor('juice').label).toBe('Beverage box')
+    expect(iconFor('wrap').label).toBe('Stuffed flatbread')
+    expect(iconFor('oil').label).toBe('Pouring liquid')
   })
 
   it('groupOf maps a group to itself and a Tier-2 to its parent', () => {

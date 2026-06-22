@@ -1511,6 +1511,71 @@ body {
   gap: 8px;
 }
 
+.meal-icon {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.meal-icon__img {
+  display: block;
+  width: var(--meal-icon-size, 20px);
+  height: var(--meal-icon-size, 20px);
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+
+.meal-icon--tile {
+  width: 30px;
+  height: 30px;
+}
+
+.app-icon {
+  flex: none;
+  width: var(--app-icon-size, 20px);
+  height: var(--app-icon-size, 20px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.app-icon__img {
+  display: block;
+  width: var(--app-icon-size, 20px);
+  height: var(--app-icon-size, 20px);
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+
+.app-icon--tile {
+  width: 30px;
+  height: 30px;
+}
+
+.app-icon--inline {
+  vertical-align: -0.15em;
+}
+
+.icon-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.icon-label--inline {
+  justify-content: flex-start;
+  gap: 5px;
+}
+
 /* Food weight (volume) sits at the right edge of the meal's title row. */
 .meal-section__volume {
   margin-left: auto;
@@ -2785,18 +2850,24 @@ body {
   padding: 12px 14px;
 }
 
-/* Leading category glyph (its visual form) — a soft theme-tinted disc. Decorative;
- * the food name is the accessible label. Tints adapt per theme via tokens. */
+/* Leading category glyph (its visual form). Decorative; the food name is the accessible label. */
 .food-icon {
   flex: 0 0 auto;
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
-  color: color-mix(in srgb, var(--accent) 55%, var(--text));
+  line-height: 1;
+}
+
+.food-icon__img {
+  display: block;
+  width: var(--food-icon-size, 20px);
+  height: var(--food-icon-size, 20px);
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
 }
 
 /* In the grouped card rows align to the top, so the chip sits beside the name. */
@@ -2817,6 +2888,12 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.entry__name--with-icon {
+  display: flex;
+  align-items: center;
+  gap: 9px;
 }
 
 /* A section's entries read as one surface: a single bordered card, rows split by inset
@@ -3090,6 +3167,13 @@ body {
   font-size: 0.74rem;
   font-weight: 600;
   color: var(--muted);
+}
+
+.simple-stat__label-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
 .simple-stat__value {

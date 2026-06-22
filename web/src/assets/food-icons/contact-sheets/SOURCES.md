@@ -154,7 +154,7 @@ OpenMoji is intentionally excluded from the generated sheets because its CC BY-S
 | `burger` | Tier 2 | `handheld` | exact | Hamburger / hamburger_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Hamburger/Flat/hamburger_flat.svg |
 | `sandwich` | Tier 2 | `handheld` | exact | Sandwich / sandwich_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Sandwich/Flat/sandwich_flat.svg |
 | `sub_hoagie` | Tier 2 | `handheld` | fallback | Sandwich / sandwich_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Sandwich/Flat/sandwich_flat.svg |
-| `wrap` | Tier 2 | `handheld` | fallback | Sandwich / sandwich_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Sandwich/Flat/sandwich_flat.svg |
+| `wrap` | Tier 2 | `handheld` | exact | Stuffed flatbread / stuffed_flatbread_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Stuffed%20flatbread/Flat/stuffed_flatbread_flat.svg |
 | `panini` | Tier 2 | `handheld` | fallback | Sandwich / sandwich_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Sandwich/Flat/sandwich_flat.svg |
 | `hot_dog` | Tier 2 | `handheld` | exact | Hot dog / hot_dog_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Hot%20dog/Flat/hot_dog_flat.svg |
 | `bagel_sandwich` | Tier 2 | `handheld` | fallback | Sandwich / sandwich_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Sandwich/Flat/sandwich_flat.svg |
@@ -164,7 +164,7 @@ OpenMoji is intentionally excluded from the generated sheets because its CC BY-S
 | `grain_bowl` | Tier 2 | `bowl` | fallback | Bowl with spoon / bowl_with_spoon_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Bowl%20with%20spoon/Flat/bowl_with_spoon_flat.svg |
 | `poke` | Tier 2 | `bowl` | fallback | Bowl with spoon / bowl_with_spoon_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Bowl%20with%20spoon/Flat/bowl_with_spoon_flat.svg |
 | `fried_rice` | Tier 2 | `bowl` | fallback | Bowl with spoon / bowl_with_spoon_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Bowl%20with%20spoon/Flat/bowl_with_spoon_flat.svg |
-| `curry_rice` | Tier 2 | `bowl` | fallback | Bowl with spoon / bowl_with_spoon_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Bowl%20with%20spoon/Flat/bowl_with_spoon_flat.svg |
+| `curry_rice` | Tier 2 | `bowl` | exact | Curry rice / curry_rice_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Curry%20rice/Flat/curry_rice_flat.svg |
 | `risotto` | Tier 2 | `bowl` | fallback | Bowl with spoon / bowl_with_spoon_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Bowl%20with%20spoon/Flat/bowl_with_spoon_flat.svg |
 | `ramen` | Tier 2 | `bowl` | exact | Steaming bowl / steaming_bowl_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Steaming%20bowl/Flat/steaming_bowl_flat.svg |
 | `pho` | Tier 2 | `bowl` | exact | Steaming bowl / steaming_bowl_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Steaming%20bowl/Flat/steaming_bowl_flat.svg |
@@ -179,8 +179,8 @@ OpenMoji is intentionally excluded from the generated sheets because its CC BY-S
 | `bbq_skewer` | Tier 2 | `plate` | fallback | Fork and knife with plate / fork_and_knife_with_plate_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Fork%20and%20knife%20with%20plate/Flat/fork_and_knife_with_plate_flat.svg |
 | `fried_chicken` | Tier 2 | `plate` | exact | Poultry leg / poultry_leg_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Poultry%20leg/Flat/poultry_leg_flat.svg |
 | `fried_seafood` | Tier 2 | `plate` | exact | Fried shrimp / fried_shrimp_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Fried%20shrimp/Flat/fried_shrimp_flat.svg |
-| `casserole_bake` | Tier 2 | `plate` | fallback | Fork and knife with plate / fork_and_knife_with_plate_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Fork%20and%20knife%20with%20plate/Flat/fork_and_knife_with_plate_flat.svg |
-| `stir_fry` | Tier 2 | `plate` | fallback | Fork and knife with plate / fork_and_knife_with_plate_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Fork%20and%20knife%20with%20plate/Flat/fork_and_knife_with_plate_flat.svg |
+| `casserole_bake` | Tier 2 | `plate` | exact | Shallow pan of food / shallow_pan_of_food_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Shallow%20pan%20of%20food/Flat/shallow_pan_of_food_flat.svg |
+| `stir_fry` | Tier 2 | `plate` | exact | Shallow pan of food / shallow_pan_of_food_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Shallow%20pan%20of%20food/Flat/shallow_pan_of_food_flat.svg |
 | `mixed_plate` | Tier 2 | `plate` | fallback | Fork and knife with plate / fork_and_knife_with_plate_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Fork%20and%20knife%20with%20plate/Flat/fork_and_knife_with_plate_flat.svg |
 | `pizza` | Tier 1 | -- | exact | Pizza / pizza_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Pizza/Flat/pizza_flat.svg |
 | `flatbread` | Tier 2 | `pizza` | exact | Flatbread / flatbread_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Flatbread/Flat/flatbread_flat.svg |
@@ -218,13 +218,13 @@ OpenMoji is intentionally excluded from the generated sheets because its CC BY-S
 | `bagel_plain` | Tier 2 | `pastry` | exact | Bagel / bagel_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Bagel/Flat/bagel_flat.svg |
 | `hot_drink` | Tier 1 | -- | exact | Hot beverage / hot_beverage_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Hot%20beverage/Flat/hot_beverage_flat.svg |
 | `coffee` | Tier 2 | `hot_drink` | exact | Hot beverage / hot_beverage_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Hot%20beverage/Flat/hot_beverage_flat.svg |
-| `tea` | Tier 2 | `hot_drink` | fallback | Hot beverage / hot_beverage_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Hot%20beverage/Flat/hot_beverage_flat.svg |
+| `tea` | Tier 2 | `hot_drink` | exact | Teacup without handle / teacup_without_handle_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Teacup%20without%20handle/Flat/teacup_without_handle_flat.svg |
 | `latte_cappuccino` | Tier 2 | `hot_drink` | exact | Hot beverage / hot_beverage_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Hot%20beverage/Flat/hot_beverage_flat.svg |
 | `hot_cocoa` | Tier 2 | `hot_drink` | exact | Hot beverage / hot_beverage_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Hot%20beverage/Flat/hot_beverage_flat.svg |
-| `matcha` | Tier 2 | `hot_drink` | fallback | Hot beverage / hot_beverage_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Hot%20beverage/Flat/hot_beverage_flat.svg |
+| `matcha` | Tier 2 | `hot_drink` | exact | Teacup without handle / teacup_without_handle_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Teacup%20without%20handle/Flat/teacup_without_handle_flat.svg |
 | `cold_drink` | Tier 1 | -- | exact | Cup with straw / cup_with_straw_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Cup%20with%20straw/Flat/cup_with_straw_flat.svg |
 | `water` | Tier 2 | `cold_drink` | exact | Potable water / potable_water_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Potable%20water/Flat/potable_water_flat.svg |
-| `juice` | Tier 2 | `cold_drink` | exact | Cup with straw / cup_with_straw_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Cup%20with%20straw/Flat/cup_with_straw_flat.svg |
+| `juice` | Tier 2 | `cold_drink` | exact | Beverage box / beverage_box_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Beverage%20box/Flat/beverage_box_flat.svg |
 | `soda` | Tier 2 | `cold_drink` | exact | Cup with straw / cup_with_straw_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Cup%20with%20straw/Flat/cup_with_straw_flat.svg |
 | `smoothie` | Tier 2 | `cold_drink` | exact | Cup with straw / cup_with_straw_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Cup%20with%20straw/Flat/cup_with_straw_flat.svg |
 | `milk_drink` | Tier 2 | `cold_drink` | exact | Glass of milk / glass_of_milk_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Glass%20of%20milk/Flat/glass_of_milk_flat.svg |
@@ -240,7 +240,7 @@ OpenMoji is intentionally excluded from the generated sheets because its CC BY-S
 | `fruit` | Tier 1 | -- | exact | Red apple / red_apple_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Red%20apple/Flat/red_apple_flat.svg |
 | `apple_pear` | Tier 2 | `fruit` | exact | Red apple / red_apple_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Red%20apple/Flat/red_apple_flat.svg |
 | `banana` | Tier 2 | `fruit` | exact | Banana / banana_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Banana/Flat/banana_flat.svg |
-| `berries` | Tier 2 | `fruit` | exact | Strawberry / strawberry_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Strawberry/Flat/strawberry_flat.svg |
+| `berries` | Tier 2 | `fruit` | exact | Blueberries / blueberries_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Blueberries/Flat/blueberries_flat.svg |
 | `citrus` | Tier 2 | `fruit` | exact | Tangerine / tangerine_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Tangerine/Flat/tangerine_flat.svg |
 | `grapes` | Tier 2 | `fruit` | exact | Grapes / grapes_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Grapes/Flat/grapes_flat.svg |
 | `melon` | Tier 2 | `fruit` | exact | Melon / melon_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Melon/Flat/melon_flat.svg |
@@ -275,10 +275,10 @@ OpenMoji is intentionally excluded from the generated sheets because its CC BY-S
 | `cheese` | Tier 2 | `dairy` | exact | Cheese wedge / cheese_wedge_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Cheese%20wedge/Flat/cheese_wedge_flat.svg |
 | `milk` | Tier 2 | `dairy` | exact | Glass of milk / glass_of_milk_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Glass%20of%20milk/Flat/glass_of_milk_flat.svg |
 | `yogurt` | Tier 2 | `dairy` | exact | Bowl with spoon / bowl_with_spoon_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Bowl%20with%20spoon/Flat/bowl_with_spoon_flat.svg |
-| `butter_cream` | Tier 2 | `dairy` | fallback | Cheese wedge / cheese_wedge_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Cheese%20wedge/Flat/cheese_wedge_flat.svg |
+| `butter_cream` | Tier 2 | `dairy` | exact | Butter / butter_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Butter/Flat/butter_flat.svg |
 | `snacks` | Tier 1 | -- | exact | Popcorn / popcorn_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Popcorn/Flat/popcorn_flat.svg |
-| `chips` | Tier 2 | `snacks` | exact | Potato / potato_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Potato/Flat/potato_flat.svg |
-| `crackers` | Tier 2 | `snacks` | fallback | Popcorn / popcorn_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Popcorn/Flat/popcorn_flat.svg |
+| `chips` | Tier 2 | `snacks` | exact | French fries / french_fries_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/French%20fries/Flat/french_fries_flat.svg |
+| `crackers` | Tier 2 | `snacks` | exact | Rice cracker / rice_cracker_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Rice%20cracker/Flat/rice_cracker_flat.svg |
 | `nuts_seeds` | Tier 2 | `snacks` | exact | Peanuts / peanuts_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Peanuts/Flat/peanuts_flat.svg |
 | `popcorn` | Tier 2 | `snacks` | exact | Popcorn / popcorn_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Popcorn/Flat/popcorn_flat.svg |
 | `pretzels` | Tier 2 | `snacks` | exact | Pretzel / pretzel_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Pretzel/Flat/pretzel_flat.svg |
@@ -291,12 +291,12 @@ OpenMoji is intentionally excluded from the generated sheets because its CC BY-S
 | `cookie` | Tier 2 | `sweets` | exact | Cookie / cookie_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Cookie/Flat/cookie_flat.svg |
 | `donut` | Tier 2 | `sweets` | exact | Doughnut / doughnut_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Doughnut/Flat/doughnut_flat.svg |
 | `ice_cream` | Tier 2 | `sweets` | exact | Soft ice cream / soft_ice_cream_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Soft%20ice%20cream/Flat/soft_ice_cream_flat.svg |
-| `pie_tart` | Tier 2 | `sweets` | fallback | Shortcake / shortcake_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Shortcake/Flat/shortcake_flat.svg |
-| `pancakes_waffles` | Tier 2 | `sweets` | fallback | Shortcake / shortcake_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Shortcake/Flat/shortcake_flat.svg |
+| `pie_tart` | Tier 2 | `sweets` | exact | Pie / pie_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Pie/Flat/pie_flat.svg |
+| `pancakes_waffles` | Tier 2 | `sweets` | exact | Pancakes / pancakes_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Pancakes/Flat/pancakes_flat.svg |
 | `extras` | Tier 1 | -- | exact | Jar / jar_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Jar/Flat/jar_flat.svg |
 | `sauce_condiment` | Tier 2 | `extras` | exact | Jar / jar_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Jar/Flat/jar_flat.svg |
 | `dressing` | Tier 2 | `extras` | exact | Jar / jar_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Jar/Flat/jar_flat.svg |
-| `oil` | Tier 2 | `extras` | exact | Oil drum / oil_drum_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Oil%20drum/Flat/oil_drum_flat.svg |
+| `oil` | Tier 2 | `extras` | exact | Pouring liquid / pouring_liquid_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Pouring%20liquid/Flat/pouring_liquid_flat.svg |
 | `spread` | Tier 2 | `extras` | exact | Jar / jar_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Jar/Flat/jar_flat.svg |
 | `sweetener_syrup` | Tier 2 | `extras` | exact | Honey pot / honey_pot_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Honey%20pot/Flat/honey_pot_flat.svg |
 | `supplement` | Tier 2 | `extras` | exact | Pill / pill_flat.svg | https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Pill/Flat/pill_flat.svg |

@@ -5,6 +5,7 @@ import { round, formatFoodWeight, formatDrinkVolume } from '../lib/totals'
 import { mealStayingPower } from '../lib/stayingPower'
 import { EntryRow } from './EntryRow'
 import { MacroBar } from './MacroBar'
+import { MealIcon } from './MealIcon'
 import { NutritionLegend } from './NutritionLegend'
 import { StayingPowerBadge } from './StayingPowerBadge'
 
@@ -33,6 +34,7 @@ export function MealSection({ group, savingId, showMacros, onSave, onDelete, onA
     <section className={`meal-section${empty ? ' meal-section--empty' : ''}`}>
       <header className="meal-section__header">
         <div className="meal-section__title-row">
+          <MealIcon meal={group.meal} size={22} />
           <span className="meal-section__title">{MEAL_LABELS[group.meal]}</span>
           {stayingPower && <StayingPowerBadge power={stayingPower} variant="compact" explain />}
           {volume && (

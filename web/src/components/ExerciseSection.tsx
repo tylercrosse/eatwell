@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { AppIcon } from './AppIcon'
 import { NumberField } from './NumberField'
 import { deleteExercise, getExercise, patchExercise } from '../api/exercise'
 import { deleteMetric, getLatestMetric, getMetrics, patchMetric } from '../api/metrics'
@@ -36,7 +37,10 @@ export function ExerciseSection({ day }: { day: string }) {
   return (
     <section className="meal-section">
       <header className="meal-section__header">
-        <span className="meal-section__title">Exercise</span>
+        <div className="meal-section__title-row">
+          <AppIcon name="exercise" size={22} />
+          <span className="meal-section__title">Exercise</span>
+        </div>
         <span className="meal-section__totals">−{round(burned)} kcal burned</span>
       </header>
       <ul className="entry-list entry-list--grouped">
@@ -189,7 +193,10 @@ function StepsRow({ metric, stepKcal }: { metric: BodyMetric; stepKcal: number }
   return (
     <li className="entry">
       <div className="entry__main">
-        <span className="entry__name">👟 Steps</span>
+        <span className="entry__name entry__name--with-icon">
+          <AppIcon name="steps" size={20} className="app-icon--inline" />
+          <span>Steps</span>
+        </span>
         <span className="entry__meta">
           {(metric.steps ?? 0).toLocaleString()} steps{stepKcal > 0 ? '' : ' · log weight for kcal'}
         </span>

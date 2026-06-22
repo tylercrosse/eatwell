@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { MacroTotals } from '../lib/totals'
 import { round, formatFoodWeight, formatDrinkVolume } from '../lib/totals'
 import { fiberGramTarget, macroGramTargets, signedWeeklyRateKg } from '../lib/targets'
@@ -25,6 +26,8 @@ import {
 } from '../lib/energy'
 import { KCAL_PER_KG } from '../lib/tdee'
 import { MEAL_ORDER, MEAL_LABELS } from '../lib/meals'
+import { AppIcon } from './AppIcon'
+import { MealIcon } from './MealIcon'
 import { Popover } from './Popover'
 import type { Entry, Meal, Targets } from '../types'
 
@@ -213,7 +216,12 @@ function SimpleEnergySummary({
   const consumedFrac = budget > 0 ? consumed / budget : 0
   const breakdown =
     burned > 0
-      ? `goal ${round(target)} + 🔥 ${round(burned)} − eaten ${round(consumed)}`
+      ? (
+          <>
+            goal {round(target)} + <AppIcon name="burn" size={14} className="app-icon--inline" />{' '}
+            {round(burned)} − eaten {round(consumed)}
+          </>
+        )
       : `goal ${round(target)} − eaten ${round(consumed)}`
   const mealCal = (m: Meal) => meals.find((x) => x.meal === m)?.calories ?? 0
   return (
@@ -238,17 +246,26 @@ function SimpleEnergySummary({
               onClick={() => onAddMeal(m)}
               aria-label={`Add to ${MEAL_LABELS[m].toLowerCase()}`}
             >
-              <span className="simple-stat__label">{MEAL_LABELS[m]}</span>
+              <span className="simple-stat__label-row">
+                <MealIcon meal={m} size={24} className="meal-icon--tile" />
+                <span className="simple-stat__label">{MEAL_LABELS[m]}</span>
+              </span>
               <span className="simple-stat__value">{cal > 0 ? round(cal) : '—'}</span>
             </button>
           )
         })}
         <div className="simple-stat">
-          <span className="simple-stat__label">Exercise</span>
-          <span className="simple-stat__value">{exerciseKcal > 0 ? `🔥 ${round(exerciseKcal)}` : '—'}</span>
+          <span className="simple-stat__label-row">
+            <AppIcon name="exercise" size={24} className="app-icon--tile" />
+            <span className="simple-stat__label">Exercise</span>
+          </span>
+          <span className="simple-stat__value">{exerciseKcal > 0 ? round(exerciseKcal) : '—'}</span>
         </div>
         <div className="simple-stat">
-          <span className="simple-stat__label">Steps</span>
+          <span className="simple-stat__label-row">
+            <AppIcon name="steps" size={24} className="app-icon--tile" />
+            <span className="simple-stat__label">Steps</span>
+          </span>
           <span className="simple-stat__value">{steps != null ? formatSteps(steps) : '—'}</span>
         </div>
       </div>
@@ -281,7 +298,10 @@ function LegacyEnergySummary({
     <div className="card energy-summary">
       {burned > 0 && (
         <div className="energy-summary__net">
-          <span className="muted">🔥 {round(burned)} kcal burned</span>
+          <span className="muted icon-label icon-label--inline">
+            <AppIcon name="burn" size={14} className="app-icon--inline" />
+            <span>{round(burned)} kcal burned</span>
+          </span>
           <div className="seg" role="group" aria-label="Calorie mode">
             <button className={`seg__btn ${!netMode ? 'is-active' : ''}`} onClick={() => setNetMode(false)}>
               Gross
@@ -619,7 +639,7 @@ function SegmentedRing({
   sub,
   segments,
 }: {
-  label: string
+  label: ReactNode
   value: number | string
   unit: string
   sub?: string
@@ -680,7 +700,7 @@ function BalanceDial({
   gapKcal,
   color,
 }: {
-  label: string
+  label: ReactNode
   value: number | string
   unit: string
   sub?: string
@@ -743,7 +763,7 @@ function Ring({
   over,
   color,
 }: {
-  label: string
+  label: ReactNode
   value: number | string
   unit: string
   sub?: string

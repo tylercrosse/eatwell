@@ -106,7 +106,7 @@ export function MenuScanner({ goal }: Props) {
         <PhotoCapture
           onPhoto={onPhoto}
           disabled={scan.isPending}
-          cameraLabel="📷 Take menu photo"
+          cameraLabel="Take menu photo"
           libraryLabel="Choose menu photo"
         />
       )}

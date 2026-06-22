@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { AppIcon } from '../components/AppIcon'
 import { EnergySummary } from '../components/EnergySummary'
 import { MealSection } from '../components/MealSection'
 import { MetricCard } from '../components/MetricCard'
@@ -116,13 +117,22 @@ export function LogPage({ day, setDay }: Props) {
 
       <div className="log-actions">
         <button className="btn btn--ghost" onClick={() => setFoodMeal('auto')}>
-          🍎 Food
+          <span className="icon-label">
+            <AppIcon name="food" size={20} />
+            <span>Food</span>
+          </span>
         </button>
         <button className="btn btn--ghost" onClick={() => setModal('exercise')}>
-          🏃 Exercise
+          <span className="icon-label">
+            <AppIcon name="exercise" size={20} />
+            <span>Exercise</span>
+          </span>
         </button>
         <button className="btn btn--ghost" onClick={() => setModal('metric')}>
-          ⚖️ Body
+          <span className="icon-label">
+            <AppIcon name="body" size={20} />
+            <span>Body</span>
+          </span>
         </button>
       </div>
 

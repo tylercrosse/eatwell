@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { AppIcon } from './AppIcon'
 import { NumberField } from './NumberField'
 import { postEstimateActivity } from '../api/estimate'
 import { postExercise } from '../api/exercise'
@@ -92,7 +93,14 @@ export function AddExercise({ day, currentSteps, onDone }: Props) {
         disabled={!description.trim() || estimate.isPending}
         onClick={() => estimate.mutate(description.trim())}
       >
-        {estimate.isPending ? 'Estimating…' : '✨ Estimate calories'}
+        {estimate.isPending ? (
+          'Estimating…'
+        ) : (
+          <span className="icon-label">
+            <AppIcon name="sparkles" size={18} />
+            <span>Estimate calories</span>
+          </span>
+        )}
       </button>
       <div className="macros">
         <NumberField label="Calories" unit="kcal" min={0} value={calories} onChange={setCalories} />

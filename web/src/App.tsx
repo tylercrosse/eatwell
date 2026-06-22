@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { LogPage } from './pages/LogPage'
 import { GuidePage } from './pages/GuidePage'
 import { GoalsPage } from './pages/GoalsPage'
+import { AppIcon } from './components/AppIcon'
 import { LoginPage } from './components/LoginPage'
 import { SettingsMenu } from './components/SettingsMenu'
 import { getMe, loginWithGoogle, logout } from './api/auth'
@@ -70,7 +71,7 @@ export default function App() {
             aria-label="Settings"
             title="Settings"
           >
-            ⚙️
+            <AppIcon name="settings" size={19} />
           </button>
           <button
             className="app__signout"
@@ -108,28 +109,28 @@ export default function App() {
           className={`tabbar__btn ${tab === "log" ? "is-active" : ""}`}
           onClick={() => setTab("log")}
         >
-          <span className="tabbar__icon">📋</span>
+          <AppIcon name="log" size={22} className="tabbar__icon" />
           Log
         </button>
         <button
           className={`tabbar__btn ${tab === "trends" ? "is-active" : ""}`}
           onClick={() => setTab("trends")}
         >
-          <span className="tabbar__icon">📉</span>
+          <AppIcon name="trends" size={22} className="tabbar__icon" />
           Trends
         </button>
         <button
           className={`tabbar__btn ${tab === "guide" ? "is-active" : ""}`}
           onClick={() => setTab("guide")}
         >
-          <span className="tabbar__icon">🥗</span>
+          <AppIcon name="guide" size={22} className="tabbar__icon" />
           Guide
         </button>
         <button
           className={`tabbar__btn ${tab === "goals" ? "is-active" : ""}`}
           onClick={() => setTab("goals")}
         >
-          <span className="tabbar__icon">🎯</span>
+          <AppIcon name="goals" size={22} className="tabbar__icon" />
           Goals
         </button>
       </nav>

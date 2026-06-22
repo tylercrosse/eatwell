@@ -1,6 +1,6 @@
 # Food category icons — manifest & style guide
 
-These icons render in the leading chip of every diary entry row (M11.3). They are
+These icons render as the leading glyph of every diary entry row (M11.3). They are
 the app's visual identity at the row level, so they must feel like **one family**.
 
 The taxonomy that maps a food to a category key lives in
@@ -37,13 +37,11 @@ nutritional concept.
   glass/mug baseline across drinks. This is what makes refinements look related
   instead of like 100 unrelated doodles.
 
-### Chip (set in `index.css`, not in the SVG)
+### Runtime row treatment (set in `index.css`, not in the SVG)
 
-- ~32px circle; subtle tinted background, e.g.
-  `background: color-mix(in oklab, var(--accent) 12%, var(--surface))`.
-- Glyph stroke `var(--muted)` (use `var(--text)` only if contrast is weak).
-- One uniform chip treatment for all categories in Wave A — keep it quiet.
-  (Per-group chip tints are a possible later enhancement, not now.)
+- Transparent fixed frame; no border, no circular background.
+- Current runtime size: 36px frame with a 24px glyph.
+- One uniform treatment for all categories in Wave A — keep it quiet.
 - Decorative: `aria-hidden` on the SVG; the food name is the accessible label.
 
 ## Tier-1 group icons (all required in Wave A)
@@ -112,15 +110,17 @@ audit.
 
 ## Sourcing & licensing
 
-- **Lucide** (`lucide-react`, ISC) — primary for shapes it covers; imported as
-  components, tree-shaken per icon.
-- **OpenMoji** (openmoji.org, **CC BY-SA 4.0**) — vendor the *black/line* variant
-  SVGs into this folder for gaps (most dish/vessel forms). Requires attribution
-  + share-alike on the icon adaptations; record each in `ATTRIBUTION.md` here
-  (name, OpenMoji hexcode, license) and normalize stroke to the spec above.
-- **Custom** — small line SVGs we author for the family base shapes (`bowl`,
-  `plate`, `taco_burrito`, `extras`) and anything that should match exactly.
+- **Fluent Emoji Flat** (Microsoft, MIT) — current runtime family for food and
+  meal icons. SVGs are vendored under `fluent/` and imported as Vite asset URLs
+  from `foodCategoryIcons.tsx` / `mealIcons.ts`.
+- **Lucide** (`lucide-react`, ISC) — kept as an installed dependency for now but
+  no longer drives the food icon runtime map.
+- **OpenMoji** (openmoji.org, **CC BY-SA 4.0**) — reference only for now; do not
+  vendor adapted assets without recording attribution and share-alike impact.
+- **Custom** — still useful for a later bespoke line or duotone family if the
+  Fluent direction feels too visually loud in production.
 
-When the later phase generates bespoke illustrations, they replace entries in
-this folder + the map in `foodCategoryIcons.tsx` only — no taxonomy/resolver
-changes.
+The runtime map and review contact sheet should stay aligned through
+`web/scripts/buildFoodIconContactSheets.mjs`. Runtime swaps should only touch the
+vendored assets plus the maps in `foodCategoryIcons.tsx` / `mealIcons.ts`; the
+taxonomy/resolver should not need to change for an asset-family swap.

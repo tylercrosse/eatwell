@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { MacroInput } from '../components/MacroInput'
 import { NumberField } from '../components/NumberField'
 import { UnitToggle } from '../components/UnitToggle'
+import { AppIcon } from '../components/AppIcon'
 import { getTargets, putTargets } from '../api/targets'
 import { getLatestMetric, getMetrics } from '../api/metrics'
 import { getEntriesRange } from '../api/entries'
@@ -96,8 +97,9 @@ function GoalsForm({ initial }: { initial: Targets }) {
   const toGoDisplay = diffKg != null ? show(Math.abs(kgToDisplay(diffKg, unit))) : null
 
   let planLine: string | null = null
+  const atGoal = direction === 'maintain'
   if (direction === 'maintain') {
-    planLine = 'At your goal weight 🎉'
+    planLine = 'At your goal weight'
   } else if (direction) {
     const base = `${toGoDisplay} ${unit} to ${direction}`
     planLine =
@@ -179,7 +181,18 @@ function GoalsForm({ initial }: { initial: Targets }) {
           <NumberField label="Goal body fat" unit="%" min={0} stepper value={show(form.goal_body_fat_pct ?? null)} onChange={(v) => set({ goal_body_fat_pct: v })} />
           <NumberField label="Rate" unit={`${unit}/wk`} min={0} step={0.1} stepper value={rateMagDisplay} onChange={onRate} />
         </div>
-        {planLine && <p className="goals__plan">{planLine}</p>}
+        {planLine && (
+          <p className="goals__plan">
+            {atGoal ? (
+              <span className="icon-label icon-label--inline">
+                <span>{planLine}</span>
+                <AppIcon name="party" size={16} className="app-icon--inline" />
+              </span>
+            ) : (
+              planLine
+            )}
+          </p>
+        )}
       </div>
 
       <div className="card goals">

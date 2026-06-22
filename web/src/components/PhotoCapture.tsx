@@ -1,4 +1,5 @@
 import { useRef } from 'react'
+import { AppIcon } from './AppIcon'
 
 interface Props {
   onPhoto: (file: File) => void
@@ -16,7 +17,7 @@ interface Props {
 export function PhotoCapture({
   onPhoto,
   disabled,
-  cameraLabel = '📷 Take a photo',
+  cameraLabel = 'Take a photo',
   libraryLabel = 'Choose from library',
 }: Props) {
   const cameraRef = useRef<HTMLInputElement>(null)
@@ -45,7 +46,10 @@ export function PhotoCapture({
         disabled={disabled}
         onClick={() => cameraRef.current?.click()}
       >
-        {cameraLabel}
+        <span className="icon-label">
+          <AppIcon name="camera" size={18} />
+          <span>{cameraLabel}</span>
+        </span>
       </button>
       <button
         className="btn btn--ghost"
