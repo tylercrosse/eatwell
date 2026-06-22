@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import httpx
 
-from app import usda
+from app import categories, usda
 from app.config import Settings
 from app.schemas import BarcodeFood
 
@@ -174,6 +174,7 @@ def _off_food(barcode: str, p: dict) -> BarcodeFood | None:
         sodium_mg=round(sodium_g * 1000.0, 1),
         is_beverage=is_beverage,
         serving_size=label,
+        category=categories.off_tags_to_category(cats),
     )
 
 

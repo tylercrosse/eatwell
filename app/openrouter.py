@@ -35,9 +35,13 @@ _ITEM_GRANULARITY = (
 
 _PER_ITEM_FIELDS = (
     "For EACH item give its own calories (kcal), protein/carbs/fat (grams), edible weight_g (grams), "
-    "fiber_g/sugar_g (grams), sodium_mg (milligrams), and is_beverage (true only for a drink you sip "
+    "fiber_g/sugar_g (grams), sodium_mg (milligrams), is_beverage (true only for a drink you sip "
     "— coffee, tea, juice, soda, alcohol, milk, smoothie, protein shake; false for solid foods and for "
-    "soups/broths eaten as a meal). The total_* fields must be the sum of the per-item values, and the "
+    "soups/broths eaten as a meal), and a category describing how the item LOOKS on the table (its "
+    "visual form, for an icon): prefer a specific dish-type when it clearly fits (pizza, pasta, salad, "
+    "soup_stew, taco_burrito, pastry), else the vessel form (handheld, bowl, plate, hot_drink, "
+    "cold_drink, alcohol), else the food group (fruit, vegetables, protein, grains_bread, dairy, "
+    "snacks, sweets, extras). The total_* fields must be the sum of the per-item values, and the "
     "overall is_beverage is true only if every item is a drink."
 )
 

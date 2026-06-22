@@ -2785,6 +2785,25 @@ body {
   padding: 12px 14px;
 }
 
+/* Leading category glyph (its visual form) — a soft theme-tinted disc. Decorative;
+ * the food name is the accessible label. Tints adapt per theme via tokens. */
+.food-icon {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  color: color-mix(in srgb, var(--accent) 55%, var(--text));
+}
+
+/* In the grouped card rows align to the top, so the chip sits beside the name. */
+.entry-list--grouped .entry > .food-icon {
+  margin-top: 1px;
+}
+
 .entry__main {
   flex: 1;
   display: flex;

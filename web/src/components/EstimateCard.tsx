@@ -23,6 +23,7 @@ export interface ItemDraft {
   is_beverage: boolean // a drink (caps fullness; weight counts as drink volume, not food bulk)
   serving_size: string // free-text label describing a single serving
   servings: number // quantity multiplier applied to the baseline macros
+  category?: string | null // visual-form category from the AI/barcode; drives the entry-row icon
 }
 
 /** A capture under review: its items plus the meal + date they'll all be logged under. */

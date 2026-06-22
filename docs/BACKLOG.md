@@ -670,9 +670,30 @@ Requested: **see photos of meals, or icons** — research how other calorie apps
   Per-item split (M6) shares one photo across rows — decide: show it on each, or only the first.
 - **11.2 Photo timeline / gallery — S.** A dated grid of meal photos (own view or a Trends card). Cheap given
   the photos already exist — mostly a `GET` listing `photo_ref`s with dates, scoped to the user.
-- **11.3 Category icons / fallback — S–M.** Derive a food category (the analysis already classifies food, or a
-  small keyword→emoji map) so photo-less entries still get a glyph. Lowest-effort visual win; pairs with the
-  M10 design language.
+- **11.3 Category icons / fallback — ✅ shipped (Wave A).** Every entry row leads with a theme-tinted chip
+  showing the food's **visual form** (its vessel/silhouette), not a nutritional category — see the design note
+  below. Two decoupled layers: a **resolver** (`food → category key`,
+  [foodCategory.ts](web/src/lib/foodCategory.ts)) and a **renderer** (`key → SVG`,
+  [foodCategoryIcons.tsx](web/src/lib/foodCategoryIcons.tsx) + [FoodIcon](web/src/components/FoodIcon.tsx)), so the
+  icon *style* can be re-skinned later without touching the mapping. Taxonomy is 2-tier (~20 form-based Tier-1
+  groups + ~100 Tier-2), the canonical list mirrored in [app/categories.py](app/categories.py) ⇄
+  [foodCategory.ts](web/src/lib/foodCategory.ts).
+  - **Classification:** the AI emits a Tier-1 `category` (enum in
+    [openrouter.py](app/openrouter.py)/[schemas.py](app/schemas.py)); barcodes derive a Tier-2 from Open Food
+    Facts `categories_tags` ([barcode.py](app/barcode.py)); a new nullable `category` column
+    ([models.py](app/models.py), additive migration in [db.py](app/db.py)) persists it. The client resolver
+    merges these with a keyword fallback so legacy/manual rows still get an icon.
+  - **Mapping guardrails:** a barcode Tier-2 wins outright; else the trusted AI *group* polices the keyword
+    *Tier-2* guess (agree → specific, conflict → group); word-boundary matching avoids substring traps; nothing
+    confident → a neutral `food_generic`/`beverage_generic`. Covered by
+    [foodCategory.test.ts](web/src/lib/foodCategory.test.ts) + [test_categories.py](tests/test_categories.py); the
+    audit script [auditCategories.ts](web/scripts/auditCategories.ts) over the seeded personas shows 0 generic.
+  - **Design north star:** group by what a food *looks like on the table* (plate / bowl / mug / glass /
+    characteristic silhouette), because that is what an icon can honestly represent — this is why `breakfast`
+    (a time) and a single `beverages` bucket are dissolved by vessel.
+  - **Deferred (Wave B+):** custom/generated illustrations to replace the lucide line-icon placeholders
+    (a few dish silhouettes — pasta, taco — currently share their vessel group's glyph), driven by the audit's
+    group-only/generic tallies. Pure asset swap in `foodCategoryIcons.tsx`; no resolver/taxonomy change.
 
 **Decisions / open:** storage growth + retention (no photo GC today — see README "deferred"); worth a cap if
 galleries make photos first-class. Privacy is fine — photos are already user-scoped.

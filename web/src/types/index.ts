@@ -11,6 +11,7 @@ export interface FoodItem {
   sugar_g?: number | null
   sodium_mg?: number | null
   is_beverage?: boolean
+  category?: string | null // visual-form category for the entry-row icon (see lib/foodCategory)
 }
 
 export interface AnalysisResult {
@@ -78,6 +79,7 @@ export interface Entry {
   photo_ref: string | null
   source: string
   meal: string | null
+  category: string | null // visual-form category for the entry-row icon (see lib/foodCategory)
   created_at: string
   updated_at: string
 }
@@ -99,6 +101,7 @@ export interface EntryCreate {
   source?: string
   items_json?: string | null
   meal?: Meal
+  category?: string | null
   logged_at?: string
 }
 
@@ -144,6 +147,7 @@ export interface BarcodeFood {
   sodium_mg: number
   is_beverage: boolean
   serving_size: string
+  category?: string | null // derived from Open Food Facts categories_tags when available
 }
 
 export interface DaySummary {

@@ -8,13 +8,19 @@ from __future__ import annotations
 
 from datetime import date as date_cls
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, BeforeValidator, Field, model_validator
+
+from app import categories
 
 # Canonical meal buckets, in display order: breakfast, lunch, dinner, snacks.
 Meal = Literal["breakfast", "lunch", "dinner", "snacks"]
 MENU_SCAN_OPTION_LIMIT = 24
+
+# A food-category key (see app/categories.py), coerced to a known key or None on input so a
+# stray value never rejects the request — the client resolver then falls back to keywords.
+CategoryField = Annotated[str | None, BeforeValidator(categories.normalize_category)]
 
 # --- AI estimation ---------------------------------------------------------
 
@@ -32,6 +38,8 @@ class FoodItem(BaseModel):
     sugar_g: float | None = None
     sodium_mg: float | None = None
     is_beverage: bool = False
+    # Visual-form category (a Tier-1 group from the model); drives the entry-row icon.
+    category: CategoryField = None
 
 
 class AnalysisResult(BaseModel):
@@ -115,6 +123,17 @@ FOOD_ANALYSIS_JSON_SCHEMA: dict = {
                         "type": "boolean",
                         "description": "true if this item is a drink you sip (see overall is_beverage)",
                     },
+                    "category": {
+                        "type": "string",
+                        "enum": list(categories.GROUP_KEYS),
+                        "description": (
+                            "The visual form of this item — how it looks on the table — for its icon. "
+                            "Prefer a specific dish-type when it clearly fits (pizza, pasta, salad, "
+                            "soup_stew, taco_burrito, pastry); else the vessel form (handheld, bowl, "
+                            "plate, hot_drink, cold_drink, alcohol); else the food group (fruit, "
+                            "vegetables, protein, grains_bread, dairy, snacks, sweets, extras)."
+                        ),
+                    },
                 },
                 "required": [
                     "name",
@@ -127,6 +146,7 @@ FOOD_ANALYSIS_JSON_SCHEMA: dict = {
                     "sugar_g",
                     "sodium_mg",
                     "is_beverage",
+                    "category",
                 ],
             },
         },
@@ -262,6 +282,7 @@ class EntryCreate(BaseModel):
     source: str = "manual"
     items_json: str | None = None
     meal: Meal | None = None
+    category: CategoryField = None
     logged_at: datetime | None = None  # defaults to server now if omitted
 
 
@@ -305,6 +326,7 @@ class EntryRead(BaseModel):
     photo_ref: str | None
     source: str
     meal: str | None  # str (not Meal) so an odd stored value never fails response validation
+    category: str | None = None  # str (not validated) so a legacy/odd stored value passes through
     created_at: datetime
     updated_at: datetime
 
@@ -347,6 +369,7 @@ class BarcodeFood(BaseModel):
     sodium_mg: float = 0.0
     is_beverage: bool = False
     serving_size: str  # human label, e.g. "1 bar (30 g)"
+    category: CategoryField = None  # derived from Open Food Facts categories_tags when available
 
 
 class DaySummary(BaseModel):

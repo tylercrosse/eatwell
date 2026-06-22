@@ -30,6 +30,7 @@ _ADDED_COLUMNS: dict[str, dict[str, str]] = {
         "sodium_mg": "FLOAT",
         # NOT NULL DEFAULT 0 so existing rows backfill to "not a beverage".
         "is_beverage": "BOOLEAN NOT NULL DEFAULT 0",
+        "category": "VARCHAR",  # visual-form food category for the entry-row icon
     },
     "targets": {
         "goal_weight_kg": "FLOAT",

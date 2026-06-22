@@ -74,6 +74,11 @@ class FoodEntry(SQLModel, table=True):
     # Nullable with no DB CHECK so the additive migration works; validation is in Pydantic.
     meal: str | None = Field(default=None)
 
+    # Visual-form food category for the entry-row icon (see app/categories.py). A Tier-1
+    # group from the AI, a Tier-2 key from a barcode lookup, or None — the client resolver
+    # falls back to keyword matching on food_name, so this is an accuracy boost, not required.
+    category: str | None = Field(default=None)
+
     created_at: datetime = Field(default_factory=_utcnow)
     updated_at: datetime = Field(default_factory=_utcnow)
 

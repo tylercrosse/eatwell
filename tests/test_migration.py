@@ -65,7 +65,7 @@ def test_adds_nutrition_columns_and_is_idempotent(tmp_path):
 
     _migrate_add_columns(eng)
     cols = _columns(eng)
-    for c in ("weight_g", "fiber_g", "sugar_g", "sodium_mg"):
+    for c in ("weight_g", "fiber_g", "sugar_g", "sodium_mg", "category"):
         assert c in cols, f"{c} not added by migration"
 
     # Idempotent: a second run changes nothing and doesn't error.

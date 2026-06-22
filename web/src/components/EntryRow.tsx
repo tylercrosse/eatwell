@@ -11,6 +11,7 @@ import {
   type StayingPowerTier,
 } from '../lib/stayingPower'
 import { MacroEditorFields } from './MacroEditorFields'
+import { FoodIcon } from './FoodIcon'
 import { CalorieValue } from './CalorieValue'
 import { MacroBar } from './MacroBar'
 import { NutritionLegend } from './NutritionLegend'
@@ -234,6 +235,7 @@ export function EntryRow({ entry, saving, showMacros, onSave, onDelete }: Props)
   const details = detailNutrients(entry)
   return (
     <li className="entry">
+      <FoodIcon entry={entry} />
       <div className="entry__main">
         <span className="entry__name">{entry.food_name}</span>
         <span className="entry__meta">

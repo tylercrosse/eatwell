@@ -53,6 +53,7 @@ function itemFromFoodItem(it: FoodItem): ItemDraft {
     is_beverage: isBeverage,
     serving_size: '',
     servings: 1,
+    category: it.category ?? null,
   }
 }
 
@@ -102,6 +103,7 @@ function draftFromBarcode(food: BarcodeFood, day: string, meal: Meal): CaptureDr
         is_beverage: isBeverageForFullness({ ...food, food_name: foodName }),
         serving_size: food.serving_size,
         servings: 1,
+        category: food.category ?? null,
       },
     ],
     meal,
@@ -170,6 +172,7 @@ function itemToEntry(item: ItemDraft, meta: EntryMeta): EntryCreate {
     photo_ref: meta.photoRef,
     source: meta.source,
     meal: meta.meal,
+    category: item.category ?? null,
     logged_at: meta.logged_at,
   }
 }
