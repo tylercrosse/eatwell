@@ -21,7 +21,7 @@ import { stepsToKcal } from '../lib/activity'
 import { burnedBreakdown } from '../lib/energy'
 import { groupByMeal } from '../lib/meals'
 import { DEFAULT_TARGETS } from '../lib/targets'
-import { usePersistentToggle } from '../lib/prefs'
+import { useTheme } from '../lib/theme'
 import type { EntryCreate, Meal } from '../types'
 
 // How far back to look for the previous weigh-in that the day's weight delta is measured against.
@@ -37,7 +37,7 @@ export function LogPage({ day, setDay }: Props) {
   const [modal, setModal] = useState<'metric' | 'exercise' | null>(null)
   const [foodMeal, setFoodMeal] = useState<Meal | 'auto' | null>(null) // food capture target; null = closed, 'auto' = meal by time
   const [picker, setPicker] = useState(false)
-  const [simple, setSimple] = usePersistentToggle('simple-view', false) // false = Detailed (default)
+  const { simpleView: simple } = useTheme() // Detailed by default; switched in Settings
 
   const entriesQuery = useQuery({ queryKey: ['entries', day], queryFn: () => getEntries(day) })
   const targetsQuery = useQuery({ queryKey: ['targets'], queryFn: getTargets })
@@ -136,17 +136,6 @@ export function LogPage({ day, setDay }: Props) {
         </button>
       </div>
 
-      <div className="view-toggle">
-        <div className="seg" role="group" aria-label="View detail">
-          <button className={`seg__btn ${simple ? 'is-active' : ''}`} onClick={() => setSimple(true)}>
-            Simple
-          </button>
-          <button className={`seg__btn ${!simple ? 'is-active' : ''}`} onClick={() => setSimple(false)}>
-            Detailed
-          </button>
-        </div>
-      </div>
-
       <EnergySummary
         totals={totals}
         targets={targets}
@@ -198,6 +187,7 @@ export function LogPage({ day, setDay }: Props) {
           <CapturePage
             day={day}
             initialMeal={foodMeal === 'auto' ? undefined : foodMeal}
+            simple={simple}
             onLogged={() => setFoodMeal(null)}
           />
         </Modal>

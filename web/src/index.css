@@ -438,6 +438,7 @@ body {
   background: var(--border);
 }
 
+.capture-composer,
 .capture-text {
   display: flex;
   flex-direction: column;
@@ -446,6 +447,7 @@ body {
   max-width: 320px;
 }
 
+.capture-composer input,
 .capture-text input {
   background: var(--surface-2);
   border: 1px solid var(--border);
@@ -456,9 +458,25 @@ body {
   width: 100%;
 }
 
+.capture-composer input:focus,
 .capture-text input:focus {
   outline: none;
   border-color: var(--accent);
+}
+
+.capture-photo-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.capture-photo-preview img {
+  display: block;
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  border-radius: 14px;
 }
 
 /* ---- Barcode scan ---- */
@@ -542,8 +560,12 @@ body {
   flex-direction: column;
   gap: 8px;
   width: 100%;
-  max-width: 320px;
+  max-width: 520px;
   margin-top: 12px;
+}
+
+.capture-recent--simple {
+  max-width: 440px;
 }
 
 .capture-recent__title {
@@ -583,13 +605,18 @@ body {
 
 .recent-chip {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  align-items: flex-start;
+  gap: 8px;
   width: 100%;
-  background: var(--surface-2);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
-  padding: 8px 10px 8px 14px;
+  padding: 12px 10px 12px 12px;
+}
+
+.recent-chip--simple {
+  background: var(--surface-2);
+  padding-block: 10px;
 }
 
 .recent-chip:focus-within {
@@ -600,22 +627,34 @@ body {
   flex: 1;
   min-width: 0;
   display: flex;
-  flex-direction: column;
-  gap: 3px;
+  align-items: flex-start;
+  gap: 10px;
   text-align: left;
   background: none;
   border: none;
   padding: 0;
   color: var(--text);
-  font-size: 0.9rem;
   cursor: pointer;
 }
 
+.recent-chip__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Name wraps up to 2 lines, then truncates with an ellipsis. */
 .recent-chip__name {
   font-weight: 600;
+  max-width: 100%;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .recent-chip__meta {
@@ -637,11 +676,26 @@ body {
   font-weight: 700;
 }
 
-.recent-chip__cal {
-  flex: none;
-  color: var(--accent);
-  font-weight: 700;
-  font-size: 0.82rem;
+.recent-chip__main .macro-comp {
+  margin-top: 5px;
+  max-width: 220px;
+}
+
+.recent-chip__main .nutrition-legend {
+  margin-top: 2px;
+}
+
+.recent-chip__details {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.recent-chip__calories {
+  margin-top: 1px;
+}
+
+.recent-chip__calories .entry__cal {
+  font-size: 1rem;
 }
 
 .recent-chip__quick {
@@ -658,6 +712,7 @@ body {
   font-size: 0.95rem;
   font-weight: 700;
   cursor: pointer;
+  margin-top: 1px;
 }
 
 .recent-chip__quick:hover:not(:disabled) {
@@ -1863,10 +1918,18 @@ body {
   padding: 12px 0;
 }
 
+.guide-food--simple {
+  padding-block: 10px;
+}
+
 .guide-food:first-child,
 .guide-group:first-child,
 .guide-pattern:first-child {
   border-top: none;
+}
+
+.guide-food > .food-icon {
+  margin-top: -2px;
 }
 
 .guide-food__main {
@@ -2257,11 +2320,15 @@ body {
 
 .choice-row {
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) auto;
+  grid-template-columns: 28px 36px minmax(0, 1fr) auto;
   align-items: start;
   gap: 10px;
   padding: 13px 0;
   border-bottom: 1px solid var(--border);
+}
+
+.choice-row--simple {
+  padding-block: 11px;
 }
 
 .choice-row__rank {
@@ -2275,6 +2342,10 @@ body {
   color: var(--accent);
   font-size: 0.76rem;
   font-weight: 800;
+}
+
+.choice-row > .food-icon {
+  margin-top: -5px;
 }
 
 .choice-row__main {
@@ -3081,13 +3152,6 @@ body {
   border: 1px solid var(--border);
 }
 
-/* Simple/Detailed view switch — its own centered row under the log actions. */
-.view-toggle {
-  display: flex;
-  justify-content: center;
-  margin-top: 10px;
-}
-
 /* "+ Add to {meal}" — a dashed full-width entry point per meal section. */
 .meal-section__add {
   width: 100%;
@@ -3224,6 +3288,14 @@ body {
   border: 1px solid var(--border);
   border-radius: 18px;
   padding: 4px 16px 16px;
+}
+
+/* The food-capture flow gets a wider sheet so recent-food rows have room to breathe on
+   larger screens. CapturePage is the only modal content rendered as a `.page`, and it stays
+   `.page` across every capture state, so the width holds steady through the flow. On mobile
+   the modal is already viewport-bound, so this is a no-op there. */
+.modal:has(.page) {
+  max-width: 560px;
 }
 
 .modal__head {
@@ -3415,6 +3487,11 @@ body {
   margin: 0;
   font-size: 0.76rem;
   color: var(--muted);
+}
+
+/* Segmented controls in settings hug their content rather than stretching the section width. */
+.settings__section .seg {
+  align-self: flex-start;
 }
 
 .theme-grid {

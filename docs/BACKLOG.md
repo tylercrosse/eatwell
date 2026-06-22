@@ -203,6 +203,11 @@ flow ([CapturePage](web/src/pages/CapturePage.tsx)), Exercise → [AddExercise](
 Trends weight quick-log card was removed; Trends is view-only. (Exercise on the day exceeded the original plan,
 which only listed Food + Biometric.)
 
+**Capture composer update:** the Food modal now uses one composer input for recent-food search and new AI
+descriptions. Picking a photo creates a preview first; the same input becomes optional photo context before an
+explicit Estimate action, and recent-food matches hide while a photo is attached. Barcode scanning remains a
+separate package-focused action.
+
 The "Add" flow should act on **the day you're looking at**, not a separate "today"-only tab.
 
 - Remove the top-level **`capture` tab** from [App.tsx](web/src/App.tsx) (`Tab` union + tab bar) → tabs

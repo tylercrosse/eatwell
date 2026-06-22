@@ -53,9 +53,36 @@ function ThemeOption({
 
 /** App settings sheet. Theme is the first occupant; future prefs (units, default meal, …) land here. */
 export function SettingsMenu({ onClose }: { onClose: () => void }) {
-  const { theme, setTheme, systemDark, setSystemDark, textSize, setTextSize } = useTheme()
+  const { theme, setTheme, systemDark, setSystemDark, textSize, setTextSize, simpleView, setSimpleView } =
+    useTheme()
   return (
     <Modal title="Settings" onClose={onClose}>
+      <section className="settings__section">
+        <h3 className="settings__heading">View detail</h3>
+        <div className="seg" role="group" aria-label="View detail">
+          <button
+            type="button"
+            className={`seg__btn ${simpleView ? 'is-active' : ''}`}
+            aria-pressed={simpleView}
+            onClick={() => setSimpleView(true)}
+          >
+            Simple
+          </button>
+          <button
+            type="button"
+            className={`seg__btn ${simpleView ? '' : 'is-active'}`}
+            aria-pressed={!simpleView}
+            onClick={() => setSimpleView(false)}
+          >
+            Detailed
+          </button>
+        </div>
+        <p className="settings__hint">
+          Detailed shows macros and per-food nutrition on the Log and Guide pages. Simple keeps the
+          calorie-first view.
+        </p>
+      </section>
+
       <section className="settings__section">
         <h3 className="settings__heading">Theme</h3>
         <div className="theme-grid">

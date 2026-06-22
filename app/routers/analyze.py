@@ -7,7 +7,7 @@ reference it; the returned photo_ref is optional for the client to attach.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
@@ -71,6 +71,7 @@ async def analyze_text(
 @router.post("/analyze", response_model=AnalyzeResponse)
 async def analyze(
     file: UploadFile = File(...),
+    description: str | None = Form(default=None),
     settings: Settings = Depends(get_settings),
     user: User = Depends(get_current_user),
 ) -> AnalyzeResponse:
@@ -85,8 +86,10 @@ async def analyze(
     except storage.ImageError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
+    context = description.strip() if description else None
+
     try:
-        analysis = await openrouter.analyze_food_image(jpeg, settings)
+        analysis = await openrouter.analyze_food_image(jpeg, settings, context or None)
     except openrouter.EstimationError as exc:
         # Upstream model failure or unparseable output -> 502 (we depend on a third party).
         raise HTTPException(status_code=502, detail=str(exc)) from exc

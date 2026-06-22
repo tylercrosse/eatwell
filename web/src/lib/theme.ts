@@ -71,6 +71,8 @@ export interface ThemeContextValue {
   setSystemDark: (id: ResolvedTheme) => void
   textSize: TextSize // app-wide text scaling
   setTextSize: (id: TextSize) => void
+  simpleView: boolean // hide macros/nutrition detail across Log + Guide
+  setSimpleView: (v: boolean) => void
 }
 
 export const ThemeContext = createContext<ThemeContextValue | null>(null)

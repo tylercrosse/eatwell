@@ -22,6 +22,7 @@ const CONF_CLASS = {
 
 interface Props {
   goal: ChoiceGoal
+  simple?: boolean
 }
 
 function menuErrorMessage(e: unknown): string {
@@ -30,7 +31,7 @@ function menuErrorMessage(e: unknown): string {
   return e instanceof Error ? e.message : 'Menu scan failed.'
 }
 
-export function MenuScanner({ goal }: Props) {
+export function MenuScanner({ goal, simple = false }: Props) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [scanResult, setScanResult] = useState<Awaited<ReturnType<typeof postAnalyzeMenu>> | null>(null)
   const [scanError, setScanError] = useState<unknown>(null)
@@ -162,6 +163,7 @@ export function MenuScanner({ goal }: Props) {
           )}
           <ChoiceScanResults
             items={sortedChoices}
+            simple={simple}
             emptyText="No clear orderable options found. Try a sharper, closer menu photo."
           />
           <button type="button" className="btn btn--ghost menu-scanner__reset" onClick={clearResults}>

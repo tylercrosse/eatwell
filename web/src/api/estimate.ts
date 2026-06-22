@@ -2,9 +2,10 @@ import { apiJson, apiUpload } from './client'
 import type { ActivityResult, AnalysisResult, AnalyzeResponse, MenuAnalysisResult } from '../types'
 
 /** Send a food photo to the backend and get back a structured (stateless) estimate. */
-export async function postEstimate(file: File): Promise<AnalyzeResponse> {
+export async function postEstimate(file: File, description?: string): Promise<AnalyzeResponse> {
   const form = new FormData()
   form.append('file', file, file.name)
+  if (description?.trim()) form.append('description', description.trim())
   return apiUpload<AnalyzeResponse>('/analyze', form)
 }
 

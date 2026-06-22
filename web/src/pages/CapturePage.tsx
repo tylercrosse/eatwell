@@ -1,7 +1,12 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { AppIcon } from '../components/AppIcon'
+import { CalorieValue } from '../components/CalorieValue'
+import { FoodIcon } from '../components/FoodIcon'
 import { PhotoCapture } from '../components/PhotoCapture'
 import { EstimateCard, type CaptureDraft, type ItemDraft } from '../components/EstimateCard'
+import { MacroBar } from '../components/MacroBar'
+import { NutritionLegend } from '../components/NutritionLegend'
 import { clampServings, composeServingSize, parseServingSize } from '../lib/serving'
 import { isBeverageForFullness } from '../lib/fullness'
 import { postEstimate, postEstimateText } from '../api/estimate'
@@ -23,6 +28,7 @@ interface Props {
   day: string // new entries default to this day (the day being viewed)
   onLogged: () => void // called after a successful save (host closes the modal)
   initialMeal?: Meal // seed the meal when entering from a specific meal section; else time-of-day
+  simple?: boolean // mirrors the Log page view toggle for recent-food density
 }
 
 // Client-only id for React keys + merge selection; never sent to the backend.
@@ -135,12 +141,71 @@ function draftFromRecent(food: RecentFood, day: string, meal: Meal): CaptureDraf
         is_beverage: isBeverageForFullness(food),
         serving_size: base,
         servings: clampServings(s),
+        category: food.category ?? null,
       },
     ],
     meal,
     logged_at: withDayKey(localDateTime(), day),
     source: 'manual',
   }
+}
+
+function recentDetails(food: RecentFood): string {
+  const parts: string[] = []
+  if (food.sugar_g != null) parts.push(`Sugar ${Math.round(food.sugar_g)}g`)
+  if (food.sodium_mg != null) parts.push(`Sodium ${Math.round(food.sodium_mg)}mg`)
+  return parts.join(' · ')
+}
+
+interface RecentFoodRowProps {
+  food: RecentFood
+  detailed: boolean
+  saving: boolean
+  onPick: (food: RecentFood) => void
+  onQuickAdd: (food: RecentFood) => void
+}
+
+function RecentFoodRow({ food, detailed, saving, onPick, onQuickAdd }: RecentFoodRowProps) {
+  const times = food.times_logged ?? 0
+  const details = recentDetails(food)
+
+  return (
+    <div className={`recent-chip${detailed ? ' recent-chip--detailed' : ' recent-chip--simple'}`}>
+      <button type="button" className="recent-chip__main" onClick={() => onPick(food)}>
+        <FoodIcon entry={food} />
+        <span className="recent-chip__body">
+          <span className="recent-chip__name">{food.food_name}</span>
+          <span className="recent-chip__meta">
+            {food.serving_size && <span>{food.serving_size}</span>}
+            {times > 1 && (
+              <span className="recent-chip__freq" title={`Logged ${times} times`}>
+                ↻ {times}×
+              </span>
+            )}
+            {!detailed && <span>{Math.round(food.protein_g)} g protein</span>}
+          </span>
+          {detailed && (
+            <>
+              <MacroBar protein_g={food.protein_g} carbs_g={food.carbs_g} fat_g={food.fat_g} />
+              <NutritionLegend food={food} />
+              {details && <span className="recent-chip__details">{details}</span>}
+            </>
+          )}
+        </span>
+      </button>
+      <CalorieValue calories={food.calories} className="recent-chip__calories" />
+      <button
+        type="button"
+        className="recent-chip__quick"
+        title="Quick-add to this day"
+        aria-label={`Quick-add ${food.food_name}`}
+        disabled={saving}
+        onClick={() => onQuickAdd(food)}
+      >
+        ✓
+      </button>
+    </div>
+  )
 }
 
 /** Shared metadata applied to every entry of a capture (the per-item macros come from the draft). */
@@ -216,7 +281,7 @@ function mergeItems(items: ItemDraft[], ids: string[]): ItemDraft[] {
   return out
 }
 
-export function CapturePage({ day, onLogged, initialMeal }: Props) {
+export function CapturePage({ day, onLogged, initialMeal, simple = false }: Props) {
   const queryClient = useQueryClient()
   // Meal chosen up front (from a meal section's "Add to …"); else default by time of day.
   const seedMeal = initialMeal ?? mealFromTime()
@@ -225,7 +290,8 @@ export function CapturePage({ day, onLogged, initialMeal }: Props) {
   const [draft, setDraft] = useState<CaptureDraft | null>(null)
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null)
   const [photoRef, setPhotoRef] = useState<string | null>(null)
-  const [description, setDescription] = useState('')
+  const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null)
+  const [composerText, setComposerText] = useState('')
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [busyLabel, setBusyLabel] = useState('Estimating nutrition…')
   const previewRef = useRef<string | null>(null)
@@ -244,6 +310,11 @@ export function CapturePage({ day, onLogged, initialMeal }: Props) {
     setPreviewUrl(url)
   }
 
+  function clearSelectedPhoto() {
+    setSelectedPhoto(null)
+    setPreview(null)
+  }
+
   function onEstimateError(e: unknown) {
     setError(
       e instanceof ApiError && e.status === 502
@@ -256,7 +327,7 @@ export function CapturePage({ day, onLogged, initialMeal }: Props) {
   }
 
   const estimate = useMutation({
-    mutationFn: postEstimate,
+    mutationFn: ({ file, description }: { file: File; description?: string }) => postEstimate(file, description),
     onMutate: () => {
       setError(null)
       setBusyLabel('Estimating nutrition…')
@@ -275,6 +346,7 @@ export function CapturePage({ day, onLogged, initialMeal }: Props) {
     mutationFn: postEstimateText,
     onMutate: () => {
       setError(null)
+      setSelectedPhoto(null)
       setPreview(null)
       setBusyLabel('Estimating nutrition…')
       setStatus('uploading')
@@ -293,6 +365,7 @@ export function CapturePage({ day, onLogged, initialMeal }: Props) {
     mutationFn: getBarcodeFood,
     onMutate: () => {
       setError(null)
+      setSelectedPhoto(null)
       setPreview(null)
       setBusyLabel('Looking up barcode…')
       setStatus('uploading')
@@ -317,19 +390,20 @@ export function CapturePage({ day, onLogged, initialMeal }: Props) {
     },
   })
 
-  const [recentSearch, setRecentSearch] = useState('')
   const [recentQ, setRecentQ] = useState('')
-  // Debounce the search box so we refetch once the user pauses, not on every keystroke.
+  // Debounce the composer so recent-food search refetches once the user pauses.
   useEffect(() => {
-    const id = setTimeout(() => setRecentQ(recentSearch), 250)
+    if (selectedPhoto) return
+    const id = setTimeout(() => setRecentQ(composerText), 250)
     return () => clearTimeout(id)
-  }, [recentSearch])
+  }, [composerText, selectedPhoto])
 
   const trimmedQ = recentQ.trim()
   const recentQuery = useQuery({
     queryKey: ['foods', 'recent', trimmedQ],
     // Frecency keeps daily staples near the top; a wider limit when searching surfaces older foods.
     queryFn: () => getRecentFoods(trimmedQ || undefined, 'frecency', trimmedQ ? 30 : 15),
+    enabled: !selectedPhoto,
     placeholderData: keepPreviousData, // keep the prior list visible while typing
   })
 
@@ -352,24 +426,32 @@ export function CapturePage({ day, onLogged, initialMeal }: Props) {
     setDraft(null)
     setAnalysis(null)
     setPhotoRef(null)
-    setDescription('')
+    setSelectedPhoto(null)
+    setComposerText('')
+    setRecentQ('')
     setError(null)
     setStatus('idle')
   }
 
   function onPhoto(file: File) {
+    setError(null)
+    setSelectedPhoto(file)
     setPreview(file)
-    estimate.mutate(file)
   }
 
-  function onDescribe(e: React.FormEvent) {
+  function onSubmitComposer(e: React.FormEvent) {
     e.preventDefault()
-    const desc = description.trim()
-    if (desc) estimateText.mutate(desc)
+    const desc = composerText.trim()
+    if (selectedPhoto) {
+      estimate.mutate({ file: selectedPhoto, description: desc || undefined })
+    } else if (desc) {
+      estimateText.mutate(desc)
+    }
   }
 
   function startScan() {
     setError(null)
+    clearSelectedPhoto()
     setStatus('scanning')
   }
   const onBarcode = (code: string) => barcodeLookup.mutate(code)
@@ -377,7 +459,7 @@ export function CapturePage({ day, onLogged, initialMeal }: Props) {
   // Re-log a recent food without an AI call: jump straight to the review card.
   function onPickRecent(food: RecentFood) {
     setError(null)
-    setPreview(null)
+    clearSelectedPhoto()
     setAnalysis(null)
     setPhotoRef(null)
     setDraft(draftFromRecent(food, day, seedMeal))
@@ -416,33 +498,63 @@ export function CapturePage({ day, onLogged, initialMeal }: Props) {
     save.mutate(draft.items.map((item) => itemToEntry(item, meta)))
   }
 
-  const recentFoods = recentQuery.data ?? []
-  const searchActive = recentSearch.trim().length > 0
-  // Show the section (with its search box) whenever there's history or an active search — so an
-  // empty search result still leaves the box on screen to edit, rather than hiding it.
-  const showRecent = recentFoods.length > 0 || searchActive
+  const searchText = composerText.trim()
+  const searchActive = !selectedPhoto && searchText.length > 0
+  const waitingForSearch = searchActive && (searchText !== trimmedQ || recentQuery.isPlaceholderData)
+  const recentFoods = selectedPhoto || waitingForSearch ? [] : (recentQuery.data ?? [])
+  // Show recent rows whenever there's history or active text search; hide them while a photo
+  // is attached because the composer text is photo context in that state.
+  const showRecent = !selectedPhoto && (recentFoods.length > 0 || searchActive)
+  const canEstimate = Boolean(selectedPhoto) || searchText.length > 0
 
   return (
     <div className="page">
       {status === 'idle' && (
         <div className="capture-intro">
           <h2>What did you eat?</h2>
-          <p className="muted">Snap a photo and I'll estimate the calories and macros.</p>
-          <PhotoCapture onPhoto={onPhoto} />
+          <p className="muted">
+            {selectedPhoto
+              ? 'Add context if it helps, then estimate the photo.'
+              : 'Search your foods or describe something new.'}
+          </p>
 
-          <div className="capture-or">or</div>
-
-          <form className="capture-text" onSubmit={onDescribe}>
+          <form className="capture-composer" onSubmit={onSubmitComposer}>
+            {previewUrl && (
+              <div className="capture-photo-preview">
+                <img src={previewUrl} alt="Selected food" />
+                <button type="button" className="btn btn--ghost" onClick={clearSelectedPhoto}>
+                  Clear photo
+                </button>
+              </div>
+            )}
             <input
               type="text"
-              value={description}
-              placeholder="Describe it — e.g. 12 oz iced latte"
-              onChange={(e) => setDescription(e.target.value)}
+              value={composerText}
+              placeholder={
+                selectedPhoto
+                  ? 'Add context — e.g. homemade turkey chili'
+                  : 'Search or describe — e.g. 12 oz iced latte'
+              }
+              onChange={(e) => setComposerText(e.target.value)}
             />
-            <button className="btn btn--primary" type="submit" disabled={!description.trim()}>
-              Estimate from description
+            <button
+              className="btn btn--primary"
+              type="submit"
+              disabled={!canEstimate || estimate.isPending || estimateText.isPending}
+            >
+              <span className="icon-label">
+                <AppIcon name="sparkles" size={18} />
+                <span>{selectedPhoto ? 'Estimate photo' : 'Estimate new food'}</span>
+              </span>
             </button>
           </form>
+
+          <PhotoCapture
+            onPhoto={onPhoto}
+            disabled={save.isPending}
+            cameraLabel={selectedPhoto ? 'Replace photo' : 'Take a photo'}
+            libraryLabel={selectedPhoto ? 'Choose different photo' : 'Choose from library'}
+          />
 
           <button type="button" className="btn btn--ghost capture-scan" onClick={startScan}>
             <svg className="capture-scan__icon" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
@@ -459,47 +571,21 @@ export function CapturePage({ day, onLogged, initialMeal }: Props) {
           </button>
 
           {showRecent && (
-            <div className="capture-recent">
-              <span className="capture-recent__title">Your foods — tap to re-log, ✓ to quick-add</span>
-              <input
-                type="text"
-                className="capture-recent__search"
-                value={recentSearch}
-                placeholder="Search your foods…"
-                onChange={(e) => setRecentSearch(e.target.value)}
-              />
+            <div className={`capture-recent${simple ? ' capture-recent--simple' : ' capture-recent--detailed'}`}>
+              <span className="capture-recent__title">Your foods — tap to review, ✓ to quick-add</span>
               <div className="capture-recent__list">
-                {recentFoods.map((food) => {
-                  const times = food.times_logged ?? 0
-                  return (
-                    <div key={food.food_name} className="recent-chip">
-                      <button type="button" className="recent-chip__main" onClick={() => onPickRecent(food)}>
-                        <span className="recent-chip__name">{food.food_name}</span>
-                        <span className="recent-chip__meta">
-                          {times > 1 && (
-                            <span className="recent-chip__freq" title={`Logged ${times} times`}>
-                              ↻ {times}×
-                            </span>
-                          )}
-                          <span>{Math.round(food.protein_g)} g protein</span>
-                        </span>
-                      </button>
-                      <span className="recent-chip__cal">{Math.round(food.calories)} kcal</span>
-                      <button
-                        type="button"
-                        className="recent-chip__quick"
-                        title="Quick-add to this day"
-                        aria-label={`Quick-add ${food.food_name}`}
-                        disabled={save.isPending}
-                        onClick={() => onQuickAdd(food)}
-                      >
-                        ✓
-                      </button>
-                    </div>
-                  )
-                })}
-                {recentFoods.length === 0 && searchActive && !recentQuery.isLoading && (
-                  <span className="capture-recent__empty">No matches for “{recentSearch.trim()}”.</span>
+                {recentFoods.map((food) => (
+                  <RecentFoodRow
+                    key={food.food_name}
+                    food={food}
+                    detailed={!simple}
+                    saving={save.isPending}
+                    onPick={onPickRecent}
+                    onQuickAdd={onQuickAdd}
+                  />
+                ))}
+                {recentFoods.length === 0 && searchActive && !waitingForSearch && !recentQuery.isFetching && (
+                  <span className="capture-recent__empty">No matches for “{searchText}”.</span>
                 )}
               </div>
             </div>

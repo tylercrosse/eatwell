@@ -8,6 +8,30 @@ interface Props {
   libraryLabel?: string
 }
 
+function FileIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" className="capture-file-icon">
+      <path
+        d="M6.5 3.5h7.1l3.9 3.9v13.1h-11z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path d="M13.5 3.5v4h4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+      <path
+        d="M8.7 16.8l2.6-3 1.8 2 1.1-1.2 2.7 2.2"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="9.6" cy="10.4" r="1" fill="currentColor" />
+    </svg>
+  )
+}
+
 /**
  * Two affordances over one hidden file input:
  *   - "Take photo" uses capture="environment" -> opens the rear camera on iOS.
@@ -56,7 +80,10 @@ export function PhotoCapture({
         disabled={disabled}
         onClick={() => libraryRef.current?.click()}
       >
-        {libraryLabel}
+        <span className="icon-label">
+          <FileIcon size={18} />
+          <span>{libraryLabel}</span>
+        </span>
       </button>
     </div>
   )

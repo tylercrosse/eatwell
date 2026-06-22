@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useSyncExternalStore, type ReactNode } from 'react'
-import { usePersistentChoice } from './prefs'
+import { usePersistentChoice, usePersistentToggle } from './prefs'
 import {
   DARK_THEME_IDS,
   DEFAULT_SYSTEM_DARK,
@@ -19,6 +19,7 @@ import {
   applyTextSize,
   type TextSize,
 } from './textSize'
+import { DEFAULT_SIMPLE_VIEW, SIMPLE_VIEW_STORAGE_KEY } from './viewMode'
 
 const LIGHT_QUERY = '(prefers-color-scheme: light)'
 
@@ -51,6 +52,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     TEXT_SIZE_IDS,
     DEFAULT_TEXT_SIZE,
   )
+  const [simpleView, setSimpleView] = usePersistentToggle(SIMPLE_VIEW_STORAGE_KEY, DEFAULT_SIMPLE_VIEW)
   const system = useSystemTheme() // 'light' | 'dark' from the OS
   // `resolved` is derived during render: an explicit theme is itself; 'system' follows the OS,
   // using the chosen dark variant at night.
@@ -65,8 +67,18 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [textSize])
 
   const value = useMemo(
-    () => ({ theme, resolved, setTheme, systemDark, setSystemDark, textSize, setTextSize }),
-    [theme, resolved, setTheme, systemDark, setSystemDark, textSize, setTextSize],
+    () => ({
+      theme,
+      resolved,
+      setTheme,
+      systemDark,
+      setSystemDark,
+      textSize,
+      setTextSize,
+      simpleView,
+      setSimpleView,
+    }),
+    [theme, resolved, setTheme, systemDark, setSystemDark, textSize, setTextSize, simpleView, setSimpleView],
   )
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
 }

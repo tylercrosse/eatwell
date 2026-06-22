@@ -345,6 +345,7 @@ class RecentFood(BaseModel):
     sodium_mg: float | None = None
     is_beverage: bool = False
     serving_size: str | None = None
+    category: str | None = None
     times_logged: int | None = None  # all-time log count for this name (frecency sort only)
 
 

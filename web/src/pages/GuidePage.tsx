@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { MenuScanner } from '../components/MenuScanner'
 import { CalorieValue } from '../components/CalorieValue'
+import { FoodIcon } from '../components/FoodIcon'
 import { MacroBar } from '../components/MacroBar'
 import { NutritionLegend } from '../components/NutritionLegend'
 import { StayingPowerBadge } from '../components/StayingPowerBadge'
@@ -22,6 +23,7 @@ import {
 } from '../lib/guide'
 import { isBeverageForFullness } from '../lib/fullness'
 import { DEFAULT_TARGETS, goalDirection } from '../lib/targets'
+import { useTheme } from '../lib/theme'
 import type { RecentFood } from '../types'
 
 const EMPTY_RECENT: RecentFood[] = []
@@ -46,10 +48,11 @@ function guideServingMeta(food: RecentFood): string {
   return parts.join(' · ')
 }
 
-function GuideFoodRow({ item }: { item: RankedGuideFood }) {
+function GuideFoodRow({ item, simple }: { item: RankedGuideFood; simple: boolean }) {
   const { food, reason } = item
   return (
-    <div className="guide-food">
+    <div className={`guide-food${simple ? ' guide-food--simple' : ' guide-food--detailed'}`}>
+      <FoodIcon entry={food} />
       <div className="guide-food__main">
         <div className="guide-food__top">
           <span className="guide-food__name">{food.food_name}</span>
@@ -57,8 +60,12 @@ function GuideFoodRow({ item }: { item: RankedGuideFood }) {
           {isBeverageForFullness(food) && <span className="guide-tag guide-tag--warn">Drink</span>}
         </div>
         <span className="guide-food__meta">{guideServingMeta(food)}</span>
-        <MacroBar protein_g={food.protein_g} carbs_g={food.carbs_g} fat_g={food.fat_g} />
-        <NutritionLegend food={food} />
+        {!simple && (
+          <>
+            <MacroBar protein_g={food.protein_g} carbs_g={food.carbs_g} fat_g={food.fat_g} />
+            <NutritionLegend food={food} />
+          </>
+        )}
         <p className="guide-food__why">{reason}</p>
       </div>
       <CalorieValue calories={food.calories} />
@@ -79,6 +86,7 @@ function resolveGoal(targets: typeof DEFAULT_TARGETS, currentWeightKg: number | 
 }
 
 export function GuidePage() {
+  const { simpleView: simple } = useTheme() // Detailed by default; switched in Settings
   const foodsQuery = useQuery({
     queryKey: ['foods', 'guide', 'frecency'],
     queryFn: () => getRecentFoods(undefined, 'frecency', 50),
@@ -103,7 +111,7 @@ export function GuidePage() {
         {copy.note && <p className="guide-note">{copy.note}</p>}
       </section>
 
-      <MenuScanner goal={goal} />
+      <MenuScanner goal={goal} simple={simple} />
 
       <section className="card guide-section">
         <div className="guide-section__head">
@@ -127,7 +135,7 @@ export function GuidePage() {
           <>
             <div className="guide-food-list">
               {visibleFoods.map((item) => (
-                <GuideFoodRow key={item.food.food_name} item={item} />
+                <GuideFoodRow key={item.food.food_name} item={item} simple={simple} />
               ))}
             </div>
             {unscoredCount > 0 && (

@@ -126,6 +126,7 @@ export interface RecentFood {
   sodium_mg?: number | null
   is_beverage?: boolean
   serving_size?: string | null
+  category?: string | null // visual-form category for the recent-food icon and relogged entry
   times_logged?: number | null // all-time log count for this name (frecency sort only)
 }
 

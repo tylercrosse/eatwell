@@ -39,6 +39,64 @@ def test_recent_foods_q_filter(client):
     assert [f["food_name"] for f in recent] == ["Greek yogurt"]
 
 
+def test_recent_foods_q_matches_typos(client):
+    _log(client, "Greek yogurt with berries")
+    _log(client, "Banana")
+
+    recent = client.get("/api/foods/recent", params={"q": "grek yogrt"}).json()
+
+    assert [f["food_name"] for f in recent] == ["Greek yogurt with berries"]
+
+
+def test_recent_foods_q_matches_tokens_out_of_order(client):
+    _log(client, "Greek yogurt with berries")
+    _log(client, "Turkey avocado wrap")
+
+    recent = client.get("/api/foods/recent", params={"q": "berries yogurt"}).json()
+
+    assert [f["food_name"] for f in recent] == ["Greek yogurt with berries"]
+
+
+def test_recent_foods_q_uses_category_fallback(client):
+    _log(client, "Morning brew", category="coffee", is_beverage=True)
+    _log(client, "Banana")
+
+    recent = client.get("/api/foods/recent", params={"q": "drink"}).json()
+
+    assert [f["food_name"] for f in recent] == ["Morning brew"]
+
+
+def test_recent_foods_q_omits_weak_matches(client):
+    _log(client, "Greek yogurt")
+    _log(client, "Banana")
+
+    recent = client.get("/api/foods/recent", params={"q": "zzzz"}).json()
+
+    assert recent == []
+
+
+def test_recent_foods_q_coffee_prefers_specific_matches_over_generic_beverages(client):
+    _log(client, "Coffee with milk", category="coffee", is_beverage=True, logged_at="2026-05-31T07:00:00")
+    _log(client, "Cortado", category="latte_cappuccino", is_beverage=True, logged_at="2026-05-31T08:00:00")
+    _log(client, "Café con leche", category="latte_cappuccino", is_beverage=True, logged_at="2026-05-31T09:00:00")
+    _log(
+        client,
+        "banana, pineapple chunks, watermelon, yogurt, coffee",
+        category="mixed_plate",
+        logged_at="2026-05-31T10:00:00",
+    )
+    _log(client, "Orange juice", category="juice", is_beverage=True, logged_at="2026-05-31T11:00:00")
+    _log(client, "Red wine", category="wine", is_beverage=True, logged_at="2026-05-31T12:00:00")
+
+    recent = client.get("/api/foods/recent", params={"sort": "frecency", "q": "coffee"}).json()
+    names = [f["food_name"] for f in recent]
+
+    assert names[:3] == ["Coffee with milk", "Café con leche", "Cortado"]
+    assert names.index("banana, pineapple chunks, watermelon, yogurt, coffee") > names.index("Cortado")
+    assert "Orange juice" not in names
+    assert "Red wine" not in names
+
+
 def test_recent_foods_limit(client):
     for i in range(5):
         _log(client, f"Food {i}", logged_at=f"2026-05-31T0{i}:00:00")
@@ -46,10 +104,11 @@ def test_recent_foods_limit(client):
 
 
 def test_recent_foods_carries_nutrition(client):
-    _log(client, "Salad", weight_g=250, fiber_g=6)
+    _log(client, "Salad", weight_g=250, fiber_g=6, category="salad")
     recent = client.get("/api/foods/recent").json()
     assert recent[0]["weight_g"] == 250
     assert recent[0]["fiber_g"] == 6
+    assert recent[0]["category"] == "salad"
 
 
 def test_recent_foods_frecency_ranks_staple_above_fresh_oneoff(client):
@@ -75,6 +134,17 @@ def test_recent_foods_frecency_counts_all_time_case_insensitive(client):
     recent = client.get("/api/foods/recent", params={"sort": "frecency"}).json()
     assert len(recent) == 1
     assert recent[0]["times_logged"] == 2  # both casings counted as one food
+
+
+def test_recent_foods_frecency_counts_all_time_for_fuzzy_query(client):
+    _log(client, "Greek yogurt with berries", logged_at="2026-05-30T08:00:00")
+    _log(client, "Greek yogurt with berries", logged_at="2026-05-31T08:00:00")
+
+    recent = client.get("/api/foods/recent", params={"sort": "frecency", "q": "grek yogrt"}).json()
+
+    assert len(recent) == 1
+    assert recent[0]["food_name"] == "Greek yogurt with berries"
+    assert recent[0]["times_logged"] == 2
 
 
 def test_recent_foods_sort_rejects_unknown(client):

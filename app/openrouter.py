@@ -149,12 +149,18 @@ def _parse_menu_analysis(content: str | None) -> MenuAnalysisResult:
         raise EstimationError(f"Model returned malformed menu JSON: {exc}") from exc
 
 
-async def analyze_food_image(jpeg_bytes: bytes, settings: Settings) -> AnalysisResult:
+async def analyze_food_image(
+    jpeg_bytes: bytes, settings: Settings, context: str | None = None
+) -> AnalysisResult:
     """Send a (normalized JPEG) food photo to the model and return structured macros."""
     if not settings.openrouter_api_key:
         raise EstimationError("OPENROUTER_API_KEY is not configured.")
 
     data_url = "data:image/jpeg;base64," + base64.b64encode(jpeg_bytes).decode("ascii")
+    note = context.strip() if context else ""
+    prompt = "Analyze this meal and estimate its nutrition."
+    if note:
+        prompt += f"\n\nUser context: {note}"
 
     try:
         resp = await _client(settings).chat.completions.create(
@@ -165,7 +171,7 @@ async def analyze_food_image(jpeg_bytes: bytes, settings: Settings) -> AnalysisR
                 {
                     "role": "user",
                     "content": [
-                        {"type": "text", "text": "Analyze this meal and estimate its nutrition."},
+                        {"type": "text", "text": prompt},
                         {"type": "image_url", "image_url": {"url": data_url}},
                     ],
                 },
