@@ -14,6 +14,47 @@ tests/          pytest backend tests
 docs/           Product, launch, and implementation planning docs
 ```
 
+## Screenshots
+
+Generated from local QA data with `cd web && npm run screenshots`.
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="docs/assets/screenshots/iphone-loading.png" width="190" alt="Loading screen with food icons and the Calorie Tracker name" />
+      <br />
+      <sub>Loading</sub>
+    </td>
+    <td align="center">
+      <img src="docs/assets/screenshots/iphone-log.png" width="190" alt="Log screen with daily energy rings and meal actions" />
+      <br />
+      <sub>Log</sub>
+    </td>
+    <td align="center">
+      <img src="docs/assets/screenshots/iphone-log-add-food.png" width="190" alt="Add food modal with search, photo, barcode, and recent-food quick-add controls" />
+      <br />
+      <sub>Add food</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="docs/assets/screenshots/iphone-trends.png" width="190" alt="Trends screen with calorie and energy balance charts" />
+      <br />
+      <sub>Trends</sub>
+    </td>
+    <td align="center">
+      <img src="docs/assets/screenshots/iphone-guide.png" width="190" alt="Guide screen with menu scanner and ranked logged servings" />
+      <br />
+      <sub>Guide</sub>
+    </td>
+    <td align="center">
+      <img src="docs/assets/screenshots/iphone-goals.png" width="190" alt="Goals screen with calorie, macro, and body targets" />
+      <br />
+      <sub>Goals</sub>
+    </td>
+  </tr>
+</table>
+
 ## Project docs
 
 - [AGENTS.md](AGENTS.md) is the canonical guide for AI coding agents working in this repo.

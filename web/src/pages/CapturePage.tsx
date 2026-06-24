@@ -3,7 +3,6 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { AppIcon } from '../components/AppIcon'
 import { CalorieValue } from '../components/CalorieValue'
 import { FoodIcon } from '../components/FoodIcon'
-import { PhotoCapture } from '../components/PhotoCapture'
 import { EstimateCard, type CaptureDraft, type ItemDraft } from '../components/EstimateCard'
 import { MacroBar } from '../components/MacroBar'
 import { NutritionLegend } from '../components/NutritionLegend'
@@ -34,6 +33,33 @@ interface Props {
 // Client-only id for React keys + merge selection; never sent to the backend.
 let _idSeq = 0
 const newId = () => `item-${_idSeq++}`
+
+/** Barcode glyph for the composer's compact "Scan" tool. */
+function BarcodeGlyph({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <g fill="currentColor">
+        <rect x="2" y="5" width="1.6" height="14" />
+        <rect x="5" y="5" width="2.6" height="14" />
+        <rect x="9" y="5" width="1.4" height="14" />
+        <rect x="12" y="5" width="2.6" height="14" />
+        <rect x="16" y="5" width="1.4" height="14" />
+        <rect x="19" y="5" width="2.6" height="14" />
+      </g>
+    </svg>
+  )
+}
+
+/** Photo-library glyph for the composer's compact "Library" tool. */
+function ImageGlyph({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <rect x="3" y="4.5" width="18" height="15" rx="2.5" />
+      <circle cx="8.5" cy="10" r="1.5" fill="currentColor" stroke="none" />
+      <path d="M4 17l4.5-4.5 3.5 3.5 3-3L20 17" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
 
 function itemFromFoodItem(it: FoodItem): ItemDraft {
   const isBeverage = isBeverageForFullness({
@@ -295,6 +321,8 @@ export function CapturePage({ day, onLogged, initialMeal, simple = false }: Prop
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [busyLabel, setBusyLabel] = useState('Estimating nutrition…')
   const previewRef = useRef<string | null>(null)
+  const cameraRef = useRef<HTMLInputElement>(null)
+  const libraryRef = useRef<HTMLInputElement>(null)
 
   // Revoke the object URL when it changes or on unmount (avoid leaks).
   useEffect(() => {
@@ -439,6 +467,13 @@ export function CapturePage({ day, onLogged, initialMeal, simple = false }: Prop
     setPreview(file)
   }
 
+  // Camera + library share the hidden-input trick from PhotoCapture (kept for MenuScanner).
+  function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (file) onPhoto(file)
+    e.target.value = '' // allow re-picking the same file
+  }
+
   function onSubmitComposer(e: React.FormEvent) {
     e.preventDefault()
     const desc = composerText.trim()
@@ -512,63 +547,93 @@ export function CapturePage({ day, onLogged, initialMeal, simple = false }: Prop
       {status === 'idle' && (
         <div className="capture-intro">
           <h2>What did you eat?</h2>
-          <p className="muted">
-            {selectedPhoto
-              ? 'Add context if it helps, then estimate the photo.'
-              : 'Search your foods or describe something new.'}
-          </p>
+          <input
+            ref={cameraRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            hidden
+            onChange={onPickFile}
+          />
+          <input ref={libraryRef} type="file" accept="image/*" hidden onChange={onPickFile} />
 
           <form className="capture-composer" onSubmit={onSubmitComposer}>
-            {previewUrl && (
-              <div className="capture-photo-preview">
-                <img src={previewUrl} alt="Selected food" />
-                <button type="button" className="btn btn--ghost" onClick={clearSelectedPhoto}>
-                  Clear photo
-                </button>
+            {selectedPhoto && previewUrl ? (
+              <div className="composer-attachment">
+                <div className="composer-attachment__thumb">
+                  <img src={previewUrl} alt="Selected food" />
+                  <button
+                    type="button"
+                    className="composer-attachment__remove"
+                    aria-label="Remove photo"
+                    onClick={clearSelectedPhoto}
+                  >
+                    ×
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  value={composerText}
+                  placeholder="Add a note — e.g. extra rice (optional)"
+                  onChange={(e) => setComposerText(e.target.value)}
+                />
               </div>
+            ) : (
+              <input
+                type="text"
+                value={composerText}
+                placeholder="Search, or describe a food…"
+                onChange={(e) => setComposerText(e.target.value)}
+              />
             )}
-            <input
-              type="text"
-              value={composerText}
-              placeholder={
-                selectedPhoto
-                  ? 'Add context — e.g. homemade turkey chili'
-                  : 'Search or describe — e.g. 12 oz iced latte'
-              }
-              onChange={(e) => setComposerText(e.target.value)}
-            />
-            <button
-              className="btn btn--primary"
-              type="submit"
-              disabled={!canEstimate || estimate.isPending || estimateText.isPending}
-            >
-              <span className="icon-label">
-                <AppIcon name="sparkles" size={18} />
-                <span>{selectedPhoto ? 'Estimate photo' : 'Estimate new food'}</span>
-              </span>
-            </button>
+
+            <div className="composer-tools">
+              <button
+                type="button"
+                className="composer-photo"
+                disabled={save.isPending}
+                onClick={() => cameraRef.current?.click()}
+              >
+                <span className="icon-label">
+                  <AppIcon name="camera" size={16} />
+                  <span>{selectedPhoto ? 'Replace' : 'Add photo'}</span>
+                </span>
+              </button>
+
+              <button
+                type="button"
+                className="composer-tool"
+                aria-label="Scan a barcode"
+                disabled={save.isPending}
+                onClick={startScan}
+              >
+                <BarcodeGlyph />
+                <span className="composer-tool__label">Scan</span>
+              </button>
+
+              <button
+                type="button"
+                className="composer-tool"
+                aria-label={selectedPhoto ? 'Choose a different photo' : 'Choose from library'}
+                disabled={save.isPending}
+                onClick={() => libraryRef.current?.click()}
+              >
+                <ImageGlyph />
+                <span className="composer-tool__label">Library</span>
+              </button>
+
+              <button
+                className="composer-estimate"
+                type="submit"
+                disabled={!canEstimate || estimate.isPending || estimateText.isPending}
+              >
+                <span className="icon-label">
+                  <AppIcon name="sparkles" size={16} />
+                  <span>Estimate</span>
+                </span>
+              </button>
+            </div>
           </form>
-
-          <PhotoCapture
-            onPhoto={onPhoto}
-            disabled={save.isPending}
-            cameraLabel={selectedPhoto ? 'Replace photo' : 'Take a photo'}
-            libraryLabel={selectedPhoto ? 'Choose different photo' : 'Choose from library'}
-          />
-
-          <button type="button" className="btn btn--ghost capture-scan" onClick={startScan}>
-            <svg className="capture-scan__icon" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-              <g fill="currentColor">
-                <rect x="2" y="5" width="1.6" height="14" />
-                <rect x="5" y="5" width="2.6" height="14" />
-                <rect x="9" y="5" width="1.4" height="14" />
-                <rect x="12" y="5" width="2.6" height="14" />
-                <rect x="16" y="5" width="1.4" height="14" />
-                <rect x="19" y="5" width="2.6" height="14" />
-              </g>
-            </svg>
-            Scan a barcode
-          </button>
 
           {showRecent && (
             <div className={`capture-recent${simple ? ' capture-recent--simple' : ' capture-recent--detailed'}`}>

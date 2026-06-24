@@ -34,6 +34,9 @@
           }[t]
           var m = document.querySelector('meta[name="theme-color"]')
           if (m && bg) m.setAttribute('content', bg)
+          // Boot-splash background — mirrors each theme's --bg so the splash matches the
+          // theme on the very first frame, before index.css loads.
+          if (bg) document.documentElement.style.setProperty('--boot-bg', bg)
           // Text size — mirrors TEXT_SIZE_SCALE in src/lib/textSize.ts. Applied here so larger
           // type doesn't reflow on load.
           var sizes = { default: '100%', large: '112.5%', larger: '125%' }
@@ -44,6 +47,69 @@
         }
       })()
     </script>
+    <!-- Boot splash — paints on the first frame (before index.css loads), then App fades it
+         out once /auth/me resolves (src/lib/bootSplash.ts). The ring mirrors the dashboard
+         calorie ring (120px / 12px stroke) rather than a logo, so a rebrand needs no rework. -->
+    <style>
+      #boot-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--boot-bg, #0f172a);
+        transition: opacity 0.3s ease;
+      }
+      #boot-splash.is-hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+      .boot-splash__inner {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 18px;
+      }
+      .boot-splash__foods {
+        display: flex;
+        gap: 22px;
+        font-size: 58px;
+        line-height: 1;
+      }
+      .boot-splash__food {
+        animation: boot-splash-bounce 1.3s ease-in-out infinite;
+      }
+      .boot-splash__food:nth-child(2) {
+        animation-delay: 0.16s;
+      }
+      .boot-splash__food:nth-child(3) {
+        animation-delay: 0.32s;
+      }
+      .boot-splash__name {
+        color: var(--text, #e2e8f0);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
+          sans-serif;
+        font-size: 1.05rem;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+      }
+      @keyframes boot-splash-bounce {
+        0%,
+        50%,
+        100% {
+          transform: translateY(0);
+        }
+        25% {
+          transform: translateY(-24px);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .boot-splash__food {
+          animation: none;
+        }
+      }
+    </style>
     <!-- iOS standalone PWA hints (manifest covers Android/Chrome) -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -54,6 +120,39 @@
   </head>
   <body>
     <div id="root"></div>
+    <div id="boot-splash" role="status" aria-label="Loading Calorie Tracker">
+      <div class="boot-splash__inner">
+        <div class="boot-splash__foods" aria-hidden="true">
+          <span class="boot-splash__food">🥑</span>
+          <span class="boot-splash__food">🍳</span>
+          <span class="boot-splash__food">🍓</span>
+        </div>
+        <span class="boot-splash__name">Calorie Tracker</span>
+      </div>
+    </div>
+    <script>
+      // Randomize the splash foods on each load so the trio feels lively. Runs inline once
+      // #boot-splash is parsed; falls back to the markup defaults (🥑🍳🍓) if anything throws.
+      ;(function () {
+        try {
+          var pool = [
+            '🥑', '🍳', '🍓', '🍎', '🍌', '🍉', '🍇', '🥕', '🥦', '🌽', '🍠', '🥚',
+            '🍗', '🍤', '🍣', '🍙', '🍚', '🍜', '🍝', '🍕', '🌮', '🥗', '🍔', '🥪',
+            '🧀', '🍞', '🥐', '🍩',
+          ]
+          for (var i = pool.length - 1; i > 0; i--) {
+            var j = Math.floor(Math.random() * (i + 1))
+            var tmp = pool[i]
+            pool[i] = pool[j]
+            pool[j] = tmp
+          }
+          var foods = document.querySelectorAll('#boot-splash .boot-splash__food')
+          for (var k = 0; k < foods.length; k++) foods[k].textContent = pool[k]
+        } catch (e) {
+          /* keep the default trio */
+        }
+      })()
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

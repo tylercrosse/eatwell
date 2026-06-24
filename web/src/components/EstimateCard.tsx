@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { MacroEditorFields } from './MacroEditorFields'
 import { NutritionLegend } from './NutritionLegend'
 import { ServingsStepper } from './ServingsStepper'
@@ -68,6 +68,15 @@ function ItemEditor({ item, single, selected, onToggleSelect, onChange, onRemove
   const [open, setOpen] = useState(single)
   const f = item.servings // ServingsStepper clamps > 0, so safe to divide by
 
+  // Auto-grow the name field so long names wrap instead of truncating.
+  const nameRef = useRef<HTMLTextAreaElement>(null)
+  useLayoutEffect(() => {
+    const el = nameRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [item.food_name])
+
   return (
     <div className="item-edit">
       <div className="item-edit__head">
@@ -80,9 +89,10 @@ function ItemEditor({ item, single, selected, onToggleSelect, onChange, onRemove
             aria-label={`Select ${item.food_name || 'item'} to combine`}
           />
         )}
-        <input
+        <textarea
+          ref={nameRef}
           className="item-edit__name"
-          type="text"
+          rows={1}
           value={item.food_name}
           placeholder="Item name"
           onChange={(e) => onChange({ food_name: e.target.value })}

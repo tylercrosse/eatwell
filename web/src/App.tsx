@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { LogPage } from './pages/LogPage'
 import { GuidePage } from './pages/GuidePage'
@@ -9,6 +9,7 @@ import { SettingsMenu } from './components/SettingsMenu'
 import { getMe, loginWithGoogle, logout } from './api/auth'
 import { ApiError } from './api/client'
 import { localDayKey } from './lib/date'
+import { hideBootSplash } from './lib/bootSplash'
 
 // Lazy so the charting lib (recharts) is a separate chunk, off the initial load path.
 const TrendsPage = lazy(() => import('./pages/TrendsPage').then((m) => ({ default: m.TrendsPage })))
@@ -24,6 +25,11 @@ export default function App() {
 
   // 401 here just means "not signed in" — surface the login screen, don't retry.
   const meQuery = useQuery({ queryKey: ['me'], queryFn: getMe, retry: false })
+
+  // Dismiss the index.html boot splash once auth resolves (signed in or 401).
+  useEffect(() => {
+    if (!meQuery.isLoading) hideBootSplash()
+  }, [meQuery.isLoading])
 
   const login = useMutation({
     mutationFn: loginWithGoogle,
@@ -45,15 +51,9 @@ export default function App() {
     setTab('log')
   }, [])
 
-  if (meQuery.isLoading) {
-    return (
-      <div className="app">
-        <main className="app__main">
-          <p className="muted">Loading…</p>
-        </main>
-      </div>
-    )
-  }
+  // The index.html boot splash already covers the screen while auth resolves; render
+  // nothing underneath so there's no flash of content as the splash fades out.
+  if (meQuery.isLoading) return null
 
   const me = meQuery.data
   if (!me) {
