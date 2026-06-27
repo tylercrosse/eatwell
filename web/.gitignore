@@ -12,6 +12,7 @@ dist
 dist-ssr
 playwright-report
 screenshots
+recordings
 test-results
 *.local
 

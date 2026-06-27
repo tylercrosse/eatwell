@@ -728,6 +728,10 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  max-height: min(46dvh, 430px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 2px;
 }
 
 .capture-recent__search {
@@ -3443,10 +3447,15 @@ body {
   padding: 16px 8px 8px;
 }
 
-/* The food-capture flow gets a wider sheet so recent-food rows have room to breathe on
-   larger screens. CapturePage is the only modal content rendered as a `.page`, and it stays
-   `.page` across every capture state, so the width holds steady through the flow. On mobile
-   the modal is already viewport-bound, so this is a no-op there. */
+/* CapturePage is the only modal content rendered as a `.page`, and it stays `.page`
+   across every capture state. Keep that sheet top-anchored so typeahead result changes
+   expand downward instead of moving the composer around the viewport. */
+.modal-overlay:has(.page) {
+  align-items: flex-start;
+  padding-top: max(12px, env(safe-area-inset-top));
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+}
+
 .modal:has(.page) {
   max-width: 560px;
 }

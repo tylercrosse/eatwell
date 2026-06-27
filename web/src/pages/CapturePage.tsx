@@ -535,8 +535,8 @@ export function CapturePage({ day, onLogged, initialMeal, simple = false }: Prop
 
   const searchText = composerText.trim()
   const searchActive = !selectedPhoto && searchText.length > 0
-  const waitingForSearch = searchActive && (searchText !== trimmedQ || recentQuery.isPlaceholderData)
-  const recentFoods = selectedPhoto || waitingForSearch ? [] : (recentQuery.data ?? [])
+  const searchSettled = !searchActive || (searchText === trimmedQ && !recentQuery.isPlaceholderData && !recentQuery.isFetching)
+  const recentFoods = selectedPhoto ? [] : (recentQuery.data ?? [])
   // Show recent rows whenever there's history or active text search; hide them while a photo
   // is attached because the composer text is photo context in that state.
   const showRecent = !selectedPhoto && (recentFoods.length > 0 || searchActive)
@@ -649,7 +649,7 @@ export function CapturePage({ day, onLogged, initialMeal, simple = false }: Prop
                     onQuickAdd={onQuickAdd}
                   />
                 ))}
-                {recentFoods.length === 0 && searchActive && !waitingForSearch && !recentQuery.isFetching && (
+                {recentFoods.length === 0 && searchActive && searchSettled && (
                   <span className="capture-recent__empty">No matches for “{searchText}”.</span>
                 )}
               </div>

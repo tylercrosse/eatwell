@@ -16,7 +16,14 @@ docs/           Product, launch, and implementation planning docs
 
 ## Screenshots
 
-Generated from local QA data with `cd web && npm run screenshots`.
+Generated from local QA data with `cd web && npm run screenshots`; the GIF tour is generated
+with `cd web && npm run recording`.
+
+<p align="center">
+  <img src="docs/assets/recordings/app-tour.gif" width="320" alt="Animated app tour showing loading, the log, add-food search, estimate review, trends, guide, and goals" />
+  <br />
+  <sub>Short QA-data walkthrough</sub>
+</p>
 
 <table>
   <tr>

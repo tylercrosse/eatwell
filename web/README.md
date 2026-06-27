@@ -14,6 +14,7 @@ npm run lint
 npm run test
 npm run test:e2e
 npm run screenshots
+npm run recording
 npm run preview
 ```
 
@@ -39,12 +40,17 @@ on `127.0.0.1:5175`, so it does not collide with the normal dev servers.
 ```bash
 cd web && npm run test:e2e
 cd web && npm run screenshots
+cd web && npm run recording
 ```
 
 Screenshots are written under `web/screenshots/` for `qa-loss`, `qa-gain`, and
 `qa-sporadic` using an iPhone-sized `430×932` viewport. The script clears old screenshots
 first, so rerunning it keeps the showcase captures current. Set `E2E_SEED_END_DATE=YYYY-MM-DD`
 when you need deterministic dated screenshots.
+
+`npm run recording` writes a short app-tour GIF to `web/recordings/app-tour.gif` using the
+same QA data and iPhone viewport. It requires `ffmpeg` on your PATH; copy the curated GIF
+to `docs/assets/recordings/app-tour.gif` when updating the README.
 
 ## Structure
 
