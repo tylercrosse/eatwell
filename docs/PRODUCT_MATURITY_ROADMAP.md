@@ -1,5 +1,10 @@
 # Product Maturity Roadmap
 
+> **The seven priorities are tracked in beads as `ct-pm.1`–`ct-pm.7`**, with each
+> "Definition of done" carried over as the bead's acceptance criteria. Run
+> `bd list --label maturity`. The thesis, showcase reasoning, and "Proof point target"
+> lines stay here.
+
 Last updated: 2026-06-19
 
 This document prioritizes calorie-tracker work by how strongly it improves product

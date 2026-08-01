@@ -1,5 +1,12 @@
 # Product Opportunities Backlog
 
+> **Tracked in beads as `ct-po.*`.** Only the candidate-backlog items *not* already
+> covered elsewhere were imported — saved foods/meals, onboarding, LLM quota,
+> authenticated photos, the restaurant assistant, recipes, water, taste, and cost all
+> have canonical beads under `ct-m*` / `ct-cr.*` and were not duplicated. Run
+> `bd list --label opportunities`. The positioning thesis, persona work, bets, and the
+> "Avoid For Now" list stay here.
+
 Last updated: 2026-06-15
 
 This document is a market-led backlog for features that could make the calorie tracker

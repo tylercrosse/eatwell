@@ -1,5 +1,16 @@
 # Calorie Tracker — Feature Backlog
 
+> **Status now lives in beads, not in this file.** Run `bd ready` for what is actually
+> next, or `bd show ct-m10.2` for one item. Bead IDs mirror the numbering here:
+> milestone N.M → `ct-mN.M`. This doc remains the home for *rationale* — design
+> decisions, rejected alternatives, granularity arguments, and research summaries.
+>
+> The ✅/🚧/⬜ glyphs below are a historical snapshot and were already wrong at the time
+> of the migration (2026-08-01): M10 and M14 were marked incomplete despite having
+> shipped, and M11 was marked not-started while containing a shipped child. They are left
+> in place because the surrounding prose reads as a narrative. **Do not trust them; do not
+> update them.** Close the bead instead.
+
 ## Context
 
 The app is a calorie tracker: FastAPI + SQLModel + SQLite on the backend (custom additive migrations in

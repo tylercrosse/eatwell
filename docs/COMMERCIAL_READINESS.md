@@ -1,5 +1,10 @@
 # App Store Readiness Plan
 
+> **The §12 roadmap is tracked in beads as `ct-cr.*`** (Phase 0–5, one bead per line,
+> labelled `phase:0`…`phase:5`). Run `bd list --label commercial`. This doc remains the
+> specification — schemas, event names, pricing tiers, and review risks live here, not
+> in the beads.
+
 Last updated: 2026-06-15
 
 This document turns the current personal calorie-tracker project into a practical launch
