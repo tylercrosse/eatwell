@@ -129,17 +129,34 @@ export function goalGapKcal(bp: BalanceProjection): number | null {
   return bp.kcalPerDay - goalKcal
 }
 
-// |daily gap from the goal balance| (kcal) at which a balance reads fully "off" (red); 0 → on-goal (green).
+/**
+ * Projected end-of-day balance for the current day: assumes you finish eating to your calorie
+ * target unless you've already passed it (intake = max(consumed, target)). This is the steering
+ * number for the Balance dial — the running so-far balance is guaranteed deep-negative before the
+ * last meal, so judging it mid-day just renders red until bedtime. Eating past the target moves
+ * the projection immediately; eating less than the target never inflates it.
+ */
+export function projectedBalanceKcal(p: { consumed: number; calorieTarget: number; burnedTotal: number }): number {
+  return Math.max(p.consumed, p.calorieTarget) - p.burnedTotal
+}
+
+// |daily gap from the goal balance| (kcal) within which a balance reads "on plan" (green zone).
+export const BALANCE_HINT_KCAL = 150
+
+// |daily gap from the goal balance| (kcal) at which a balance reads fully "off"; 0 → on-goal (green).
 export const BALANCE_RED_KCAL = 600
 
 /**
- * Goal-relative balance color: green (~150° hue) at the goal, ramping through yellow/orange to red
- * (0°) as |gapKcal| approaches `BALANCE_RED_KCAL`. Shared by the Log page's Balance ring and the
- * Trends energy-balance bars so the two read the same. Returns null when there's no goal to measure
- * against (`gapKcal == null`) — the caller picks a fallback.
+ * Goal-relative, direction-aware balance color: green (150°) at the goal balance. Above plan
+ * (shallower deficit / surplus — over-eating relative to the goal) ramps green → yellow → red (0°);
+ * below plan (a steeper deficit than the goal — under-eating) ramps green → teal → blue (215°), so
+ * the two failure directions never share a hue. Distance saturates at `BALANCE_RED_KCAL`. Shared by
+ * the Log page's Balance dial and the Trends energy-balance bars so the two read the same. Returns
+ * null when there's no goal to measure against (`gapKcal == null`) — the caller picks a fallback.
  */
 export function balanceColor(gapKcal: number | null): string | null {
   if (gapKcal == null) return null
   const t = Math.min(Math.abs(gapKcal) / BALANCE_RED_KCAL, 1)
-  return `hsl(${Math.round(150 * (1 - t))}, 68%, 55%)`
+  const hue = gapKcal >= 0 ? 150 * (1 - t) : 150 + 65 * t
+  return `hsl(${Math.round(hue)}, 68%, 55%)`
 }

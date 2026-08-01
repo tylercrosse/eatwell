@@ -17,6 +17,8 @@ import {
   balanceProjection,
   goalGapKcal,
   balanceColor,
+  projectedBalanceKcal,
+  BALANCE_HINT_KCAL,
   BALANCE_RED_KCAL,
   type ContribKey,
   type Contributor,
@@ -104,11 +106,15 @@ export function EnergySummary({ totals, targets, stayingPower, burned, burnedBre
   const consumedValue = signedKcal(consumed)
   const burnedValue = signedKcal(-eb.total)
   // "Balance" dial: top is the plan balance; left/right show a steeper deficit or higher intake.
-  const balanceLabel = `Balance${isToday ? ' (so far)' : ''}`
-  const balanceValue = signedKcal(balanceKcal)
+  // For today the dial judges the *projected* end-of-day balance (finish eating to the target) —
+  // the running so-far balance is deep-negative before the last meal by construction, so judging
+  // it would render the dial red every afternoon. Finished days judge the realized balance.
+  const dialBalanceKcal = isToday ? projectedBalanceKcal({ consumed, calorieTarget: target, burnedTotal: eb.total }) : balanceKcal
+  const balanceLabel = `Balance${isToday ? ' (projected)' : ''}`
+  const balanceValue = signedKcal(dialBalanceKcal)
   const usesWeightGoal = bp.goalWeeklyKg != null
   const planBalanceKcal = usesWeightGoal ? (bp.goalWeeklyKg as number) * KCAL_PER_KG / 7 : target - eb.total
-  const balanceGapKcal = balanceKcal - planBalanceKcal
+  const balanceGapKcal = dialBalanceKcal - planBalanceKcal
   const balanceTone = balanceColor(balanceGapKcal) ?? undefined
   const balanceSub = balanceGapLabel(balanceGapKcal)
 
@@ -129,6 +135,9 @@ export function EnergySummary({ totals, targets, stayingPower, burned, burnedBre
               burned={eb.total}
               consumed={consumed}
               balanceKcal={balanceKcal}
+              projectedKcal={isToday ? dialBalanceKcal : null}
+              planKcal={planBalanceKcal}
+              target={target}
               balanceGapKcal={balanceGapKcal}
               usesWeightGoal={usesWeightGoal}
               isToday={isToday}
@@ -138,6 +147,7 @@ export function EnergySummary({ totals, targets, stayingPower, burned, burnedBre
         >
           <BalanceDial
             label={balanceLabel}
+            planText={`plan ${signedKcal(planBalanceKcal)} kcal`}
             value={balanceValue}
             unit="kcal"
             sub={balanceSub}
@@ -417,6 +427,9 @@ function DeficitDetail({
   burned,
   consumed,
   balanceKcal,
+  projectedKcal,
+  planKcal,
+  target,
   balanceGapKcal,
   usesWeightGoal,
   isToday,
@@ -425,6 +438,9 @@ function DeficitDetail({
   burned: number
   consumed: number
   balanceKcal: number
+  projectedKcal: number | null // today only: projected end-of-day balance (the dial's number)
+  planKcal: number // the plan balance the dial's tick marks — what the day is judged against
+  target: number
   balanceGapKcal: number
   usesWeightGoal: boolean
   isToday: boolean
@@ -437,25 +453,45 @@ function DeficitDetail({
     <div>
       <div className="popover__title">
         Energy balance
-        {isToday ? ' (so far today)' : ''}
+        {isToday ? ' (today)' : ''}
       </div>
       <div className="contrib-table contrib-table--calc">
         <div className="contrib-table__row">
-          <span className="contrib-table__name">Consumed</span>
+          <span className="contrib-table__name">Consumed{isToday ? ' (so far)' : ''}</span>
           <span className="contrib-table__val">{signedKcal(consumed)} kcal</span>
         </div>
         <div className="contrib-table__row">
-          <span className="contrib-table__name">Burned</span>
+          <span className="contrib-table__name">Burned{isToday ? ' (full-day est.)' : ''}</span>
           <span className="contrib-table__val">{signedKcal(-burned)} kcal</span>
         </div>
-        <div className="contrib-table__row contrib-table__row--total">
-          <span className="contrib-table__name">{word}</span>
-          <span className="contrib-table__val">{signedKcal(balanceKcal)} kcal</span>
+        {projectedKcal != null ? (
+          <>
+            <div className="contrib-table__row">
+              <span className="contrib-table__name">If you stop eating now</span>
+              <span className="contrib-table__val">{signedKcal(balanceKcal)} kcal</span>
+            </div>
+            <div className="contrib-table__row contrib-table__row--total">
+              <span className="contrib-table__name">Projected balance</span>
+              <span className="contrib-table__val">{signedKcal(projectedKcal)} kcal</span>
+            </div>
+          </>
+        ) : (
+          <div className="contrib-table__row contrib-table__row--total">
+            <span className="contrib-table__name">{word}</span>
+            <span className="contrib-table__val">{signedKcal(balanceKcal)} kcal</span>
+          </div>
+        )}
+        <div className="contrib-table__row">
+          <span className="contrib-table__name">Plan balance</span>
+          <span className="contrib-table__val">{signedKcal(planKcal)} kcal</span>
         </div>
       </div>
+      {projectedKcal != null && (
+        <p className="popover__note">Projected assumes you finish the day at your {round(target)} kcal target.</p>
+      )}
       <p className="popover__note">
-        The top tick is the plan balance from your {planSource}; left is a steeper deficit, right is higher intake or
-        surplus.
+        The top tick and shaded zone mark the plan balance from your {planSource} (±{BALANCE_HINT_KCAL} kcal); left of
+        it is a steeper deficit, right is higher intake or surplus.
       </p>
       {offPlan && <p className="popover__note popover__note--warn">{balanceGapSentence(balanceGapKcal)}.</p>}
       {guidance && <p className="popover__note popover__note--warn">{guidance}</p>}
@@ -481,9 +517,6 @@ function ContribTable({ title, rows, unit }: { title: string; rows: Contributor[
     </div>
   )
 }
-
-// |daily gap from goal| (kcal) beyond which we surface the target-vs-goal mismatch.
-const BALANCE_HINT_KCAL = 150
 
 // Sustained daily balance (kcal) beyond which we surface wellness guidance, per direction.
 const LARGE_DEFICIT_KCAL = 1000
@@ -694,6 +727,7 @@ function polarPoint(angleDeg: number, radius = RING_R): { x: number; y: number }
 
 function BalanceDial({
   label,
+  planText,
   value,
   unit,
   sub,
@@ -701,6 +735,7 @@ function BalanceDial({
   color,
 }: {
   label: ReactNode
+  planText?: string // the plan balance the tick marks, stated as a number (e.g. "plan −385 kcal")
   value: number | string
   unit: string
   sub?: string
@@ -715,12 +750,29 @@ function BalanceDial({
   const targetInner = polarPoint(-90, RING_R - RING_STROKE / 2)
   const targetOuter = polarPoint(-90, RING_R + RING_STROKE / 2)
   const dialColor = color ?? 'var(--accent)'
+  // "On plan" zone: the ±BALANCE_HINT_KCAL band around the plan balance, drawn as a thin band
+  // just inside the track (a gauge's green band) so the value arc never paints over it.
+  const zoneDeg = (BALANCE_HINT_KCAL / BALANCE_RED_KCAL) * BALANCE_DIAL_SWEEP_DEG
+  const zoneR = RING_R - RING_STROKE / 2 - 4
+  const zoneC = 2 * Math.PI * zoneR
+  const zoneArc = ((2 * zoneDeg) / 360) * zoneC
 
   return (
     <div className="energy-ring energy-dial">
       <div className="energy-ring__chart">
         <svg width="100%" height="100%" viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
           <circle cx={RING_CENTER} cy={RING_CENTER} r={RING_R} fill="none" stroke="var(--border)" strokeWidth={RING_STROKE} />
+          <circle
+            className="energy-dial__zone"
+            cx={RING_CENTER}
+            cy={RING_CENTER}
+            r={zoneR}
+            fill="none"
+            strokeWidth={4}
+            strokeLinecap="round"
+            strokeDasharray={`${zoneArc} ${zoneC - zoneArc}`}
+            transform={`rotate(${-90 - zoneDeg} ${RING_CENTER} ${RING_CENTER})`}
+          />
           {arc > 0.5 && (
             <circle
               cx={RING_CENTER}
@@ -750,6 +802,7 @@ function BalanceDial({
         </div>
       </div>
       <span className="energy-ring__label">{label}</span>
+      {planText && <span className="energy-ring__sublabel">{planText}</span>}
     </div>
   )
 }

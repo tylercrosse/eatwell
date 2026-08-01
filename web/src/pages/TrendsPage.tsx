@@ -1000,7 +1000,7 @@ export function TrendsPage({ goToDay }: Props) {
   const balanceNote = (
     <p className="chart-card__note">
       {goalAware
-        ? 'Bars: green = on your goal pace, red = off it. Line: running total.'
+        ? 'Bars: green = on your goal pace, red = above it (over-eating), blue = steeper deficit than your goal. Line: running total.'
         : 'Bars: green = deficit (under), red = surplus (over). Line: running total.'}
     </p>
   )
@@ -1053,7 +1053,9 @@ export function TrendsPage({ goToDay }: Props) {
                 <Cell key={r.dayKey} fill={barColor(r.net)} />
               ))}
             </Bar>
-            <Line yAxisId="cum" dataKey="cumNet" name="Cumulative" stroke={C.projection} strokeWidth={2} dot={false} connectNulls isAnimationActive={false} />
+            {/* Neutral stroke: the bars carry the goal-relative color story (green/red/blue), and the
+                steeper-deficit blues would camouflage a blue line. */}
+            <Line yAxisId="cum" dataKey="cumNet" name="Cumulative" stroke={C.text} strokeWidth={2} dot={false} connectNulls isAnimationActive={false} />
           </ComposedChart>
         </ResponsiveContainer>
       </TrendGestureSurface>
