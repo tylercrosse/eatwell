@@ -157,7 +157,7 @@ export function EnergySummary({ totals, targets, stayingPower, burned, burnedBre
         </Popover>
       </div>
 
-      <BalanceLine bp={bp} target={target} />
+      <BalanceLine bp={bp} target={target} exerciseKcal={eb.exercise} />
 
       <div className="energy-summary__bars">
         <ProgressBar
@@ -545,7 +545,7 @@ function balanceGuidance(kcalPerDay: number): string | null {
   return null
 }
 
-function BalanceLine({ bp, target }: { bp: BalanceProjection; target: number }) {
+function BalanceLine({ bp, target, exerciseKcal }: { bp: BalanceProjection; target: number; exerciseKcal: number }) {
   const [unit] = useWeightUnit()
   const losing = bp.kcalPerDay < 0
   const verb = losing ? 'lose' : 'gain'
@@ -562,32 +562,31 @@ function BalanceLine({ bp, target }: { bp: BalanceProjection; target: number }) 
 
   const rate = kgToDisplay(Math.abs(bp.weeklyKg), unit)
   const gap = goalGapKcal(bp)
-  const recommended = gap != null ? round(target - gap) : null
   const goalRate = kgToDisplay(Math.abs(bp.goalWeeklyKg ?? 0), unit).toFixed(1)
-  const goalVerb = bp.goalWeeklyKg == null || bp.goalWeeklyKg === 0 ? 'maintain' : bp.goalWeeklyKg < 0 ? 'lose' : 'gain'
+  const maintaining = bp.goalWeeklyKg === 0
+  const goalVerb = bp.goalWeeklyKg == null || maintaining ? 'maintain' : bp.goalWeeklyKg < 0 ? 'lose' : 'gain'
   // On-goal (within tolerance) → green; any larger gap, in either direction → red. Matches the ring.
   const offGoal = gap != null && Math.abs(gap) > BALANCE_HINT_KCAL
   const stateClass = gap == null ? '' : offGoal ? ' is-off' : ' is-good'
-  const showMismatch = offGoal && recommended != null
+  // The actionable intake, split into its stable part (BMR + baseline + goal balance) and the
+  // day-varying part (exercise/step burn). Quoting the stable base "plus what you burn" keeps the
+  // number honest before workouts are logged — a single total would lowball the morning and drift
+  // up as exercise lands.
+  const recommendedBase = gap != null ? Math.max(0, round(target - gap - exerciseKcal)) : null
+  const recommendedToday = gap != null ? Math.max(0, round(target - gap)) : null
+  const trendText = rate < 0.05 ? '≈ hold your weight' : `≈ ${verb} ${rate.toFixed(1)} ${unit}/wk`
   return (
     <div className="energy-balance-block">
       <p className={`energy-balance${stateClass}`}>
-        On plan (eat {round(target)} kcal): {round(Math.abs(bp.kcalPerDay))} kcal/day {losing ? 'deficit' : 'surplus'} ·{' '}
-        <span className="energy-balance__rate">
-          ≈ {verb} {rate.toFixed(1)} {unit}/wk
-        </span>
-        {bp.goalWeeklyKg != null && bp.goalWeeklyKg !== 0 && (
-          <>
-            {' '}
-            · goal: {goalVerb} {goalRate} {unit}/wk
-          </>
+        Eating your {round(target)} kcal target <span className="energy-balance__rate">{trendText}</span>
+        {bp.goalWeeklyKg != null && (
+          <> · goal: {maintaining ? 'maintain' : `${goalVerb} ${goalRate} ${unit}/wk`}</>
         )}
       </p>
-      {showMismatch && (
+      {offGoal && recommendedBase != null && (
         <p className="energy-balance__note">
-          {bp.goalWeeklyKg === 0
-            ? `That ${round(target)} kcal target won't hold your weight — aim to consume ~${recommended} kcal/day total.`
-            : `That ${round(target)} kcal target trends to ${verb} ${rate.toFixed(1)} ${unit}/wk, not your goal to ${goalVerb} ${goalRate} ${unit}/wk — aim to consume ~${recommended} kcal/day total.`}
+          {maintaining ? 'To hold your weight' : 'To match your goal'}, eat about {recommendedBase} kcal plus what you
+          burn in exercise or steps{exerciseKcal > 0 ? ` (≈ ${recommendedToday} kcal today)` : ''}.
         </p>
       )}
     </div>
