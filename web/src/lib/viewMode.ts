@@ -4,4 +4,6 @@
 // toggle drives both the Log and Guide pages at once.
 
 export const SIMPLE_VIEW_STORAGE_KEY = 'simple-view'
-export const DEFAULT_SIMPLE_VIEW = false // false = Detailed
+// Simple is the default: new users get the "kcal left" dashboard; Detailed (the full
+// consumed/burned/balance accounting) is the opt-in enthusiast view via Settings.
+export const DEFAULT_SIMPLE_VIEW = true
