@@ -44,6 +44,9 @@ _ADDED_COLUMNS: dict[str, dict[str, str]] = {
     "body_metrics": {
         "steps": "INTEGER",
     },
+    "users": {
+        "disabled_at": "DATETIME",  # access revoked; get_current_user 401s on it
+    },
 }
 
 
@@ -66,7 +69,12 @@ def _migrate_add_columns(eng: Engine = engine) -> None:
 
 
 def init_db() -> None:
-    """Create the data dir + tables, then apply additive migrations. Idempotent."""
+    """Create the data dir + tables, apply additive migrations, backfill identities. Idempotent.
+
+    Invite seeding deliberately lives in the app lifespan instead (``app/main.py``): the test
+    suite wipes every table *after* calling this, so anything seeded here would be deleted
+    before the first request.
+    """
     settings.db_path.parent.mkdir(parents=True, exist_ok=True)
     settings.photos_dir.mkdir(parents=True, exist_ok=True)
     # Import models so they are registered on SQLModel.metadata before create_all.
@@ -74,6 +82,13 @@ def init_db() -> None:
 
     SQLModel.metadata.create_all(engine)
     _migrate_add_columns()
+
+    # One-time migration off users.google_sub. Imported here, not at module scope, because
+    # app.accounts imports app.models, which must finish registering first.
+    from app.accounts import backfill_identities
+
+    with Session(engine) as session:
+        backfill_identities(session)
 
 
 def get_session() -> Iterator[Session]:

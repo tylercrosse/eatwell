@@ -49,13 +49,20 @@ class Settings(BaseSettings):
 
     # Auth (Google sign-in). Empty client id -> login can't succeed (verification fails).
     google_client_id: str = ""
-    # Comma-separated allowlist; only these emails may sign in. Empty -> allow any
-    # Google account that verifies (open — set this in any shared deployment).
+    # Comma-separated seed for the `invites` table, folded in at startup (app.accounts.
+    # seed_invites). The TABLE is the source of truth, not this value: adding someone needs no
+    # redeploy, and revoking here does nothing — revoke the invite instead. Kept so existing
+    # deploys keep working and a fresh DB has a way in.
     allowed_emails: str = ""
+    # Skip the guest list entirely and admit anyone a provider verifies. Off by default, so an
+    # empty invites table fails CLOSED (the old allowed_emails behaviour failed open). This is
+    # the switch public signup flips (ct-cr.8).
+    allow_open_signup: bool = False
     # HMAC secret for our own session JWTs. MUST be set to a long random value in prod.
     jwt_secret: str = "dev-insecure-change-me"
     jwt_ttl_seconds: int = 60 * 60 * 24 * 30  # 30 days
-    # Email whose first login adopts pre-auth (user_id IS NULL) rows. Empty -> no backfill.
+    # The owner account. First login adopts pre-auth (user_id IS NULL) rows; also the only
+    # account allowed to invite others. Empty -> no backfill and nobody can invite.
     owner_email: str = ""
     # Send the session cookie only over HTTPS. Keep false for local http dev.
     cookie_secure: bool = False

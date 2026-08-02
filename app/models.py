@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import date as date_cls
 from datetime import datetime, timezone
 
+from sqlalchemy import UniqueConstraint
 from sqlmodel import Field, SQLModel
 
 
@@ -13,11 +14,19 @@ def _utcnow() -> datetime:
 
 
 class User(SQLModel, table=True):
-    """An authenticated account, keyed to a Google identity.
+    """An authenticated account. Identities live in ``auth_identities``, not here.
 
-    ``google_sub`` is Google's stable, unique subject id (preferred over email, which can
-    change). Profile fields are refreshed on each login. ``FoodEntry.user_id`` /
-    ``Targets.user_id`` reference ``id`` (no DB-level FK, matching the SQLite-additive style).
+    ``google_sub`` is a *legacy* column, no longer the identity key: it predates
+    multi-provider sign-in, when a user could only be a Google account. It's still written
+    (``app.accounts.legacy_sub`` puts ``provider:subject`` there for non-Google providers,
+    matching the ``qa:<id>`` form ``app/qa_seed.py`` already relies on) because SQLite cannot
+    drop a NOT NULL column via ALTER, and the additive migration style in ``app/db.py`` has no
+    room for a table rebuild. Its unique index doubles as a duplicate-identity guard meanwhile.
+    Removing it is a one-shot ``DROP INDEX ix_users_google_sub`` + ``ALTER TABLE users DROP
+    COLUMN google_sub`` once ``auth_identities`` has been the read path for a release.
+
+    ``FoodEntry.user_id`` / ``Targets.user_id`` reference ``id`` (no DB-level FK, matching the
+    SQLite-additive style).
     """
 
     __tablename__ = "users"
@@ -28,7 +37,56 @@ class User(SQLModel, table=True):
     name: str | None = None
     picture: str | None = None
 
+    # Access revoked: get_current_user 401s on this, so revoking an invite takes effect on the
+    # next request instead of whenever the 30-day session JWT happens to expire.
+    disabled_at: datetime | None = None
+
     created_at: datetime = Field(default_factory=_utcnow)
+
+
+class AuthIdentity(SQLModel, table=True):
+    """One external identity (provider + subject) linked to a :class:`User`.
+
+    The real identity key. A single account can own several rows here — Google today, an
+    email magic link tomorrow, Apple later — so a user who signs in a different way lands on
+    the same data rather than a duplicate account.
+    """
+
+    __tablename__ = "auth_identities"
+    __table_args__ = (
+        UniqueConstraint("provider", "provider_subject", name="uq_auth_identity_provider_subject"),
+    )
+
+    id: int | None = Field(default=None, primary_key=True)
+    user_id: int = Field(index=True)  # -> users.id (no DB-level FK, matching the house style)
+
+    provider: str = Field(index=True)  # "google" | "email" | "qa" (later "apple")
+    provider_subject: str  # Google's sub, a lowercased email, or a QA account id
+    email: str | None = None  # as asserted by the provider when this identity was linked
+
+    created_at: datetime = Field(default_factory=_utcnow)
+    last_login_at: datetime | None = None
+
+
+class Invite(SQLModel, table=True):
+    """An email permitted to sign in — the guest list, replacing the ALLOWED_EMAILS env var.
+
+    A row must exist and be un-revoked before any provider will admit an email, unless
+    ``allow_open_signup`` is on. ALLOWED_EMAILS is folded in at startup as a seed so existing
+    deploys keep working, but the table is the source of truth: adding someone no longer means
+    a redeploy, and revoking takes effect immediately (see ``User.disabled_at``).
+    """
+
+    __tablename__ = "invites"
+
+    id: int | None = Field(default=None, primary_key=True)
+    email: str = Field(index=True, unique=True)  # always stored lowercased
+    invited_by: str | None = None  # "seed" | "qa" | the inviting admin's email
+    note: str | None = None  # free text, e.g. "Chad from the gym"
+
+    created_at: datetime = Field(default_factory=_utcnow)
+    accepted_at: datetime | None = None  # stamped on first successful sign-in
+    revoked_at: datetime | None = None  # non-null -> denied
 
 
 class FoodEntry(SQLModel, table=True):
