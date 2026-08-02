@@ -89,6 +89,34 @@ class Invite(SQLModel, table=True):
     revoked_at: datetime | None = None  # non-null -> denied
 
 
+class LoginToken(SQLModel, table=True):
+    """A pending email sign-in: one magic link plus the typed code that backs it up.
+
+    Only hashes are stored, so a database leak doesn't hand over live sign-in credentials.
+
+    A row is written for **every** request, including ones we decline to send (``sent`` stays
+    False) — otherwise someone spraying uninvited addresses would be invisible to the per-IP
+    rate limit, which counts rows in this table. Rows are pruned after a day, which also keeps
+    ``request_ip`` from accumulating.
+    """
+
+    __tablename__ = "login_tokens"
+
+    id: int | None = Field(default=None, primary_key=True)
+    email: str = Field(index=True)  # lowercased; not necessarily a known user yet
+
+    token_hash: str = Field(index=True, unique=True)  # sha256 of the link token
+    code_hash: str | None = None  # sha256 of the 6-digit typed code
+    attempts: int = Field(default=0)  # wrong code guesses, capped
+
+    request_ip: str | None = Field(default=None, index=True)
+    sent: bool = Field(default=False)  # False when the address wasn't invited
+
+    created_at: datetime = Field(default_factory=_utcnow, index=True)
+    expires_at: datetime
+    consumed_at: datetime | None = None
+
+
 class FoodEntry(SQLModel, table=True):
     """A single logged meal/food.
 

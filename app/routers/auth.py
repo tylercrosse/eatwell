@@ -16,12 +16,24 @@ from sqlmodel import Session, select
 
 from app import accounts
 from app import auth as auth_lib
+from app import magic_link, mailer
 from app.auth import SESSION_COOKIE
 from app.config import Settings
 from app.deps import get_current_user, get_session, get_settings
 from app.models import FoodEntry, Targets, User
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+def _looks_like_email(value: str) -> bool:
+    """A deliberately loose check: exactly one @, something either side, a dot in the domain.
+
+    Hand-rolled because pydantic's EmailStr would pull in the ``email-validator`` package for
+    one field. Delivery is the real validator — an address that doesn't exist just never
+    receives anything.
+    """
+    local, sep, domain = value.partition("@")
+    return bool(sep and local and domain and "." in domain and " " not in value)
 
 
 class GoogleLoginRequest(BaseModel):
@@ -31,6 +43,24 @@ class GoogleLoginRequest(BaseModel):
 class QaLoginRequest(BaseModel):
     account: str
     secret: str
+
+
+class EmailLoginRequest(BaseModel):
+    email: str
+
+
+class EmailVerifyRequest(BaseModel):
+    """Either ``token`` (from the emailed link) or ``email`` + ``code`` (typed into the app)."""
+
+    token: str | None = None
+    email: str | None = None
+    code: str | None = None
+
+
+class EmailRequestAccepted(BaseModel):
+    """Deliberately constant — see ``request_email_login`` on why it never reports the truth."""
+
+    sent: bool = True
 
 
 class UserRead(BaseModel):
@@ -151,6 +181,126 @@ def login_qa(
         email=email,
         name=name,
     )
+
+    _set_session_cookie(response, auth_lib.create_session_token(user.id, settings), settings)
+    return user
+
+
+@router.post("/email/request", response_model=EmailRequestAccepted)
+def request_email_login(
+    payload: EmailLoginRequest,
+    request: Request,
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+) -> EmailRequestAccepted:
+    """Email a sign-in link + code, if the address is on the guest list.
+
+    Always answers ``{"sent": true}``, whether the address is invited, unknown, or has simply
+    asked too often. An honest answer here would be an account-enumeration oracle, and a 429
+    for the per-email case would additionally leak that *somebody else* is requesting links for
+    that address. Only the per-IP limit returns 429, because that's information about the
+    caller's own behaviour.
+
+    A row is recorded for every request, sent or not, so declined attempts still count toward
+    the per-IP limit. Mail only actually goes out to invited addresses: without that this
+    endpoint is an open relay for mailing sign-in links to strangers, which is both a
+    harassment vector and a fast way to ruin sender reputation.
+
+    Known and accepted: sending takes ~1s and declining takes ~5ms, so response time is a weak
+    oracle. Closing it needs a queue, which this app doesn't have; fine for a closed beta whose
+    guest list isn't secret.
+    """
+    email = accounts.normalize_email(payload.email)
+    if not _looks_like_email(email):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Enter a valid email address."
+        )
+
+    magic_link.purge_expired(session, settings)
+    ip = magic_link.client_ip(request.headers, request.client.host if request.client else None,
+                              settings)
+
+    if magic_link.over_ip_limit(session, settings, ip):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many sign-in requests. Please try again later.",
+        )
+
+    try:
+        accounts.ensure_allowed(session, settings, email)
+        invited = True
+    except accounts.AccessDenied:
+        invited = False
+
+    deliver = invited and not magic_link.over_email_limit(session, settings, email)
+    raw_token, code = magic_link.mint(
+        session, settings, email=email, request_ip=ip, sent=deliver
+    )
+
+    if deliver:
+        subject, body = magic_link.compose_email(
+            settings, link=magic_link.build_link(settings, raw_token), code=code
+        )
+        try:
+            mailer.send_email(to=email, subject=subject, text=body, settings=settings)
+        except mailer.EmailNotConfigured as exc:
+            # A deploy mistake, and the message names only a setting — safe to return.
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
+            ) from exc
+        except mailer.EmailError as exc:
+            # Transport failure. Kept generic: this endpoint needs no auth, so upstream server
+            # detail shouldn't be echoed to anonymous callers.
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Couldn't send the sign-in email. Please try again.",
+            ) from exc
+
+    return EmailRequestAccepted()
+
+
+@router.post("/email/verify", response_model=UserRead)
+def verify_email_login(
+    payload: EmailVerifyRequest,
+    response: Response,
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+) -> User:
+    """Redeem a magic link or typed code and start a session."""
+    try:
+        if payload.token:
+            row = magic_link.consume_token(session, payload.token)
+        elif payload.email and payload.code:
+            row = magic_link.consume_code(
+                session, settings, email=accounts.normalize_email(payload.email), code=payload.code
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="Provide either a sign-in link token or an email and code.",
+            )
+    except magic_link.TooManyAttempts as exc:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(exc)
+        ) from exc
+    except magic_link.LinkError as exc:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
+
+    try:
+        # Re-checked here, not just at request time: an invite can be revoked in between, and
+        # delivery to the inbox is what proves control of the address.
+        user, is_new = accounts.resolve_login(
+            session,
+            settings,
+            provider="email",
+            subject=row.email,
+            email=row.email,
+        )
+    except accounts.AccessDenied as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+
+    if is_new:
+        _claim_orphan_rows(session, user, settings)
 
     _set_session_cookie(response, auth_lib.create_session_token(user.id, settings), settings)
     return user
