@@ -17,7 +17,17 @@ from sqlmodel import Session
 from app.accounts import seed_invites
 from app.config import get_settings
 from app.db import engine, init_db
-from app.routers import analyze, auth, entries, exercise, foods, metrics, targets, trends
+from app.routers import (
+    analyze,
+    auth,
+    entries,
+    exercise,
+    foods,
+    invites,
+    metrics,
+    targets,
+    trends,
+)
 
 settings = get_settings()
 
@@ -47,6 +57,7 @@ app.include_router(analyze.router, prefix="/api")
 app.include_router(entries.router, prefix="/api")
 app.include_router(exercise.router, prefix="/api")
 app.include_router(foods.router, prefix="/api")
+app.include_router(invites.router, prefix="/api")
 app.include_router(metrics.router, prefix="/api")
 app.include_router(targets.router, prefix="/api")
 app.include_router(trends.router, prefix="/api")

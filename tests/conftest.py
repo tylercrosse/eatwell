@@ -35,6 +35,7 @@ from app.models import (  # noqa: E402
     ExerciseEntry,
     FoodEntry,
     Invite,
+    InviteLink,
     LoginToken,
     Targets,
     User,
@@ -61,6 +62,7 @@ def clean_db():
         s.exec(delete(ExerciseEntry))
         s.exec(delete(AuthIdentity))
         s.exec(delete(Invite))
+        s.exec(delete(InviteLink))
         s.exec(delete(LoginToken))
         s.exec(delete(User))
         s.commit()

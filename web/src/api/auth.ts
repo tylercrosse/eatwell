@@ -6,11 +6,22 @@ export function getMe(): Promise<AuthUser> {
   return apiJson<AuthUser>('/auth/me')
 }
 
-/** Exchange a Google ID token for a session cookie; returns the signed-in user. */
-export function loginWithGoogle(credential: string): Promise<AuthUser> {
+/**
+ * Exchange a Google ID token for a session cookie; returns the signed-in user.
+ *
+ * `inviteToken` comes from a shared `/?invite=...` link and lets someone who isn't on the
+ * guest list yet join. It's spent here, since Google has already proved the address.
+ */
+export function loginWithGoogle(args: {
+  credential: string
+  inviteToken?: string | null
+}): Promise<AuthUser> {
   return apiJson<AuthUser>('/auth/google', {
     method: 'POST',
-    body: JSON.stringify({ credential }),
+    body: JSON.stringify({
+      credential: args.credential,
+      invite_token: args.inviteToken ?? undefined,
+    }),
   })
 }
 
@@ -22,10 +33,13 @@ export function loginWithGoogle(credential: string): Promise<AuthUser> {
  * who has an account. So a resolved promise means "we accepted the request", not "mail was
  * sent".
  */
-export function requestEmailLink(email: string): Promise<{ sent: boolean }> {
+export function requestEmailLink(args: {
+  email: string
+  inviteToken?: string | null
+}): Promise<{ sent: boolean }> {
   return apiJson<{ sent: boolean }>('/auth/email/request', {
     method: 'POST',
-    body: JSON.stringify({ email }),
+    body: JSON.stringify({ email: args.email, invite_token: args.inviteToken ?? undefined }),
   })
 }
 

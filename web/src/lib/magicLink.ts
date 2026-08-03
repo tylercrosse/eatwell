@@ -19,11 +19,26 @@ const MAX_TOKEN_LENGTH = 512
  * @param search - `window.location.search`, e.g. `"?token=abc"`.
  */
 export function readMagicLinkToken(search: string): string | null {
+  return readParam(search, 'token')
+}
+
+/**
+ * Extract a shared invite token from a query string, or null.
+ *
+ * Set when someone opens an invite link (`/?invite=...`). Unlike a sign-in token this doesn't
+ * identify anyone — it only authorises signup — so it's carried along with whichever provider
+ * the newcomer chooses and spent once they actually sign in.
+ */
+export function readInviteToken(search: string): string | null {
+  return readParam(search, 'invite')
+}
+
+function readParam(search: string, name: string): string | null {
   if (!search) return null
-  const raw = new URLSearchParams(search).get('token')
+  const raw = new URLSearchParams(search).get(name)
   if (!raw) return null
 
-  const token = raw.trim()
-  if (!token || token.length > MAX_TOKEN_LENGTH) return null
-  return token
+  const value = raw.trim()
+  if (!value || value.length > MAX_TOKEN_LENGTH) return null
+  return value
 }

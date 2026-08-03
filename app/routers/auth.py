@@ -16,11 +16,12 @@ from sqlmodel import Session, select
 
 from app import accounts
 from app import auth as auth_lib
-from app import magic_link, mailer
+from app import invite_links, magic_link, mailer
 from app.auth import SESSION_COOKIE
 from app.config import Settings
 from app.deps import get_current_user, get_session, get_settings
-from app.models import FoodEntry, Targets, User
+from app.deps import is_owner as deps_is_owner
+from app.models import FoodEntry, InviteLink, Targets, User
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -38,6 +39,7 @@ def _looks_like_email(value: str) -> bool:
 
 class GoogleLoginRequest(BaseModel):
     credential: str  # the Google ID token from Google Identity Services
+    invite_token: str | None = None  # from /?invite=... when arriving via a shared link
 
 
 class QaLoginRequest(BaseModel):
@@ -47,6 +49,7 @@ class QaLoginRequest(BaseModel):
 
 class EmailLoginRequest(BaseModel):
     email: str
+    invite_token: str | None = None  # from /?invite=... when arriving via a shared link
 
 
 class EmailVerifyRequest(BaseModel):
@@ -68,6 +71,18 @@ class UserRead(BaseModel):
     email: str
     name: str | None
     picture: str | None
+    is_owner: bool = False  # drives whether the client offers the Invite action
+
+
+def _user_read(user: User, settings: Settings) -> UserRead:
+    """Serialise a User, computing ``is_owner`` (which isn't a column)."""
+    return UserRead(
+        id=user.id,
+        email=user.email,
+        name=user.name,
+        picture=user.picture,
+        is_owner=deps_is_owner(user, settings),
+    )
 
 
 def _set_session_cookie(response: Response, token: str, settings: Settings) -> None:
@@ -107,11 +122,18 @@ def login_google(
     response: Response,
     session: Session = Depends(get_session),
     settings: Settings = Depends(get_settings),
-) -> User:
+) -> UserRead:
     try:
         claims = auth_lib.verify_google_token(payload.credential, settings)
     except auth_lib.AuthError as exc:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
+
+    email = accounts.normalize_email(claims.get("email") or "")
+    # Spend a shared invite link, if one came along, so the guest-list check below passes.
+    # A bad token is silently ignored: the caller then gets an ordinary 403, which avoids
+    # telling an anonymous caller whether a token they hold is real.
+    if payload.invite_token:
+        invite_links.redeem(session, settings, payload.invite_token, email)
 
     try:
         user, is_new = accounts.resolve_login(
@@ -119,7 +141,7 @@ def login_google(
             settings,
             provider="google",
             subject=claims["sub"],
-            email=claims.get("email") or "",
+            email=email,
             name=claims.get("name"),
             picture=claims.get("picture"),
         )
@@ -130,7 +152,7 @@ def login_google(
         _claim_orphan_rows(session, user, settings)
 
     _set_session_cookie(response, auth_lib.create_session_token(user.id, settings), settings)
-    return user
+    return _user_read(user, settings)
 
 
 @router.post("/qa", response_model=UserRead)
@@ -140,7 +162,7 @@ def login_qa(
     response: Response,
     session: Session = Depends(get_session),
     settings: Settings = Depends(get_settings),
-) -> User:
+) -> UserRead:
     """Local-only QA login that mints the same session cookie as Google sign-in."""
     if not settings.qa_auth_enabled or not settings.qa_auth_secret:
         raise HTTPException(
@@ -183,7 +205,7 @@ def login_qa(
     )
 
     _set_session_cookie(response, auth_lib.create_session_token(user.id, settings), settings)
-    return user
+    return _user_read(user, settings)
 
 
 @router.post("/email/request", response_model=EmailRequestAccepted)
@@ -232,9 +254,21 @@ def request_email_login(
     except accounts.AccessDenied:
         invited = False
 
-    deliver = invited and not magic_link.over_email_limit(session, settings, email)
+    # An invite link makes an otherwise-unknown address worth mailing. The link is only
+    # *looked up* here, not spent — it's consumed at verify, so a typo'd address can't burn a
+    # single-use invite before anyone actually gets in.
+    link = invite_links.find_live(session, payload.invite_token) if payload.invite_token else None
+
+    deliver = (invited or link is not None) and not magic_link.over_email_limit(
+        session, settings, email
+    )
     raw_token, code = magic_link.mint(
-        session, settings, email=email, request_ip=ip, sent=deliver
+        session,
+        settings,
+        email=email,
+        request_ip=ip,
+        sent=deliver,
+        invite_link_id=link.id if link is not None else None,
     )
 
     if deliver:
@@ -265,7 +299,7 @@ def verify_email_login(
     response: Response,
     session: Session = Depends(get_session),
     settings: Settings = Depends(get_settings),
-) -> User:
+) -> UserRead:
     """Redeem a magic link or typed code and start a session."""
     try:
         if payload.token:
@@ -286,6 +320,14 @@ def verify_email_login(
     except magic_link.LinkError as exc:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
 
+    # Now that delivery has proved control of the address, spend the invite link that
+    # authorised this request (if any). Doing it here rather than at request time is what
+    # keeps a mistyped address from burning a single-use invite.
+    if row.invite_link_id is not None:
+        link = session.get(InviteLink, row.invite_link_id)
+        if link is not None:
+            invite_links.redeem_link(session, link, row.email)
+
     try:
         # Re-checked here, not just at request time: an invite can be revoked in between, and
         # delivery to the inbox is what proves control of the address.
@@ -303,12 +345,15 @@ def verify_email_login(
         _claim_orphan_rows(session, user, settings)
 
     _set_session_cookie(response, auth_lib.create_session_token(user.id, settings), settings)
-    return user
+    return _user_read(user, settings)
 
 
 @router.get("/me", response_model=UserRead)
-def me(user: User = Depends(get_current_user)) -> User:
-    return user
+def me(
+    user: User = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
+) -> UserRead:
+    return _user_read(user, settings)
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)

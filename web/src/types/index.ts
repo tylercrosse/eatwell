@@ -111,6 +111,18 @@ export interface AuthUser {
   email: string
   name: string | null
   picture: string | null
+  /** The configured OWNER_EMAIL account — the only one that may invite people. */
+  is_owner?: boolean
+}
+
+/** A freshly minted invite link. `url` is returned once and is never retrievable again. */
+export interface MintedInviteLink {
+  id: number
+  note: string | null
+  max_uses: number
+  uses: number
+  expires_at: string
+  url: string
 }
 
 // A recently-logged food, returned by GET /api/foods/recent for one-tap re-logging.

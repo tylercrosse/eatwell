@@ -97,12 +97,20 @@ def over_email_limit(session: Session, settings: Settings, email: str) -> bool:
 
 
 def mint(
-    session: Session, settings: Settings, *, email: str, request_ip: str | None, sent: bool
+    session: Session,
+    settings: Settings,
+    *,
+    email: str,
+    request_ip: str | None,
+    sent: bool,
+    invite_link_id: int | None = None,
 ) -> tuple[str, str]:
     """Create a pending sign-in and return ``(raw_token, code)``.
 
     The raw values exist only in this return and in the email. ``sent=False`` records an
     attempt we deliberately didn't deliver, so abuse still shows up in the per-IP count.
+    ``invite_link_id`` carries a shared invite through the mail round trip so it's spent on
+    successful sign-in rather than when the address was typed.
     """
     raw_token = secrets.token_urlsafe(32)
     code = _new_code()
@@ -113,6 +121,7 @@ def mint(
             code_hash=_hash(code),
             request_ip=request_ip,
             sent=sent,
+            invite_link_id=invite_link_id,
             expires_at=_utcnow() + timedelta(seconds=settings.login_token_ttl_seconds),
         )
     )
