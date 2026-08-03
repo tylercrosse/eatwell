@@ -12,9 +12,11 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from sqlmodel import Session
 
+from app.accounts import seed_invites
 from app.config import get_settings
-from app.db import init_db
+from app.db import engine, init_db
 from app.routers import analyze, auth, entries, exercise, foods, metrics, targets, trends
 
 settings = get_settings()
@@ -23,6 +25,10 @@ settings = get_settings()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    # Seeded here rather than in init_db() so the test suite's table wipe (which runs right
+    # after init_db) can't delete the invites before the first request arrives.
+    with Session(engine) as session:
+        seed_invites(session, settings)
     yield
 
 

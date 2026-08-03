@@ -9,12 +9,13 @@ from datetime import datetime
 
 from fastapi.testclient import TestClient
 
+from app.accounts import resolve_login, revoke
 from app.auth import AuthError
 from app.config import get_settings
 from app.db import engine
 from app.main import app
-from app.models import FoodEntry, Targets, User
-from sqlmodel import Session, select
+from app.models import AuthIdentity, FoodEntry, Invite, Targets, User
+from sqlmodel import Session, delete, select
 
 QA_SECRET = "local-qa-secret"
 
@@ -207,3 +208,74 @@ def test_non_owner_login_does_not_claim_orphan_rows(anon_client, monkeypatch):
     _seed_orphan_rows()
     _login(anon_client, monkeypatch, "partner@example.com")  # allowlisted but not owner
     assert anon_client.get("/api/entries").json() == []
+
+
+# --- Multi-provider identity ------------------------------------------------
+
+
+def test_login_records_a_google_auth_identity_once(anon_client, monkeypatch):
+    _login(anon_client, monkeypatch, "owner@example.com", sub="stable-sub")
+    _login(anon_client, monkeypatch, "owner@example.com", sub="stable-sub")
+    with Session(engine) as s:
+        identities = s.exec(select(AuthIdentity)).all()
+    assert len(identities) == 1
+    assert (identities[0].provider, identities[0].provider_subject) == ("google", "stable-sub")
+
+
+def test_qa_login_records_a_qa_identity_and_auto_invites(monkeypatch):
+    """QA goes through the same funnel as everyone else rather than skipping the guest list."""
+    _enable_qa(monkeypatch)
+    with TestClient(app, base_url="http://localhost") as c:
+        assert _qa_login(c).status_code == 200
+
+    with Session(engine) as s:
+        identity = s.exec(select(AuthIdentity)).one()
+        invite = s.exec(select(Invite).where(Invite.email == "qa-loss@example.test")).first()
+    assert (identity.provider, identity.provider_subject) == ("qa", "qa-loss")
+    assert invite is not None and invite.invited_by == "qa"
+
+
+def test_a_second_provider_with_the_same_email_reuses_the_account(anon_client, monkeypatch):
+    """A friend who used Google and later signs in by email must not get a second account."""
+    _login(anon_client, monkeypatch, "owner@example.com", sub="google-sub")
+
+    with Session(engine) as s:
+        _, is_new = resolve_login(
+            s,
+            get_settings(),
+            provider="email",
+            subject="owner@example.com",
+            email="owner@example.com",
+        )
+        assert is_new is False
+        assert len(s.exec(select(User)).all()) == 1
+        assert len(s.exec(select(AuthIdentity)).all()) == 2
+
+
+# --- Guest list -------------------------------------------------------------
+
+
+def test_login_fails_closed_when_the_guest_list_is_empty(anon_client, monkeypatch):
+    """Blank ALLOWED_EMAILS used to admit every verified Google account. It must not."""
+    monkeypatch.setattr(get_settings(), "allowed_emails", "")
+    with Session(engine) as s:
+        s.exec(delete(Invite))
+        s.commit()
+
+    assert _login(anon_client, monkeypatch, "anyone@example.com").status_code == 403
+
+
+def test_open_signup_admits_any_verified_google_account(anon_client, monkeypatch):
+    monkeypatch.setattr(get_settings(), "allow_open_signup", True)
+    assert _login(anon_client, monkeypatch, "stranger@example.com").status_code == 200
+
+
+def test_revoking_access_ends_the_session_on_the_next_request(anon_client, monkeypatch):
+    """Sessions are 30-day JWTs, so revocation is checked per request, not at expiry."""
+    _login(anon_client, monkeypatch, "partner@example.com")
+    assert anon_client.get("/api/auth/me").status_code == 200
+
+    with Session(engine) as s:
+        revoke(s, "partner@example.com")
+
+    assert anon_client.get("/api/auth/me").status_code == 401

@@ -1,7 +1,8 @@
-"""Auth endpoints: Google sign-in, current user, sign-out.
+"""Auth endpoints: Google sign-in, local QA sign-in, current user, sign-out.
 
-POST /auth/google verifies a Google ID token, enforces the email allowlist, upserts the
-User, and sets an httpOnly session cookie. The first login of the configured owner adopts
+Each route's only job is to *verify* a provider's assertion. Turning that into an account is
+``app.accounts.resolve_login``, which is also where the guest-list check lives — so no route
+can admit someone by forgetting to call it. The first login of the configured owner adopts
 any pre-auth rows (user_id IS NULL) so data logged before auth isn't orphaned.
 """
 
@@ -13,6 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
+from app import accounts
 from app import auth as auth_lib
 from app.auth import SESSION_COOKIE
 from app.config import Settings
@@ -81,25 +83,18 @@ def login_google(
     except auth_lib.AuthError as exc:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
 
-    email = (claims.get("email") or "").lower()
-    allowed = settings.allowed_email_set
-    if allowed and email not in allowed:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="This account isn't allowed to use this app.",
+    try:
+        user, is_new = accounts.resolve_login(
+            session,
+            settings,
+            provider="google",
+            subject=claims["sub"],
+            email=claims.get("email") or "",
+            name=claims.get("name"),
+            picture=claims.get("picture"),
         )
-
-    sub = claims["sub"]
-    user = session.exec(select(User).where(User.google_sub == sub)).first()
-    is_new = user is None
-    if user is None:
-        user = User(google_sub=sub, email=email)
-    user.email = email  # keep profile fresh on every login
-    user.name = claims.get("name")
-    user.picture = claims.get("picture")
-    session.add(user)
-    session.commit()
-    session.refresh(user)
+    except accounts.AccessDenied as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
 
     if is_new:
         _claim_orphan_rows(session, user, settings)
@@ -142,16 +137,20 @@ def login_qa(
         )
 
     email, name = account
-    sub = f"qa:{account_id}"
-    user = session.exec(select(User).where(User.google_sub == sub)).first()
-    if user is None:
-        user = User(google_sub=sub, email=email)
-    user.email = email
-    user.name = name
-    user.picture = None
-    session.add(user)
-    session.commit()
-    session.refresh(user)
+    # Auto-invite so this path goes through the same funnel as everyone else instead of
+    # bypassing the guest list. The check still runs, it just can't fail — QA's real gate is
+    # localhost + a shared secret, both already verified above, which is stronger than an
+    # email list. Deliberately no _claim_orphan_rows here: QA personas must not adopt the
+    # owner's pre-auth data.
+    accounts.grant(session, email, invited_by="qa")
+    user, _ = accounts.resolve_login(
+        session,
+        settings,
+        provider="qa",
+        subject=account_id,
+        email=email,
+        name=name,
+    )
 
     _set_session_cookie(response, auth_lib.create_session_token(user.id, settings), settings)
     return user

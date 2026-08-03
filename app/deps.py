@@ -39,6 +39,12 @@ def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="User no longer exists."
         )
+    # Checked off the row we already loaded, so revocation costs no extra query. Without this
+    # a revoked invite wouldn't bite until the 30-day session JWT expired.
+    if user.disabled_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="This account's access was removed."
+        )
     return user
 
 
