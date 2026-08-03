@@ -102,6 +102,11 @@ class Settings(BaseSettings):
     # use request.client.host. Empty by default so local dev never trusts a spoofable header.
     trusted_client_ip_header: str = ""
 
+    # Shareable invite links. A week is long enough to hand one over and have the person get
+    # around to it, short enough that a forgotten link in a chat thread stops working.
+    invite_link_ttl_seconds: int = 60 * 60 * 24 * 7
+    invite_link_max_uses: int = 20  # ceiling on what a single link may be asked for
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

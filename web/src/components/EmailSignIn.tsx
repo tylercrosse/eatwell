@@ -6,6 +6,8 @@ import type { AuthUser } from '../types'
 
 interface Props {
   onSignedIn: (user: AuthUser) => void
+  /** From a shared /?invite=... link; lets someone not yet on the guest list join. */
+  inviteToken?: string | null
 }
 
 /**
@@ -16,7 +18,7 @@ interface Props {
  * separate from Safari, so a link tapped in Mail signs you in *in Safari* while this app still
  * shows the login screen. Typing the code keeps the whole exchange inside the app.
  */
-export function EmailSignIn({ onSignedIn }: Props) {
+export function EmailSignIn({ onSignedIn, inviteToken }: Props) {
   const [email, setEmail] = useState('')
   const [code, setCode] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -47,7 +49,7 @@ export function EmailSignIn({ onSignedIn }: Props) {
         className="login__form"
         onSubmit={(e) => {
           e.preventDefault()
-          request.mutate(trimmedEmail)
+          request.mutate({ email: trimmedEmail, inviteToken })
         }}
       >
         <label className="field">
@@ -115,7 +117,7 @@ export function EmailSignIn({ onSignedIn }: Props) {
         onClick={() => {
           setCode('')
           setError(null)
-          request.mutate(trimmedEmail)
+          request.mutate({ email: trimmedEmail, inviteToken })
         }}
       >
         {request.isPending ? 'Sending…' : 'Send a new link'}

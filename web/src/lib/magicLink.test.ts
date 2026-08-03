@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { readMagicLinkToken } from './magicLink'
+import { readInviteToken, readMagicLinkToken } from './magicLink'
 
 describe('readMagicLinkToken', () => {
   it('reads the token from a sign-in link', () => {
@@ -27,5 +27,22 @@ describe('readMagicLinkToken', () => {
 
   it('decodes percent-encoding, since mail clients rewrite links', () => {
     expect(readMagicLinkToken('?token=a%2Db%5Fc')).toBe('a-b_c')
+  })
+})
+
+describe('readInviteToken', () => {
+  it('reads the token from a shared invite link', () => {
+    expect(readInviteToken('?invite=xyz789')).toBe('xyz789')
+  })
+
+  it('returns null when there is no invite', () => {
+    expect(readInviteToken('?token=abc')).toBeNull()
+    expect(readInviteToken('')).toBeNull()
+  })
+
+  it('does not confuse the two kinds of token', () => {
+    const search = '?token=signin&invite=share'
+    expect(readMagicLinkToken(search)).toBe('signin')
+    expect(readInviteToken(search)).toBe('share')
   })
 })

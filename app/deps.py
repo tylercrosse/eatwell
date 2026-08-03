@@ -48,6 +48,28 @@ def get_current_user(
     return user
 
 
+def is_owner(user: User, settings: Settings) -> bool:
+    """Whether ``user`` is the configured owner.
+
+    The whole admin model, deliberately: one account, named by OWNER_EMAIL, which already
+    existed for adopting pre-auth rows. A real role system can wait until something needs more
+    than "can invite people". An unset OWNER_EMAIL means nobody qualifies.
+    """
+    return bool(settings.owner_email) and user.email.lower() == settings.owner_email.lower()
+
+
+def get_owner(
+    user: User = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
+) -> User:
+    """``get_current_user``, but 403 for anyone who isn't the owner."""
+    if not is_owner(user, settings):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Only the owner can manage invites."
+        )
+    return user
+
+
 def user_query(model: type[_Model], user: User) -> SelectOfScalar[_Model]:
     """A SELECT over ``model`` scoped to ``user``'s rows. Chain further .where()s as needed.
 

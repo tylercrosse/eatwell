@@ -47,6 +47,11 @@ _ADDED_COLUMNS: dict[str, dict[str, str]] = {
     "users": {
         "disabled_at": "DATETIME",  # access revoked; get_current_user 401s on it
     },
+    "login_tokens": {
+        # Added after login_tokens shipped, so a deploy that already has the table needs the
+        # ALTER; a fresh one gets it from create_all.
+        "invite_link_id": "INTEGER",
+    },
 }
 
 

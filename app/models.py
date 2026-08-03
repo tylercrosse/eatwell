@@ -112,9 +112,43 @@ class LoginToken(SQLModel, table=True):
     request_ip: str | None = Field(default=None, index=True)
     sent: bool = Field(default=False)  # False when the address wasn't invited
 
+    # Set when this sign-in was authorised by an invite link rather than an existing invite.
+    # Carried here so the link is spent at *verify*, not at request — otherwise a mistyped
+    # address would burn a single-use invite before anyone actually got in.
+    invite_link_id: int | None = Field(default=None, index=True)
+
     created_at: datetime = Field(default_factory=_utcnow, index=True)
     expires_at: datetime
     consumed_at: datetime | None = None
+
+
+class InviteLink(SQLModel, table=True):
+    """A shareable bearer token that lets whoever holds it join.
+
+    The point is handing someone access in person, from a phone, with no laptop and no typing
+    their address into your device: mint one, share it, they open it and sign in with whichever
+    provider they like. Only the hash is stored, so the raw token exists solely in the single
+    response that mints it — it can't be looked up again afterwards.
+
+    Distinct from :class:`Invite`, which names a specific address that may sign in. This says
+    "the bearer may create an invite for themselves", which is a different lifecycle: it
+    expires, it can be spent a limited number of times, and it isn't tied to an email yet.
+    """
+
+    __tablename__ = "invite_links"
+
+    id: int | None = Field(default=None, primary_key=True)
+    token_hash: str = Field(index=True, unique=True)
+
+    created_by_user_id: int = Field(index=True)  # -> users.id (no DB FK, house style)
+    note: str | None = None  # free text, e.g. "Sam at lunch"
+
+    max_uses: int = Field(default=1)
+    uses: int = Field(default=0)
+
+    created_at: datetime = Field(default_factory=_utcnow)
+    expires_at: datetime
+    revoked_at: datetime | None = None
 
 
 class FoodEntry(SQLModel, table=True):
