@@ -47,7 +47,9 @@ the backend over `/api`.
 ## Current Product Assumptions
 
 - The app is still personal/beta-oriented, not public App Store ready.
-- Auth is Google sign-in with an email allowlist.
+- Auth is Google sign-in or an email magic link, both gated on the DB-backed `invites` guest
+  list (`app/accounts.py`). `ALLOWED_EMAILS` is only a startup seed; an empty guest list means
+  closed. Every provider must go through `accounts.resolve_login` — that's where the gate is.
 - User data is scoped by `user_id`; use the shared dependency/query helpers instead of
   hand-rolling ownership checks.
 - The current web UI is optimized for mobile/PWA use. Wider desktop/tablet layout is

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { LogPage } from './pages/LogPage'
 import { GuidePage } from './pages/GuidePage'
@@ -6,10 +6,12 @@ import { GoalsPage } from './pages/GoalsPage'
 import { AppIcon } from './components/AppIcon'
 import { LoginPage } from './components/LoginPage'
 import { SettingsMenu } from './components/SettingsMenu'
-import { getMe, loginWithGoogle, logout } from './api/auth'
+import { getMe, loginWithGoogle, logout, verifyEmailLogin } from './api/auth'
 import { ApiError } from './api/client'
 import { localDayKey } from './lib/date'
 import { hideBootSplash } from './lib/bootSplash'
+import { readMagicLinkToken } from './lib/magicLink'
+import type { AuthUser } from './types'
 
 // Lazy so the charting lib (recharts) is a separate chunk, off the initial load path.
 const TrendsPage = lazy(() => import('./pages/TrendsPage').then((m) => ({ default: m.TrendsPage })))
@@ -23,13 +25,44 @@ export default function App() {
   const [loginError, setLoginError] = useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
 
+  // A magic-link token arrives as /?token=... — captured once on mount, before the effect
+  // below strips it from the URL, so it survives the rewrite.
+  const [magicToken] = useState(() => readMagicLinkToken(window.location.search))
+
   // 401 here just means "not signed in" — surface the login screen, don't retry.
   const meQuery = useQuery({ queryKey: ['me'], queryFn: getMe, retry: false })
 
-  // Dismiss the index.html boot splash once auth resolves (signed in or 401).
+  const verifyLink = useMutation({
+    mutationFn: verifyEmailLogin,
+    onSuccess: (user) => queryClient.setQueryData(['me'], user),
+    onError: (e) =>
+      setLoginError(
+        e instanceof ApiError
+          ? e.message
+          : 'That sign-in link did not work. Please request a new one.',
+      ),
+  })
+
+  // Redeem the link, exactly once. The ref latch matters: StrictMode double-invokes effects in
+  // dev, and a second call would consume the already-spent single-use token and report failure
+  // on a sign-in that actually succeeded.
+  const redeemed = useRef(false)
   useEffect(() => {
-    if (!meQuery.isLoading) hideBootSplash()
-  }, [meQuery.isLoading])
+    if (!magicToken || redeemed.current) return
+    redeemed.current = true
+    // Drop the token from the address bar so it doesn't linger in history or get re-shared.
+    window.history.replaceState({}, '', window.location.pathname)
+    verifyLink.mutate({ token: magicToken })
+    // verifyLink is a fresh object each render; depending on it would re-run this effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [magicToken])
+
+  // Dismiss the index.html boot splash once auth resolves (signed in or 401). Held through the
+  // link exchange too, so arriving from an email doesn't flash the login screen on the way in.
+  const settling = meQuery.isLoading || (!!magicToken && verifyLink.isPending)
+  useEffect(() => {
+    if (!settling) hideBootSplash()
+  }, [settling])
 
   const login = useMutation({
     mutationFn: loginWithGoogle,
@@ -45,6 +78,11 @@ export default function App() {
   })
 
   const onCredential = useCallback((credential: string) => login.mutate(credential), [login])
+  // Email sign-in completes inside EmailSignIn; App just adopts the resulting user.
+  const onSignedIn = useCallback(
+    (user: AuthUser) => queryClient.setQueryData(['me'], user),
+    [queryClient],
+  )
   // Jump to a specific day on the Log tab (used by the Trends charts).
   const goToDay = useCallback((d: string) => {
     setDay(d)
@@ -53,11 +91,18 @@ export default function App() {
 
   // The index.html boot splash already covers the screen while auth resolves; render
   // nothing underneath so there's no flash of content as the splash fades out.
-  if (meQuery.isLoading) return null
+  if (settling) return null
 
   const me = meQuery.data
   if (!me) {
-    return <LoginPage onCredential={onCredential} error={loginError} pending={login.isPending} />
+    return (
+      <LoginPage
+        onCredential={onCredential}
+        onSignedIn={onSignedIn}
+        error={loginError}
+        pending={login.isPending}
+      />
+    )
   }
 
   return (

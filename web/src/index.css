@@ -290,6 +290,54 @@ body {
   min-height: 44px;
 }
 
+/* "or" rule between the Google button and email sign-in. Uses ::before/::after rather than a
+   border on the element so the label sits in a gap in the line. */
+.login__divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin: 4px 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.login__divider::before,
+.login__divider::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--border);
+}
+
+/* The card is centred, but a form reads better left-aligned so labels line up with inputs. */
+.login__form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+}
+
+.login__form .btn {
+  width: 100%;
+}
+
+/* Tertiary action ("Send a new link"): a text button, not a third competing filled button. */
+.login__link-btn {
+  background: none;
+  border: none;
+  padding: 4px;
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.login__link-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .app__main {
   flex: 1;
   padding: 8px;
