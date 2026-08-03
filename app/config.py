@@ -75,6 +75,33 @@ class Settings(BaseSettings):
         "qa-sporadic|qa-sporadic@example.test|QA Sporadic"
     )
 
+    # Outbound email. "console" prints the message instead of sending it, so the sign-in flow
+    # is exercisable with no mailbox; it's the default so a half-configured deploy fails
+    # visibly rather than silently dropping mail. "smtp" sends for real.
+    email_provider: str = "console"  # "console" | "smtp"
+    email_from: str = ""  # must equal smtp_user for Gmail, or Google rewrites the sender
+    email_from_name: str = "Calorie Tracker"
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_starttls: bool = True
+
+    # Absolute origin that magic links point at. NEVER derive this from the request's Host
+    # header: that's host-header injection, letting an attacker mint a link to a domain they
+    # control and harvest the token when the victim clicks it.
+    app_base_url: str = "http://localhost:5173"
+
+    # Email sign-in tokens.
+    login_token_ttl_seconds: int = 15 * 60
+    login_code_max_attempts: int = 5  # wrong typed-code guesses before the token is retired
+    login_token_retention_seconds: int = 60 * 60 * 24  # pruned after a day (also expires IPs)
+    login_requests_per_email_per_hour: int = 5
+    login_requests_per_ip_per_hour: int = 20
+    # Header carrying the real client IP behind a proxy (Fly sends Fly-Client-IP). Empty ->
+    # use request.client.host. Empty by default so local dev never trusts a spoofable header.
+    trusted_client_ip_header: str = ""
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
