@@ -13,6 +13,23 @@ Start with these files before making non-trivial changes:
   and App Store readiness work.
 - `docs/PRODUCT_OPPORTUNITIES.md` - product ideas, differentiators, and future bets.
 
+## Status Lives In Beads, Rationale Lives In Docs
+
+As of 2026-08-01 the planning docs were imported into a `bd` (beads) tracker. The split:
+
+- **`bd` owns status, priority, and sequencing.** Run `bd ready` to see what is actually
+  next; `bd show <id>` for one item. Never infer status from a doc glyph - the ✅/🚧/⬜
+  markers in `docs/BACKLOG.md` had already drifted before the migration (M10 and M14 were
+  marked incomplete despite shipping; M11 was marked not-started with a shipped child).
+- **The docs own rationale.** Design decisions, rejected alternatives, research summaries,
+  granularity arguments, and positioning stay in `docs/`. Beads link back with a
+  `Source: docs/<FILE> §<section>` line.
+- **Bead IDs mirror the doc numbering** (`ct-m10.2` is BACKLOG 10.2, `ct-dr.3` is
+  DESIGN_REVIEW P1.3, `ct-cr.11` is a COMMERCIAL_READINESS Phase 1 item), so the two stay
+  navigable in both directions.
+
+When you finish work, close the bead - do not hand-edit a status glyph in a doc.
+
 ## Project Shape
 
 This is a calorie-tracking app with:
@@ -111,12 +128,71 @@ SERVE_STATIC=true uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 ## Documentation Routing
 
-- Implementation roadmap: `docs/BACKLOG.md`.
-- Commercial/App Store readiness: `docs/COMMERCIAL_READINESS.md`.
-- Product maturity/showcase priorities: `docs/PRODUCT_MATURITY_ROADMAP.md`.
-- Product strategy/opportunities: `docs/PRODUCT_OPPORTUNITIES.md`.
+- What to work on next, and the status of anything: `bd ready` / `bd show <id>`.
+- Implementation roadmap and design rationale: `docs/BACKLOG.md` (beads `ct-m*`).
+- Design/UX review findings: `docs/DESIGN_REVIEW.md` (beads `ct-dr.*`).
+- Commercial/App Store readiness: `docs/COMMERCIAL_READINESS.md` (beads `ct-cr.*`).
+- Product maturity/showcase priorities: `docs/PRODUCT_MATURITY_ROADMAP.md` (beads `ct-pm.*`).
+- Product strategy/opportunities: `docs/PRODUCT_OPPORTUNITIES.md` (beads `ct-po.*`).
 - Setup/deploy/how to run: `README.md`.
 - Frontend-specific notes: `web/README.md`.
 
 When adding a major feature, update the relevant planning doc if the work changes
-priority, scope, or product direction.
+priority, scope, or product direction - and file or update the bead. Put the *reasoning*
+in the doc and the *state* in the bead; do not duplicate one into the other.
+
+<!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:970c3bf2 -->
+## Beads Issue Tracker
+
+This project uses **bd (beads)** for issue tracking. Run `bd prime` to see full workflow context and commands.
+
+### Quick Reference
+
+```bash
+bd ready              # Find available work
+bd show <id>          # View issue details
+bd update <id> --claim  # Claim work
+bd close <id>         # Complete work
+```
+
+### Rules
+
+- Use `bd` for ALL task tracking — do NOT use TodoWrite, TaskCreate, or markdown TODO lists
+- Run `bd prime` for detailed command reference and session close protocol
+- Use `bd remember` for persistent knowledge — do NOT use MEMORY.md files
+
+**Architecture in one line:** issues live in a local Dolt DB; sync uses `refs/dolt/data` on your git remote; `.beads/issues.jsonl` is a passive export. See https://github.com/gastownhall/beads/blob/main/docs/SYNC_CONCEPTS.md for details and anti-patterns.
+
+## Agent Context Profiles
+
+The managed Beads block is task-tracking guidance, not permission to override repository, user, or orchestrator instructions.
+
+- **Conservative (default)**: Use `bd` for task tracking. Do not run git commits, git pushes, or Dolt remote sync unless explicitly asked. At handoff, report changed files, validation, and suggested next commands.
+- **Minimal**: Keep tool instruction files as pointers to `bd prime`; use the same conservative git policy unless active instructions say otherwise.
+- **Team-maintainer**: Only when the repository explicitly opts in, agents may close beads, run quality gates, commit, and push as part of session close. A current "do not commit" or "do not push" instruction still wins.
+
+## Session Completion
+
+This protocol applies when ending a Beads implementation workflow. It is subordinate to explicit user, repository, and orchestrator instructions.
+
+1. **File issues for remaining work** - Create beads for anything that needs follow-up
+2. **Run quality gates** (if code changed) - Tests, linters, builds
+3. **Update issue status** - Close finished work, update in-progress items
+4. **Handle git/sync by active profile**:
+   ```bash
+   # Conservative/minimal/default: report status and proposed commands; wait for approval.
+   git status
+
+   # Team-maintainer opt-in only, unless current instructions forbid it:
+   git pull --rebase
+   bd dolt push
+   git push
+   git status
+   ```
+5. **Hand off** - Summarize changes, validation, issue status, and any blocked sync/commit/push step
+
+**Critical rules:**
+- Explicit user or orchestrator instructions override this Beads block.
+- Do not commit or push without clear authority from the active profile or the current user request.
+- If a required sync or push is blocked, stop and report the exact command and error.
+<!-- END BEADS INTEGRATION -->

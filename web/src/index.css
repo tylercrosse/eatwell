@@ -1257,6 +1257,18 @@ body {
   font-weight: 600;
 }
 
+/* Second label line on the Balance dial: states the plan balance its tick marks. */
+.energy-ring__sublabel {
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-top: -6px; /* tuck under the label, tighter than the column's flex gap */
+}
+
+.energy-dial__zone {
+  stroke: var(--accent);
+  opacity: 0.7; /* its own band inside the track — nothing paints over it, so it can read solid */
+}
+
 .energy-dial__target {
   stroke: var(--text);
   stroke-width: 3;
@@ -1479,7 +1491,7 @@ body {
   margin: 0;
   text-align: center;
   font-size: 0.72rem;
-  color: var(--exp-exercise);
+  color: var(--text); /* calm guidance, not an alarm — the status line above carries the state color */
   line-height: 1.4;
 }
 
@@ -1678,6 +1690,12 @@ body {
 .contrib-table--calc .contrib-table__row,
 .contrib-table--terms .contrib-table__row {
   grid-template-columns: 1fr auto;
+}
+
+/* Calc rows carry sentence-like labels ("If you stop eating now") — wrap instead of
+   ellipsizing, which clips them at larger text sizes. */
+.contrib-table--calc .contrib-table__name {
+  white-space: normal;
 }
 
 .contrib-table__row--total {

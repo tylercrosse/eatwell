@@ -20,7 +20,7 @@ export interface ChartPalette {
   danger: string // --danger — off-target / surplus
   burned: string // --exp-exercise (burn) — the burned line
   goal: string // --exp-bmr — dashed goal-pace projection (where you're aiming)
-  projection: string // balance accumulation: "Cumulative" + "Predicted" (its kin)
+  projection: string // forecast lines: "Predicted" weight/body-fat + goal-progress predicted pace
   muted: string // --muted — axis ticks, zero line
   grid: string // --border — grid lines
   surface: string // --surface — tooltip background

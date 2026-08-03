@@ -25,3 +25,9 @@ web/dev-dist/
 # Repo-level agent instructions (overrides global ignores on this machine)
 !AGENTS.md
 !CLAUDE.md
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
+.beads/proxieddb/
