@@ -16,6 +16,14 @@ primary_region = 'sjc'
 
 [env]
   CORS_ORIGINS = 'https://calorie-tracker-dawn-thunder-2086.fly.dev'
+  # Absolute origin magic links point at. Must be set: links are built from this and never
+  # from the request Host header, which an attacker could spoof to harvest sign-in tokens.
+  APP_BASE_URL = 'https://calorie-tracker-dawn-thunder-2086.fly.dev'
+  # Behind Fly's proxy, request.client.host is the proxy — without this every caller shares
+  # one address and the per-IP sign-in rate limit locks out everyone at once.
+  TRUSTED_CLIENT_IP_HEADER = 'fly-client-ip'
+  # Switch to 'smtp' once SMTP_* secrets are set (see README). 'console' only logs the link.
+  EMAIL_PROVIDER = 'console'
 
 [[mounts]]
   source = 'data'

@@ -1,14 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
 import { GOOGLE_CLIENT_ID } from '../lib/env'
+import { EmailSignIn } from './EmailSignIn'
+import type { AuthUser } from '../types'
 
 interface Props {
   onCredential: (credential: string) => void
+  onSignedIn: (user: AuthUser) => void
   error?: string | null
   pending?: boolean
 }
 
-/** Sign-in gate: renders the Google Identity Services button and forwards the ID token. */
-export function LoginPage({ onCredential, error, pending }: Props) {
+/**
+ * Sign-in gate. Google Identity Services, plus email sign-in for people who don't have a
+ * Google account — which is the whole reason the second option exists.
+ */
+export function LoginPage({ onCredential, onSignedIn, error, pending }: Props) {
   const buttonRef = useRef<HTMLDivElement>(null)
   const [ready, setReady] = useState(() => !!window.google?.accounts?.id)
 
@@ -50,7 +56,7 @@ export function LoginPage({ onCredential, error, pending }: Props) {
     <div className="login">
       <div className="login__card card">
         <h1 className="login__title">Calorie Tracker</h1>
-        <p className="muted">Sign in with Google to track your meals.</p>
+        <p className="muted">Sign in to track your meals.</p>
 
         {!GOOGLE_CLIENT_ID ? (
           <p className="error-text">
@@ -62,6 +68,9 @@ export function LoginPage({ onCredential, error, pending }: Props) {
 
         {pending && <p className="muted">Signing in…</p>}
         {error && <p className="error-text">{error}</p>}
+
+        <div className="login__divider">or</div>
+        <EmailSignIn onSignedIn={onSignedIn} />
       </div>
     </div>
   )

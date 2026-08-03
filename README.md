@@ -164,11 +164,62 @@ fly deploy   # no --build-arg needed: VITE_GOOGLE_CLIENT_ID lives in fly.toml [b
 Fly provides HTTPS automatically, so the deployed URL works for camera + PWA install on iPhone
 with no extra setup. Railway works similarly (Docker build + a volume mounted at `/data`).
 
-## Authentication (Google sign-in)
+## Authentication
 
-The app is gated behind Google sign-in with a closed email allowlist (no public signup). The
-same Google **OAuth Web client ID** is needed in two places that work differently — this trips
-people up:
+Two ways in — **Google sign-in** and an **email magic link**, for people without a Google
+account. Both are gated on the same guest list, and there's no public signup.
+
+### The guest list
+
+Who may sign in lives in the `invites` table, not in config. Adding or removing someone needs
+no redeploy:
+
+```bash
+# Everyday path: invite from inside the app (owner only).
+# Break-glass, when you can't get in through the UI:
+fly ssh console -C "python /app/scripts/manage_invites.py list"
+fly ssh console -C "python /app/scripts/manage_invites.py add friend@example.com --note 'gym'"
+fly ssh console -C "python /app/scripts/manage_invites.py revoke friend@example.com"
+```
+
+`ALLOWED_EMAILS` is now only a **seed**, folded in at startup. Deleting an entry there does not
+remove access — revoke the invite instead. Every email that already has an account is
+grandfathered in, so turning this on can't lock out existing users.
+
+Two behaviours worth knowing:
+
+- **An empty guest list means closed.** A blank `ALLOWED_EMAILS` used to admit any verified
+  Google account; it now admits nobody. Set `ALLOW_OPEN_SIGNUP=true` to deliberately open up.
+- **Revoking takes effect on the next request**, not when the 30-day session cookie expires.
+
+### Email magic link
+
+`EMAIL_PROVIDER=console` (the default) prints the link and code to the log instead of sending,
+which is enough to exercise the whole flow locally. To actually send, use Gmail:
+
+1. Enable 2-Step Verification on the Google account, then create an app password at
+   <https://myaccount.google.com/apppasswords>.
+2. ```bash
+   fly secrets set EMAIL_PROVIDER=smtp \
+     SMTP_HOST=smtp.gmail.com SMTP_PORT=587 \
+     SMTP_USER=you@gmail.com SMTP_PASSWORD='<app password>' \
+     EMAIL_FROM=you@gmail.com
+   ```
+
+`EMAIL_FROM` **must** equal `SMTP_USER`, or Google rewrites the sender and the message loses
+DKIM/DMARC alignment (straight to spam). Sending through Google's own servers is why this works
+without owning a domain; an HTTP provider like Resend or Postmark needs a verified sending
+domain, which is still an open question.
+
+`APP_BASE_URL` must point at the deployed origin — sign-in links are built from it and never
+from the request's `Host` header, which an attacker could otherwise spoof to harvest tokens.
+On Fly, `TRUSTED_CLIENT_IP_HEADER=fly-client-ip` is also required, or the per-IP rate limit sees
+only the proxy's address and locks out everyone at once. Both are set in `fly.toml [env]`.
+
+### Google sign-in
+
+The same Google **OAuth Web client ID** is needed in two places that work differently — this
+trips people up:
 
 - **Frontend — `VITE_GOOGLE_CLIENT_ID` (build time).** Vite *inlines* it into the JS bundle at
   build, so it must be present whenever the PWA is built — a runtime env var/secret is too late.
@@ -178,8 +229,9 @@ people up:
     is fine.
 - **Backend — runtime config/secrets** (set once via `fly secrets`, persist across deploys):
   `GOOGLE_CLIENT_ID` (verifies the ID token), `JWT_SECRET` (signs the session cookie; generate
-  with `openssl rand -hex 32`), `ALLOWED_EMAILS` (CSV allowlist), `OWNER_EMAIL` (this account's
-  first login adopts any pre-auth rows), and `COOKIE_SECURE=true` in production (HTTPS).
+  with `openssl rand -hex 32`), `ALLOWED_EMAILS` (seed for the guest list — see above),
+  `OWNER_EMAIL` (this account's first login adopts any pre-auth rows, and it's the only account
+  that may invite others), and `COOKIE_SECURE=true` in production (HTTPS).
 
 **Google Cloud Console** → APIs & Services → Credentials → **OAuth client ID (Web)**. Add your
 app origins (e.g. `http://localhost:5173` and your deployed `https://…`) to **Authorized

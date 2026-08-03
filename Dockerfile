@@ -21,6 +21,11 @@ COPY pyproject.toml ./
 COPY app/ ./app/
 RUN pip install --no-cache-dir .
 
+# Operational scripts. Not importable as part of the package, but needed on the machine:
+# manage_invites.py is how you get back in if a bad guest list locks everyone out.
+#   fly ssh console -C "python /app/scripts/manage_invites.py list"
+COPY scripts/ ./scripts/
+
 COPY --from=web /web/dist ./web/dist
 
 # Single-service mode: serve the built PWA from FastAPI.
