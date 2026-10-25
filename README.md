@@ -297,7 +297,7 @@ Photos are served as static files at `/photos/<ref>`.
 ## Configuration
 
 All backend config is env-driven (see `.env.example`): `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`,
-`USDA_API_KEY`, `DB_PATH`, `PHOTOS_DIR`, `SERVE_STATIC`, `STATIC_DIR`, `CORS_ORIGINS`, and the
+`OPENROUTER_REASONING_EFFORT`, `USDA_API_KEY`, `DB_PATH`, `PHOTOS_DIR`, `SERVE_STATIC`, `STATIC_DIR`, `CORS_ORIGINS`, and the
 auth vars (`GOOGLE_CLIENT_ID`, `JWT_SECRET`, `ALLOWED_EMAILS`, `OWNER_EMAIL`, `COOKIE_SECURE` —
 see [Authentication](#authentication-google-sign-in)). The frontend reads `VITE_API_BASE_URL`
 and `VITE_GOOGLE_CLIENT_ID` (see `web/.env.example`).

@@ -124,6 +124,13 @@ def _client(settings: Settings) -> AsyncOpenAI:
     )
 
 
+def _extra_body(settings: Settings) -> dict | None:
+    """OpenRouter-only request fields the openai SDK doesn't model."""
+    if settings.openrouter_reasoning_effort:
+        return {"reasoning": {"effort": settings.openrouter_reasoning_effort}}
+    return None
+
+
 def _parse_analysis(content: str | None) -> AnalysisResult:
     """Validate the model's JSON content into an ``AnalysisResult``."""
     if not content:
@@ -166,6 +173,7 @@ async def analyze_food_image(
         resp = await _client(settings).chat.completions.create(
             model=settings.openrouter_model,
             timeout=settings.openrouter_timeout,
+            extra_body=_extra_body(settings),
             messages=[
                 {"role": "system", "content": _SYSTEM_PROMPT},
                 {
@@ -203,6 +211,7 @@ async def analyze_menu_image(jpeg_bytes: bytes, settings: Settings) -> MenuAnaly
         resp = await _client(settings).chat.completions.create(
             model=settings.openrouter_model,
             timeout=settings.openrouter_timeout,
+            extra_body=_extra_body(settings),
             messages=[
                 {"role": "system", "content": _MENU_SYSTEM_PROMPT},
                 {
@@ -259,6 +268,7 @@ async def analyze_food_text(description: str, settings: Settings) -> AnalysisRes
         resp = await client.chat.completions.create(
             model=settings.openrouter_model,
             timeout=settings.openrouter_timeout,
+            extra_body=_extra_body(settings),
             messages=messages,
             response_format={
                 "type": "json_schema",
@@ -297,6 +307,7 @@ async def analyze_activity_text(
         resp = await _client(settings).chat.completions.create(
             model=settings.openrouter_model,
             timeout=settings.openrouter_timeout,
+            extra_body=_extra_body(settings),
             messages=[
                 {"role": "system", "content": _ACTIVITY_SYSTEM_PROMPT.format(weight=weight)},
                 {"role": "user", "content": f"Estimate the calories burned for: {description}"},
@@ -323,6 +334,7 @@ async def _run_tool_loop(client: AsyncOpenAI, messages: list[dict], settings: Se
         resp = await client.chat.completions.create(
             model=settings.openrouter_model,
             timeout=settings.openrouter_timeout,
+            extra_body=_extra_body(settings),
             messages=messages,
             tools=[SEARCH_FOODS_TOOL],
             tool_choice="auto",

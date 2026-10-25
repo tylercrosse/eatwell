@@ -31,3 +31,6 @@ web/dev-dist/
 *.db
 .beads-credential-key
 .beads/proxieddb/
+
+# Eval image cache (sources + sha256 live in evals/*/cases.jsonl)
+evals/*/.cache/

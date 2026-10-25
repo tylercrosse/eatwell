@@ -18,7 +18,10 @@ class Settings(BaseSettings):
     # OpenRouter
     openrouter_api_key: str = ""
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
-    openrouter_model: str = "google/gemini-3-flash-preview"
+    openrouter_model: str = "google/gemini-3.8-flash"
+    # OpenRouter's unified reasoning.effort for thinking models ("" = provider default). On the
+    # photo eval, "low" kept 3.8 Flash's accuracy at ~55% of the default-effort cost and latency.
+    openrouter_reasoning_effort: str = "low"
     openrouter_timeout: float = 60.0
     app_title: str = "Calorie Tracker"
     app_referer: str = "http://localhost:5173"
