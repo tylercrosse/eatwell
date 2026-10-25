@@ -119,6 +119,15 @@ Recommended work:
 - Add a short eval report summarizing current performance, known failure modes, and
   launch gates.
 
+First cut (2026-10, `evals/`): the photo harness. Two decisions shaped the case set. Packaged
+foods are excluded because barcode scan and label lookup already solve them, so the eval
+targets prepared food eaten out. And named chain items turned out to be a recall test: the
+baseline model scores ~5% error on them because it recognizes a Big Mac and recites the menu.
+The weighed Nutrition5k plates expose the real weakness, which is portion size: the median
+estimate grows only half as much as the food does, and pizza is overestimated by ~50%.
+Prompt work should be judged on that tier and on the portion-pair scaling metric. Details
+and numbers are in `evals/README.md`.
+
 Definition of done:
 
 - Prompt/model changes can be compared against a stable fixture set.

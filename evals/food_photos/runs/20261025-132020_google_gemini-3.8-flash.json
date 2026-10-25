@@ -1,0 +1,2770 @@
+{
+ "model": "google/gemini-3.8-flash",
+ "label": null,
+ "created_at": "2026-10-25T13:20:20-0700",
+ "max_image_dimension": 1024,
+ "scores": {
+  "overall": {
+   "n": 74,
+   "failures": 0,
+   "calorie_mape": 26.4,
+   "calorie_median_ape": 19.6,
+   "calorie_bias_pct": 1.4,
+   "within_20pct": 0.514,
+   "calorie_mae": 75.2,
+   "protein_g_mae": 5.9,
+   "carbs_g_mae": 5.2,
+   "fat_g_mae": 5.4,
+   "weight_mape": 25.1,
+   "latency_p50_s": 7.47,
+   "latency_p95_s": 17.37,
+   "mean_confidence": 0.85,
+   "cost_total_usd": 0.4434,
+   "cost_per_photo_usd": 0.005991,
+   "mean_prompt_tokens": 2526,
+   "mean_completion_tokens": 1092
+  },
+  "by_tier": {
+   "nutrition5k": {
+    "n": 62,
+    "failures": 0,
+    "calorie_mape": 30.9,
+    "calorie_median_ape": 26.7,
+    "calorie_bias_pct": 1.0,
+    "within_20pct": 0.419,
+    "calorie_mae": 87.4,
+    "protein_g_mae": 7.0,
+    "carbs_g_mae": 6.0,
+    "fat_g_mae": 6.2,
+    "weight_mape": 25.1,
+    "latency_p50_s": 7.77,
+    "latency_p95_s": 17.37,
+    "mean_confidence": 0.83,
+    "cost_total_usd": 0.3895,
+    "cost_per_photo_usd": 0.006283,
+    "mean_prompt_tokens": 2518,
+    "mean_completion_tokens": 1172
+   },
+   "restaurant": {
+    "n": 12,
+    "failures": 0,
+    "calorie_mape": 3.7,
+    "calorie_median_ape": 2.2,
+    "calorie_bias_pct": 3.1,
+    "within_20pct": 1.0,
+    "calorie_mae": 12.1,
+    "protein_g_mae": 0.4,
+    "carbs_g_mae": 0.9,
+    "fat_g_mae": 1.2,
+    "latency_p50_s": 5.29,
+    "latency_p95_s": 8.57,
+    "mean_confidence": 0.94,
+    "cost_total_usd": 0.0538,
+    "cost_per_photo_usd": 0.004486,
+    "mean_prompt_tokens": 2570,
+    "mean_completion_tokens": 682
+   }
+  },
+  "by_category": {
+   "breakfast": {
+    "n": 14,
+    "failures": 0,
+    "calorie_mape": 31.6,
+    "calorie_median_ape": 28.8,
+    "calorie_bias_pct": -14.2,
+    "within_20pct": 0.429,
+    "calorie_mae": 125.2,
+    "protein_g_mae": 11.5,
+    "carbs_g_mae": 4.4,
+    "fat_g_mae": 8.3,
+    "weight_mape": 31.6,
+    "latency_p50_s": 8.75,
+    "latency_p95_s": 29.97,
+    "mean_confidence": 0.85,
+    "cost_total_usd": 0.0919,
+    "cost_per_photo_usd": 0.006561,
+    "mean_prompt_tokens": 2394,
+    "mean_completion_tokens": 1271
+   },
+   "breakfast_sandwich": {
+    "n": 2,
+    "failures": 0,
+    "calorie_mape": 0.8,
+    "calorie_median_ape": 0.8,
+    "calorie_bias_pct": 0.8,
+    "within_20pct": 1.0,
+    "calorie_mae": 2.5,
+    "protein_g_mae": 0.2,
+    "carbs_g_mae": 0.0,
+    "fat_g_mae": 0.5,
+    "latency_p50_s": 5.13,
+    "latency_p95_s": 5.36,
+    "mean_confidence": 0.95,
+    "cost_total_usd": 0.0089,
+    "cost_per_photo_usd": 0.004451,
+    "mean_prompt_tokens": 2582,
+    "mean_completion_tokens": 670
+   },
+   "burger": {
+    "n": 3,
+    "failures": 0,
+    "calorie_mape": 2.1,
+    "calorie_median_ape": 1.9,
+    "calorie_bias_pct": 0.8,
+    "within_20pct": 1.0,
+    "calorie_mae": 11.7,
+    "protein_g_mae": 0.2,
+    "carbs_g_mae": 0.0,
+    "fat_g_mae": 1.3,
+    "latency_p50_s": 5.22,
+    "latency_p95_s": 6.44,
+    "mean_confidence": 0.95,
+    "cost_total_usd": 0.0134,
+    "cost_per_photo_usd": 0.004458,
+    "mean_prompt_tokens": 2584,
+    "mean_completion_tokens": 672
+   },
+   "fried_pieces": {
+    "n": 2,
+    "failures": 0,
+    "calorie_mape": 4.6,
+    "calorie_median_ape": 4.6,
+    "calorie_bias_pct": 4.6,
+    "within_20pct": 1.0,
+    "calorie_mae": 17.5,
+    "protein_g_mae": 1.2,
+    "carbs_g_mae": 0.8,
+    "fat_g_mae": 2.2,
+    "latency_p50_s": 8.32,
+    "latency_p95_s": 8.57,
+    "mean_confidence": 0.94,
+    "cost_total_usd": 0.0117,
+    "cost_per_photo_usd": 0.005831,
+    "mean_prompt_tokens": 2566,
+    "mean_completion_tokens": 1042
+   },
+   "pastry": {
+    "n": 1,
+    "failures": 0,
+    "calorie_mape": 15.8,
+    "calorie_median_ape": 15.8,
+    "calorie_bias_pct": 15.8,
+    "within_20pct": 1.0,
+    "calorie_mae": 30.0,
+    "protein_g_mae": 0.0,
+    "carbs_g_mae": 4.0,
+    "fat_g_mae": 1.0,
+    "latency_p50_s": 5.65,
+    "latency_p95_s": 5.65,
+    "mean_confidence": 0.95,
+    "cost_total_usd": 0.0043,
+    "cost_per_photo_usd": 0.004308,
+    "mean_prompt_tokens": 2554,
+    "mean_completion_tokens": 638
+   },
+   "pizza": {
+    "n": 13,
+    "failures": 0,
+    "calorie_mape": 28.0,
+    "calorie_median_ape": 25.5,
+    "calorie_bias_pct": 23.6,
+    "within_20pct": 0.308,
+    "calorie_mae": 78.8,
+    "protein_g_mae": 3.0,
+    "carbs_g_mae": 8.3,
+    "fat_g_mae": 5.1,
+    "weight_mape": 25.1,
+    "latency_p50_s": 7.66,
+    "latency_p95_s": 15.52,
+    "mean_confidence": 0.85,
+    "cost_total_usd": 0.0776,
+    "cost_per_photo_usd": 0.005969,
+    "mean_prompt_tokens": 2554,
+    "mean_completion_tokens": 1081
+   },
+   "plate": {
+    "n": 17,
+    "failures": 0,
+    "calorie_mape": 23.8,
+    "calorie_median_ape": 19.5,
+    "calorie_bias_pct": 1.5,
+    "within_20pct": 0.588,
+    "calorie_mae": 90.5,
+    "protein_g_mae": 11.9,
+    "carbs_g_mae": 7.3,
+    "fat_g_mae": 4.9,
+    "weight_mape": 22.6,
+    "latency_p50_s": 7.97,
+    "latency_p95_s": 30.79,
+    "mean_confidence": 0.8,
+    "cost_total_usd": 0.1181,
+    "cost_per_photo_usd": 0.006948,
+    "mean_prompt_tokens": 2554,
+    "mean_completion_tokens": 1342
+   },
+   "salad": {
+    "n": 18,
+    "failures": 0,
+    "calorie_mape": 39.1,
+    "calorie_median_ape": 40.9,
+    "calorie_bias_pct": -3.8,
+    "within_20pct": 0.333,
+    "calorie_mae": 61.2,
+    "protein_g_mae": 1.8,
+    "carbs_g_mae": 4.5,
+    "fat_g_mae": 6.6,
+    "weight_mape": 22.4,
+    "latency_p50_s": 7.4,
+    "latency_p95_s": 12.95,
+    "mean_confidence": 0.84,
+    "cost_total_usd": 0.102,
+    "cost_per_photo_usd": 0.005664,
+    "mean_prompt_tokens": 2554,
+    "mean_completion_tokens": 1000
+   },
+   "sandwich": {
+    "n": 3,
+    "failures": 0,
+    "calorie_mape": 2.5,
+    "calorie_median_ape": 1.4,
+    "calorie_bias_pct": 1.5,
+    "within_20pct": 1.0,
+    "calorie_mae": 11.7,
+    "protein_g_mae": 0.3,
+    "carbs_g_mae": 0.8,
+    "fat_g_mae": 1.3,
+    "latency_p50_s": 4.42,
+    "latency_p95_s": 5.64,
+    "mean_confidence": 0.93,
+    "cost_total_usd": 0.0115,
+    "cost_per_photo_usd": 0.003848,
+    "mean_prompt_tokens": 2559,
+    "mean_completion_tokens": 514
+   },
+   "side": {
+    "n": 1,
+    "failures": 0,
+    "calorie_mape": 3.6,
+    "calorie_median_ape": 3.6,
+    "calorie_bias_pct": 3.6,
+    "within_20pct": 1.0,
+    "calorie_mae": 5.0,
+    "protein_g_mae": 0.5,
+    "carbs_g_mae": 2.5,
+    "fat_g_mae": 0.5,
+    "latency_p50_s": 4.92,
+    "latency_p95_s": 4.92,
+    "mean_confidence": 0.95,
+    "cost_total_usd": 0.004,
+    "cost_per_photo_usd": 0.004045,
+    "mean_prompt_tokens": 2554,
+    "mean_completion_tokens": 568
+   }
+  },
+  "portion_pairs": [
+   {
+    "group": "breakfast-pair-1",
+    "true_ratio": 2.6,
+    "predicted_ratio": 1.26,
+    "scaling": 0.49,
+    "direction_correct": true
+   },
+   {
+    "group": "breakfast-pair-2",
+    "true_ratio": 2.24,
+    "predicted_ratio": 1.35,
+    "scaling": 0.6,
+    "direction_correct": true
+   },
+   {
+    "group": "breakfast-pair-3",
+    "true_ratio": 4.93,
+    "predicted_ratio": 2.13,
+    "scaling": 0.43,
+    "direction_correct": true
+   },
+   {
+    "group": "pizza-pair-1",
+    "true_ratio": 3.15,
+    "predicted_ratio": 2.65,
+    "scaling": 0.84,
+    "direction_correct": true
+   },
+   {
+    "group": "pizza-pair-3",
+    "true_ratio": 3.75,
+    "predicted_ratio": 2.53,
+    "scaling": 0.68,
+    "direction_correct": true
+   },
+   {
+    "group": "plate-pair-1",
+    "true_ratio": 3.47,
+    "predicted_ratio": 3.93,
+    "scaling": 1.13,
+    "direction_correct": true
+   },
+   {
+    "group": "plate-pair-2",
+    "true_ratio": 2.49,
+    "predicted_ratio": 2.07,
+    "scaling": 0.83,
+    "direction_correct": true
+   },
+   {
+    "group": "plate-pair-3",
+    "true_ratio": 2.12,
+    "predicted_ratio": 1.22,
+    "scaling": 0.58,
+    "direction_correct": true
+   },
+   {
+    "group": "salad-pair-1",
+    "true_ratio": 3.08,
+    "predicted_ratio": 1.44,
+    "scaling": 0.47,
+    "direction_correct": true
+   },
+   {
+    "group": "salad-pair-2",
+    "true_ratio": 2.42,
+    "predicted_ratio": 0.88,
+    "scaling": 0.36,
+    "direction_correct": false
+   },
+   {
+    "group": "salad-pair-3",
+    "true_ratio": 4.88,
+    "predicted_ratio": 5.5,
+    "scaling": 1.13,
+    "direction_correct": true
+   }
+  ],
+  "portion_scaling_median": 0.6
+ },
+ "results": [
+  {
+   "id": "n5k-1561666794",
+   "tier": "nutrition5k",
+   "category": "pizza",
+   "portion_group": "pizza-pair-1",
+   "truth": {
+    "calories": 138.1,
+    "protein_g": 6.5,
+    "carbs_g": 16.7,
+    "fat_g": 5.2,
+    "weight_g": 97.0
+   },
+   "predicted": {
+    "calories": 200.0,
+    "protein_g": 6.5,
+    "carbs_g": 16.0,
+    "fat_g": 12.5,
+    "weight_g": 105.0
+   },
+   "item_names": [
+    "Caesar salad",
+    "Cheese pizza slice"
+   ],
+   "confidence": 0.85,
+   "latency_s": 9.03,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 956,
+    "reasoning_tokens": 697,
+    "cost_usd": 0.0055005
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1565117463",
+   "tier": "nutrition5k",
+   "category": "pizza",
+   "portion_group": "pizza-pair-1",
+   "truth": {
+    "calories": 435.3,
+    "protein_g": 19.7,
+    "carbs_g": 53.6,
+    "fat_g": 15.9,
+    "weight_g": 248.0
+   },
+   "predicted": {
+    "calories": 530.0,
+    "protein_g": 20.0,
+    "carbs_g": 49.0,
+    "fat_g": 28.0,
+    "weight_g": 230.0
+   },
+   "item_names": [
+    "Cheese Pizza Slices",
+    "Caesar Salad"
+   ],
+   "confidence": 0.9,
+   "latency_s": 15.52,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 1687,
+    "reasoning_tokens": 1280,
+    "cost_usd": 0.00824175
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1565119439",
+   "tier": "nutrition5k",
+   "category": "pizza",
+   "portion_group": null,
+   "truth": {
+    "calories": 465.4,
+    "protein_g": 27.4,
+    "carbs_g": 42.9,
+    "fat_g": 19.6,
+    "weight_g": 189.0
+   },
+   "predicted": {
+    "calories": 410.0,
+    "protein_g": 25.0,
+    "carbs_g": 32.0,
+    "fat_g": 20.0,
+    "weight_g": 160.0
+   },
+   "item_names": [
+    "Square Cheese Pizza",
+    "Cooked Pork Slices"
+   ],
+   "confidence": 0.8,
+   "latency_s": 7.29,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 801,
+    "reasoning_tokens": 405,
+    "cost_usd": 0.00491925
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1561578344",
+   "tier": "nutrition5k",
+   "category": "pizza",
+   "portion_group": "pizza-pair-3",
+   "truth": {
+    "calories": 144.3,
+    "protein_g": 5.5,
+    "carbs_g": 15.9,
+    "fat_g": 6.6,
+    "weight_g": 86.0
+   },
+   "predicted": {
+    "calories": 235.0,
+    "protein_g": 8.3,
+    "carbs_g": 24.5,
+    "fat_g": 11.0,
+    "weight_g": 125.0
+   },
+   "item_names": [
+    "Cheese pizza slice",
+    "Side salad with vinaigrette"
+   ],
+   "confidence": 0.85,
+   "latency_s": 8.13,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 857,
+    "reasoning_tokens": 430,
+    "cost_usd": 0.00512925
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1564605328",
+   "tier": "nutrition5k",
+   "category": "pizza",
+   "portion_group": "pizza-pair-3",
+   "truth": {
+    "calories": 541.2,
+    "protein_g": 20.3,
+    "carbs_g": 57.8,
+    "fat_g": 25.9,
+    "weight_g": 349.0
+   },
+   "predicted": {
+    "calories": 595.0,
+    "protein_g": 21.0,
+    "carbs_g": 54.0,
+    "fat_g": 33.0,
+    "weight_g": 310.0
+   },
+   "item_names": [
+    "Cheese pizza slices",
+    "Greek side salad"
+   ],
+   "confidence": 0.85,
+   "latency_s": 7.06,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 920,
+    "reasoning_tokens": 511,
+    "cost_usd": 0.0053655
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1566502437",
+   "tier": "nutrition5k",
+   "category": "salad",
+   "portion_group": "salad-pair-1",
+   "truth": {
+    "calories": 74.6,
+    "protein_g": 1.7,
+    "carbs_g": 3.8,
+    "fat_g": 6.4,
+    "weight_g": 64.0
+   },
+   "predicted": {
+    "calories": 45.0,
+    "protein_g": 1.5,
+    "carbs_g": 2.5,
+    "fat_g": 3.5,
+    "weight_g": 60.0
+   },
+   "item_names": [
+    "Spinach salad"
+   ],
+   "confidence": 0.85,
+   "latency_s": 5.71,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 548,
+    "reasoning_tokens": 263,
+    "cost_usd": 0.0039705
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1562095283",
+   "tier": "nutrition5k",
+   "category": "salad",
+   "portion_group": "salad-pair-1",
+   "truth": {
+    "calories": 229.5,
+    "protein_g": 5.3,
+    "carbs_g": 11.8,
+    "fat_g": 19.7,
+    "weight_g": 197.0
+   },
+   "predicted": {
+    "calories": 65.0,
+    "protein_g": 1.5,
+    "carbs_g": 4.0,
+    "fat_g": 5.0,
+    "weight_g": 100.0
+   },
+   "item_names": [
+    "Mixed green salad with peppers"
+   ],
+   "confidence": 0.85,
+   "latency_s": 4.77,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 560,
+    "reasoning_tokens": 271,
+    "cost_usd": 0.0040155
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1561492161",
+   "tier": "nutrition5k",
+   "category": "salad",
+   "portion_group": "salad-pair-2",
+   "truth": {
+    "calories": 48.3,
+    "protein_g": 0.9,
+    "carbs_g": 1.8,
+    "fat_g": 4.5,
+    "weight_g": 43.0
+   },
+   "predicted": {
+    "calories": 40.0,
+    "protein_g": 1.1,
+    "carbs_g": 1.3,
+    "fat_g": 3.6,
+    "weight_g": 35.0
+   },
+   "item_names": [
+    "Spinach salad with light dressing"
+   ],
+   "confidence": 0.85,
+   "latency_s": 6.06,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 580,
+    "reasoning_tokens": 293,
+    "cost_usd": 0.0040905
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1565811529",
+   "tier": "nutrition5k",
+   "category": "salad",
+   "portion_group": "salad-pair-2",
+   "truth": {
+    "calories": 116.8,
+    "protein_g": 2.1,
+    "carbs_g": 4.4,
+    "fat_g": 10.9,
+    "weight_g": 104.0
+   },
+   "predicted": {
+    "calories": 35.0,
+    "protein_g": 1.0,
+    "carbs_g": 3.0,
+    "fat_g": 2.2,
+    "weight_g": 60.0
+   },
+   "item_names": [
+    "Side salad with watermelon radish"
+   ],
+   "confidence": 0.85,
+   "latency_s": 4.6,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 579,
+    "reasoning_tokens": 292,
+    "cost_usd": 0.00408675
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1562702813",
+   "tier": "nutrition5k",
+   "category": "salad",
+   "portion_group": "salad-pair-3",
+   "truth": {
+    "calories": 41.1,
+    "protein_g": 1.0,
+    "carbs_g": 2.1,
+    "fat_g": 3.5,
+    "weight_g": 59.0
+   },
+   "predicted": {
+    "calories": 40.0,
+    "protein_g": 1.6,
+    "carbs_g": 4.5,
+    "fat_g": 2.1,
+    "weight_g": 45.0
+   },
+   "item_names": [
+    "Mixed green salad with beans"
+   ],
+   "confidence": 0.8,
+   "latency_s": 6.99,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 691,
+    "reasoning_tokens": 405,
+    "cost_usd": 0.00450675
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1565118999",
+   "tier": "nutrition5k",
+   "category": "salad",
+   "portion_group": "salad-pair-3",
+   "truth": {
+    "calories": 200.4,
+    "protein_g": 4.8,
+    "carbs_g": 10.1,
+    "fat_g": 16.9,
+    "weight_g": 288.0
+   },
+   "predicted": {
+    "calories": 220.0,
+    "protein_g": 4.0,
+    "carbs_g": 8.0,
+    "fat_g": 19.0,
+    "weight_g": 180.0
+   },
+   "item_names": [
+    "Greek salad with mixed greens, olives, and feta"
+   ],
+   "confidence": 0.85,
+   "latency_s": 6.21,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 668,
+    "reasoning_tokens": 369,
+    "cost_usd": 0.0044205
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1560360055",
+   "tier": "nutrition5k",
+   "category": "breakfast",
+   "portion_group": "breakfast-pair-1",
+   "truth": {
+    "calories": 362.7,
+    "protein_g": 22.6,
+    "carbs_g": 4.2,
+    "fat_g": 27.8,
+    "weight_g": 180.0
+   },
+   "predicted": {
+    "calories": 460.0,
+    "protein_g": 25.0,
+    "carbs_g": 3.5,
+    "fat_g": 38.0,
+    "weight_g": 205.0
+   },
+   "item_names": [
+    "Scrambled eggs with cheese",
+    "Pan-fried smoked sausage slices"
+   ],
+   "confidence": 0.85,
+   "latency_s": 10.78,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 1646,
+    "reasoning_tokens": 1242,
+    "cost_usd": 0.008088
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1560357297",
+   "tier": "nutrition5k",
+   "category": "breakfast",
+   "portion_group": "breakfast-pair-1",
+   "truth": {
+    "calories": 942.5,
+    "protein_g": 59.3,
+    "carbs_g": 10.7,
+    "fat_g": 71.9,
+    "weight_g": 492.0
+   },
+   "predicted": {
+    "calories": 580.0,
+    "protein_g": 32.0,
+    "carbs_g": 6.0,
+    "fat_g": 46.0,
+    "weight_g": 320.0
+   },
+   "item_names": [
+    "Scrambled eggs with sliced sausage and salsa"
+   ],
+   "confidence": 0.85,
+   "latency_s": 6.48,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 680,
+    "reasoning_tokens": 394,
+    "cost_usd": 0.0044655
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1563207301",
+   "tier": "nutrition5k",
+   "category": "breakfast",
+   "portion_group": "breakfast-pair-2",
+   "truth": {
+    "calories": 187.9,
+    "protein_g": 8.0,
+    "carbs_g": 24.2,
+    "fat_g": 6.2,
+    "weight_g": 173.0
+   },
+   "predicted": {
+    "calories": 130.0,
+    "protein_g": 2.1,
+    "carbs_g": 23.0,
+    "fat_g": 4.0,
+    "weight_g": 115.0
+   },
+   "item_names": [
+    "Roasted sweet potatoes",
+    "Mashed potatoes"
+   ],
+   "confidence": 0.8,
+   "latency_s": 7.78,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 999,
+    "reasoning_tokens": 581,
+    "cost_usd": 0.00566175
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1566402095",
+   "tier": "nutrition5k",
+   "category": "breakfast",
+   "portion_group": "breakfast-pair-2",
+   "truth": {
+    "calories": 421.1,
+    "protein_g": 46.2,
+    "carbs_g": 32.4,
+    "fat_g": 8.4,
+    "weight_g": 577.0
+   },
+   "predicted": {
+    "calories": 175.0,
+    "protein_g": 21.4,
+    "carbs_g": 19.9,
+    "fat_g": 0.7,
+    "weight_g": 270.0
+   },
+   "item_names": [
+    "Egg Whites (Cooked)",
+    "Roasted Sweet Potato Cubes"
+   ],
+   "confidence": 0.9,
+   "latency_s": 7.3,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 901,
+    "reasoning_tokens": 484,
+    "cost_usd": 0.00529425
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1562775488",
+   "tier": "nutrition5k",
+   "category": "breakfast",
+   "portion_group": "breakfast-pair-3",
+   "truth": {
+    "calories": 91.2,
+    "protein_g": 8.6,
+    "carbs_g": 12.4,
+    "fat_g": 0.2,
+    "weight_g": 145.0
+   },
+   "predicted": {
+    "calories": 82.0,
+    "protein_g": 7.3,
+    "carbs_g": 7.4,
+    "fat_g": 2.3,
+    "weight_g": 95.0
+   },
+   "item_names": [
+    "Egg Whites with Black Pepper",
+    "Roasted Diced Potatoes"
+   ],
+   "confidence": 0.85,
+   "latency_s": 22.1,
+   "usage": {
+    "prompt_tokens": 1436,
+    "completion_tokens": 1270,
+    "reasoning_tokens": 856,
+    "cost_usd": 0.0058395
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1566920339",
+   "tier": "nutrition5k",
+   "category": "breakfast",
+   "portion_group": "breakfast-pair-3",
+   "truth": {
+    "calories": 449.5,
+    "protein_g": 58.6,
+    "carbs_g": 32.1,
+    "fat_g": 5.0,
+    "weight_g": 730.0
+   },
+   "predicted": {
+    "calories": 175.0,
+    "protein_g": 21.4,
+    "carbs_g": 19.9,
+    "fat_g": 0.4,
+    "weight_g": 270.0
+   },
+   "item_names": [
+    "Hard-boiled egg whites",
+    "Roasted sweet potato chunks"
+   ],
+   "confidence": 0.9,
+   "latency_s": 9.68,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 1281,
+    "reasoning_tokens": 865,
+    "cost_usd": 0.00671925
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1561753589",
+   "tier": "nutrition5k",
+   "category": "plate",
+   "portion_group": "plate-pair-1",
+   "truth": {
+    "calories": 138.8,
+    "protein_g": 14.5,
+    "carbs_g": 3.1,
+    "fat_g": 7.0,
+    "weight_g": 78.0
+   },
+   "predicted": {
+    "calories": 145.0,
+    "protein_g": 17.5,
+    "carbs_g": 0.2,
+    "fat_g": 8.5,
+    "weight_g": 72.0
+   },
+   "item_names": [
+    "Pan-seared salmon fillet"
+   ],
+   "confidence": 0.8,
+   "latency_s": 6.78,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 643,
+    "reasoning_tokens": 351,
+    "cost_usd": 0.00432675
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1559332418",
+   "tier": "nutrition5k",
+   "category": "plate",
+   "portion_group": "plate-pair-1",
+   "truth": {
+    "calories": 482.1,
+    "protein_g": 50.3,
+    "carbs_g": 10.7,
+    "fat_g": 24.5,
+    "weight_g": 271.0
+   },
+   "predicted": {
+    "calories": 570.0,
+    "protein_g": 39.0,
+    "carbs_g": 44.0,
+    "fat_g": 25.0,
+    "weight_g": 330.0
+   },
+   "item_names": [
+    "Salmon with seasoned rice and vegetables"
+   ],
+   "confidence": 0.85,
+   "latency_s": 10.46,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 1227,
+    "reasoning_tokens": 940,
+    "cost_usd": 0.00651675
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1563998244",
+   "tier": "nutrition5k",
+   "category": "plate",
+   "portion_group": "plate-pair-2",
+   "truth": {
+    "calories": 259.5,
+    "protein_g": 24.3,
+    "carbs_g": 16.4,
+    "fat_g": 10.3,
+    "weight_g": 170.0
+   },
+   "predicted": {
+    "calories": 230.0,
+    "protein_g": 25.0,
+    "carbs_g": 16.0,
+    "fat_g": 7.0,
+    "weight_g": 155.0
+   },
+   "item_names": [
+    "Grilled Chicken Breast",
+    "Roasted Potatoes"
+   ],
+   "confidence": 0.85,
+   "latency_s": 6.36,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 903,
+    "reasoning_tokens": 498,
+    "cost_usd": 0.00530175
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1566414686",
+   "tier": "nutrition5k",
+   "category": "plate",
+   "portion_group": "plate-pair-2",
+   "truth": {
+    "calories": 646.2,
+    "protein_g": 86.7,
+    "carbs_g": 20.8,
+    "fat_g": 22.1,
+    "weight_g": 407.0
+   },
+   "predicted": {
+    "calories": 475.0,
+    "protein_g": 43.5,
+    "carbs_g": 26.0,
+    "fat_g": 21.5,
+    "weight_g": 315.0
+   },
+   "item_names": [
+    "Diced Chicken Breast",
+    "Roasted Potatoes",
+    "Creamy Chicken & Spinach Casserole"
+   ],
+   "confidence": 0.8,
+   "latency_s": 8.08,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 1272,
+    "reasoning_tokens": 737,
+    "cost_usd": 0.0066855
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1563911156",
+   "tier": "nutrition5k",
+   "category": "plate",
+   "portion_group": "plate-pair-3",
+   "truth": {
+    "calories": 140.4,
+    "protein_g": 17.9,
+    "carbs_g": 5.3,
+    "fat_g": 4.9,
+    "weight_g": 96.0
+   },
+   "predicted": {
+    "calories": 160.0,
+    "protein_g": 11.2,
+    "carbs_g": 3.8,
+    "fat_g": 11.1,
+    "weight_g": 55.0
+   },
+   "item_names": [
+    "Fried or Baked Chicken Wing"
+   ],
+   "confidence": 0.8,
+   "latency_s": 5.26,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 579,
+    "reasoning_tokens": 282,
+    "cost_usd": 0.00408675
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1566331801",
+   "tier": "nutrition5k",
+   "category": "plate",
+   "portion_group": "plate-pair-3",
+   "truth": {
+    "calories": 297.0,
+    "protein_g": 37.7,
+    "carbs_g": 11.2,
+    "fat_g": 10.4,
+    "weight_g": 203.0
+   },
+   "predicted": {
+    "calories": 195.0,
+    "protein_g": 31.0,
+    "carbs_g": 4.5,
+    "fat_g": 5.8,
+    "weight_g": 130.0
+   },
+   "item_names": [
+    "Baked chicken breast with tomato sauce"
+   ],
+   "confidence": 0.65,
+   "latency_s": 7.29,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 975,
+    "reasoning_tokens": 679,
+    "cost_usd": 0.00557175
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1561147967",
+   "tier": "nutrition5k",
+   "category": "pizza",
+   "portion_group": null,
+   "truth": {
+    "calories": 178.0,
+    "protein_g": 6.5,
+    "carbs_g": 19.3,
+    "fat_g": 8.4,
+    "weight_g": 85.0
+   },
+   "predicted": {
+    "calories": 245.0,
+    "protein_g": 9.3,
+    "carbs_g": 26.0,
+    "fat_g": 11.5,
+    "weight_g": 120.0
+   },
+   "item_names": [
+    "Cheese pizza slice",
+    "Mixed green side salad"
+   ],
+   "confidence": 0.85,
+   "latency_s": 7.66,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 1280,
+    "reasoning_tokens": 854,
+    "cost_usd": 0.0067155
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1562876645",
+   "tier": "nutrition5k",
+   "category": "pizza",
+   "portion_group": null,
+   "truth": {
+    "calories": 220.8,
+    "protein_g": 22.0,
+    "carbs_g": 15.8,
+    "fat_g": 7.2,
+    "weight_g": 112.0
+   },
+   "predicted": {
+    "calories": 290.0,
+    "protein_g": 19.0,
+    "carbs_g": 21.0,
+    "fat_g": 14.5,
+    "weight_g": 110.0
+   },
+   "item_names": [
+    "Fried Chicken Drumstick",
+    "Cheese Pizza Slice (Small)"
+   ],
+   "confidence": 0.85,
+   "latency_s": 7.74,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 995,
+    "reasoning_tokens": 579,
+    "cost_usd": 0.00564675
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1565894889",
+   "tier": "nutrition5k",
+   "category": "pizza",
+   "portion_group": null,
+   "truth": {
+    "calories": 257.8,
+    "protein_g": 6.6,
+    "carbs_g": 33.3,
+    "fat_g": 11.2,
+    "weight_g": 74.0
+   },
+   "predicted": {
+    "calories": 355.0,
+    "protein_g": 9.6,
+    "carbs_g": 43.9,
+    "fat_g": 16.1,
+    "weight_g": 105.0
+   },
+   "item_names": [
+    "Rectangular Cheese Pizza Slice",
+    "Double Chocolate Cookie"
+   ],
+   "confidence": 0.85,
+   "latency_s": 7.08,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 847,
+    "reasoning_tokens": 467,
+    "cost_usd": 0.00509175
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1565034681",
+   "tier": "nutrition5k",
+   "category": "pizza",
+   "portion_group": null,
+   "truth": {
+    "calories": 323.6,
+    "protein_g": 10.4,
+    "carbs_g": 29.2,
+    "fat_g": 18.9,
+    "weight_g": 185.0
+   },
+   "predicted": {
+    "calories": 390.0,
+    "protein_g": 17.0,
+    "carbs_g": 38.0,
+    "fat_g": 19.0,
+    "weight_g": 280.0
+   },
+   "item_names": [
+    "Baked cannelloni",
+    "Mixed green side salad"
+   ],
+   "confidence": 0.8,
+   "latency_s": 12.04,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 1428,
+    "reasoning_tokens": 996,
+    "cost_usd": 0.0072705
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1565641915",
+   "tier": "nutrition5k",
+   "category": "pizza",
+   "portion_group": null,
+   "truth": {
+    "calories": 326.8,
+    "protein_g": 13.5,
+    "carbs_g": 43.1,
+    "fat_g": 11.1,
+    "weight_g": 190.0
+   },
+   "predicted": {
+    "calories": 410.0,
+    "protein_g": 16.5,
+    "carbs_g": 54.5,
+    "fat_g": 14.6,
+    "weight_g": 255.0
+   },
+   "item_names": [
+    "Cheese pizza squares",
+    "Cooked bulgur / brown rice",
+    "Steamed asparagus"
+   ],
+   "confidence": 0.85,
+   "latency_s": 6.77,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 1097,
+    "reasoning_tokens": 541,
+    "cost_usd": 0.00602925
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1560367926",
+   "tier": "nutrition5k",
+   "category": "pizza",
+   "portion_group": null,
+   "truth": {
+    "calories": 408.5,
+    "protein_g": 24.2,
+    "carbs_g": 45.0,
+    "fat_g": 21.0,
+    "weight_g": 194.0
+   },
+   "predicted": {
+    "calories": 340.0,
+    "protein_g": 22.0,
+    "carbs_g": 29.0,
+    "fat_g": 15.0,
+    "weight_g": 150.0
+   },
+   "item_names": [
+    "Vegetable Pizza Slice",
+    "Glazed Chicken Piece"
+   ],
+   "confidence": 0.85,
+   "latency_s": 5.87,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 800,
+    "reasoning_tokens": 400,
+    "cost_usd": 0.0049155
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1568320383",
+   "tier": "nutrition5k",
+   "category": "pizza",
+   "portion_group": null,
+   "truth": {
+    "calories": 437.1,
+    "protein_g": 26.9,
+    "carbs_g": 37.5,
+    "fat_g": 19.0,
+    "weight_g": 196.0
+   },
+   "predicted": {
+    "calories": 500.0,
+    "protein_g": 34.5,
+    "carbs_g": 45.5,
+    "fat_g": 20.0,
+    "weight_g": 230.0
+   },
+   "item_names": [
+    "Cheese pizza slices",
+    "Roast beef",
+    "Couscous with tomato"
+   ],
+   "confidence": 0.85,
+   "latency_s": 9.34,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 1389,
+    "reasoning_tokens": 853,
+    "cost_usd": 0.00712425
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1565894910",
+   "tier": "nutrition5k",
+   "category": "pizza",
+   "portion_group": null,
+   "truth": {
+    "calories": 537.1,
+    "protein_g": 18.2,
+    "carbs_g": 67.9,
+    "fat_g": 21.4,
+    "weight_g": 179.0
+   },
+   "predicted": {
+    "calories": 690.0,
+    "protein_g": 22.5,
+    "carbs_g": 80.0,
+    "fat_g": 31.0,
+    "weight_g": 230.0
+   },
+   "item_names": [
+    "Pizza slices",
+    "Chocolate cookie with white chocolate chips"
+   ],
+   "confidence": 0.85,
+   "latency_s": 7.06,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 995,
+    "reasoning_tokens": 546,
+    "cost_usd": 0.00564675
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1562168673",
+   "tier": "nutrition5k",
+   "category": "salad",
+   "portion_group": null,
+   "truth": {
+    "calories": 56.4,
+    "protein_g": 1.2,
+    "carbs_g": 8.6,
+    "fat_g": 2.3,
+    "weight_g": 73.0
+   },
+   "predicted": {
+    "calories": 16.0,
+    "protein_g": 0.5,
+    "carbs_g": 3.8,
+    "fat_g": 0.1,
+    "weight_g": 55.0
+   },
+   "item_names": [
+    "Honeydew melon pieces",
+    "Green leaf lettuce"
+   ],
+   "confidence": 0.85,
+   "latency_s": 9.49,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 1352,
+    "reasoning_tokens": 940,
+    "cost_usd": 0.0069855
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1562876531",
+   "tier": "nutrition5k",
+   "category": "salad",
+   "portion_group": null,
+   "truth": {
+    "calories": 66.1,
+    "protein_g": 8.4,
+    "carbs_g": 3.1,
+    "fat_g": 2.4,
+    "weight_g": 85.0
+   },
+   "predicted": {
+    "calories": 110.0,
+    "protein_g": 7.5,
+    "carbs_g": 3.5,
+    "fat_g": 7.5,
+    "weight_g": 75.0
+   },
+   "item_names": [
+    "Chicken Caesar Salad (Small Portion)"
+   ],
+   "confidence": 0.8,
+   "latency_s": 6.01,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 675,
+    "reasoning_tokens": 389,
+    "cost_usd": 0.00444675
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1563909469",
+   "tier": "nutrition5k",
+   "category": "salad",
+   "portion_group": null,
+   "truth": {
+    "calories": 72.4,
+    "protein_g": 1.4,
+    "carbs_g": 2.2,
+    "fat_g": 6.9,
+    "weight_g": 64.0
+   },
+   "predicted": {
+    "calories": 28.0,
+    "protein_g": 1.0,
+    "carbs_g": 2.1,
+    "fat_g": 1.8,
+    "weight_g": 40.0
+   },
+   "item_names": [
+    "Spinach salad"
+   ],
+   "confidence": 0.8,
+   "latency_s": 7.18,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 931,
+    "reasoning_tokens": 647,
+    "cost_usd": 0.00540675
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1561574428",
+   "tier": "nutrition5k",
+   "category": "salad",
+   "portion_group": null,
+   "truth": {
+    "calories": 84.0,
+    "protein_g": 4.0,
+    "carbs_g": 7.9,
+    "fat_g": 5.1,
+    "weight_g": 172.0
+   },
+   "predicted": {
+    "calories": 130.0,
+    "protein_g": 4.3,
+    "carbs_g": 11.0,
+    "fat_g": 8.5,
+    "weight_g": 170.0
+   },
+   "item_names": [
+    "Caesar salad",
+    "Steamed broccoli and cauliflower",
+    "Mixed baby greens with blueberries and vinaigrette"
+   ],
+   "confidence": 0.85,
+   "latency_s": 9.34,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 1458,
+    "reasoning_tokens": 919,
+    "cost_usd": 0.007383
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1561665024",
+   "tier": "nutrition5k",
+   "category": "salad",
+   "portion_group": null,
+   "truth": {
+    "calories": 100.6,
+    "protein_g": 2.1,
+    "carbs_g": 8.9,
+    "fat_g": 7.0,
+    "weight_g": 121.0
+   },
+   "predicted": {
+    "calories": 120.0,
+    "protein_g": 2.5,
+    "carbs_g": 18.0,
+    "fat_g": 5.0,
+    "weight_g": 110.0
+   },
+   "item_names": [
+    "Mixed greens and long bean salad with golden raisins"
+   ],
+   "confidence": 0.8,
+   "latency_s": 6.58,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 784,
+    "reasoning_tokens": 484,
+    "cost_usd": 0.0048555
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1566931519",
+   "tier": "nutrition5k",
+   "category": "salad",
+   "portion_group": null,
+   "truth": {
+    "calories": 130.1,
+    "protein_g": 2.7,
+    "carbs_g": 10.6,
+    "fat_g": 10.1,
+    "weight_g": 182.0
+   },
+   "predicted": {
+    "calories": 185.0,
+    "protein_g": 2.5,
+    "carbs_g": 6.5,
+    "fat_g": 17.5,
+    "weight_g": 135.0
+   },
+   "item_names": [
+    "Mixed green salad with kalamata olives"
+   ],
+   "confidence": 0.85,
+   "latency_s": 12.95,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 1835,
+    "reasoning_tokens": 1537,
+    "cost_usd": 0.00879675
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1561574848",
+   "tier": "nutrition5k",
+   "category": "salad",
+   "portion_group": null,
+   "truth": {
+    "calories": 182.3,
+    "protein_g": 18.1,
+    "carbs_g": 4.8,
+    "fat_g": 10.2,
+    "weight_g": 155.0
+   },
+   "predicted": {
+    "calories": 215.0,
+    "protein_g": 22.0,
+    "carbs_g": 5.5,
+    "fat_g": 11.8,
+    "weight_g": 175.0
+   },
+   "item_names": [
+    "Chicken salad with mixed greens and feta"
+   ],
+   "confidence": 0.85,
+   "latency_s": 7.62,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 828,
+    "reasoning_tokens": 529,
+    "cost_usd": 0.0050205
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1560975601",
+   "tier": "nutrition5k",
+   "category": "salad",
+   "portion_group": null,
+   "truth": {
+    "calories": 233.9,
+    "protein_g": 22.8,
+    "carbs_g": 17.9,
+    "fat_g": 8.4,
+    "weight_g": 253.0
+   },
+   "predicted": {
+    "calories": 350.0,
+    "protein_g": 26.4,
+    "carbs_g": 23.5,
+    "fat_g": 17.2,
+    "weight_g": 320.0
+   },
+   "item_names": [
+    "Dressed Green Salad",
+    "Braised Chicken in Tomato Sauce",
+    "Broccoli and Mixed Vegetables with Brown Rice"
+   ],
+   "confidence": 0.85,
+   "latency_s": 9.17,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 1673,
+    "reasoning_tokens": 1121,
+    "cost_usd": 0.00818925
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1564689138",
+   "tier": "nutrition5k",
+   "category": "salad",
+   "portion_group": null,
+   "truth": {
+    "calories": 268.3,
+    "protein_g": 5.8,
+    "carbs_g": 15.5,
+    "fat_g": 22.0,
+    "weight_g": 223.0
+   },
+   "predicted": {
+    "calories": 155.0,
+    "protein_g": 4.5,
+    "carbs_g": 16.0,
+    "fat_g": 7.5,
+    "weight_g": 150.0
+   },
+   "item_names": [
+    "Mixed green and chickpea salad"
+   ],
+   "confidence": 0.85,
+   "latency_s": 8.32,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 918,
+    "reasoning_tokens": 630,
+    "cost_usd": 0.005358
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1564689168",
+   "tier": "nutrition5k",
+   "category": "salad",
+   "portion_group": null,
+   "truth": {
+    "calories": 352.9,
+    "protein_g": 15.1,
+    "carbs_g": 17.7,
+    "fat_g": 27.5,
+    "weight_g": 339.0
+   },
+   "predicted": {
+    "calories": 320.0,
+    "protein_g": 15.0,
+    "carbs_g": 24.0,
+    "fat_g": 19.5,
+    "weight_g": 270.0
+   },
+   "item_names": [
+    "Mixed salad with tofu and chickpeas"
+   ],
+   "confidence": 0.85,
+   "latency_s": 8.09,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 1059,
+    "reasoning_tokens": 760,
+    "cost_usd": 0.00588675
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1565210073",
+   "tier": "nutrition5k",
+   "category": "salad",
+   "portion_group": null,
+   "truth": {
+    "calories": 364.4,
+    "protein_g": 19.4,
+    "carbs_g": 49.9,
+    "fat_g": 11.8,
+    "weight_g": 511.0
+   },
+   "predicted": {
+    "calories": 455.0,
+    "protein_g": 32.9,
+    "carbs_g": 25.0,
+    "fat_g": 26.1,
+    "weight_g": 400.0
+   },
+   "item_names": [
+    "Stuffed Chicken Breast",
+    "Caesar Salad with Parmesan",
+    "Roasted Broccoli and Green Beans",
+    "Fresh Pineapple Chunks"
+   ],
+   "confidence": 0.85,
+   "latency_s": 11.61,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 1600,
+    "reasoning_tokens": 914,
+    "cost_usd": 0.0079155
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1566333228",
+   "tier": "nutrition5k",
+   "category": "salad",
+   "portion_group": null,
+   "truth": {
+    "calories": 498.5,
+    "protein_g": 37.9,
+    "carbs_g": 39.7,
+    "fat_g": 20.4,
+    "weight_g": 304.0
+   },
+   "predicted": {
+    "calories": 660.0,
+    "protein_g": 39.0,
+    "carbs_g": 46.0,
+    "fat_g": 36.0,
+    "weight_g": 310.0
+   },
+   "item_names": [
+    "Cheese Pizza Slices",
+    "Caesar Salad",
+    "Roasted Chicken Pieces"
+   ],
+   "confidence": 0.85,
+   "latency_s": 9.31,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 1254,
+    "reasoning_tokens": 727,
+    "cost_usd": 0.006618
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1565207631",
+   "tier": "nutrition5k",
+   "category": "plate",
+   "portion_group": null,
+   "truth": {
+    "calories": 64.4,
+    "protein_g": 3.3,
+    "carbs_g": 8.2,
+    "fat_g": 2.0,
+    "weight_g": 54.0
+   },
+   "predicted": {
+    "calories": 75.0,
+    "protein_g": 4.5,
+    "carbs_g": 5.8,
+    "fat_g": 3.9,
+    "weight_g": 42.0
+   },
+   "item_names": [
+    "Stir-fried chicken and vegetables bite"
+   ],
+   "confidence": 0.75,
+   "latency_s": 6.31,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 620,
+    "reasoning_tokens": 329,
+    "cost_usd": 0.0042405
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1565898128",
+   "tier": "nutrition5k",
+   "category": "plate",
+   "portion_group": null,
+   "truth": {
+    "calories": 209.0,
+    "protein_g": 24.3,
+    "carbs_g": 6.2,
+    "fat_g": 8.7,
+    "weight_g": 134.0
+   },
+   "predicted": {
+    "calories": 205.0,
+    "protein_g": 20.8,
+    "carbs_g": 16.5,
+    "fat_g": 6.0,
+    "weight_g": 150.0
+   },
+   "item_names": [
+    "Baked white fish fillet",
+    "Seasoned rice"
+   ],
+   "confidence": 0.8,
+   "latency_s": 8.91,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 1419,
+    "reasoning_tokens": 1006,
+    "cost_usd": 0.00723675
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1560369008",
+   "tier": "nutrition5k",
+   "category": "plate",
+   "portion_group": null,
+   "truth": {
+    "calories": 223.8,
+    "protein_g": 15.9,
+    "carbs_g": 15.6,
+    "fat_g": 10.5,
+    "weight_g": 146.0
+   },
+   "predicted": {
+    "calories": 378.0,
+    "protein_g": 29.5,
+    "carbs_g": 29.0,
+    "fat_g": 15.2,
+    "weight_g": 260.0
+   },
+   "item_names": [
+    "Roast Pork Loin with Pan Juices",
+    "Steamed White Rice",
+    "Mixed Green Salad with Dressing"
+   ],
+   "confidence": 0.85,
+   "latency_s": 17.37,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 2190,
+    "reasoning_tokens": 1650,
+    "cost_usd": 0.010128
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1561746912",
+   "tier": "nutrition5k",
+   "category": "plate",
+   "portion_group": null,
+   "truth": {
+    "calories": 264.1,
+    "protein_g": 20.9,
+    "carbs_g": 27.4,
+    "fat_g": 8.2,
+    "weight_g": 210.0
+   },
+   "predicted": {
+    "calories": 430.0,
+    "protein_g": 29.0,
+    "carbs_g": 28.0,
+    "fat_g": 21.0,
+    "weight_g": 225.0
+   },
+   "item_names": [
+    "Pan-seared salmon with pearl couscous and Brussels sprouts"
+   ],
+   "confidence": 0.85,
+   "latency_s": 7.97,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 1251,
+    "reasoning_tokens": 958,
+    "cost_usd": 0.00660675
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1561575274",
+   "tier": "nutrition5k",
+   "category": "plate",
+   "portion_group": null,
+   "truth": {
+    "calories": 305.2,
+    "protein_g": 29.6,
+    "carbs_g": 4.3,
+    "fat_g": 17.5,
+    "weight_g": 145.0
+   },
+   "predicted": {
+    "calories": 260.0,
+    "protein_g": 32.0,
+    "carbs_g": 8.0,
+    "fat_g": 11.0,
+    "weight_g": 150.0
+   },
+   "item_names": [
+    "Herb and rice topped pork medallions"
+   ],
+   "confidence": 0.8,
+   "latency_s": 5.1,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 560,
+    "reasoning_tokens": 276,
+    "cost_usd": 0.0040155
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1563476646",
+   "tier": "nutrition5k",
+   "category": "plate",
+   "portion_group": null,
+   "truth": {
+    "calories": 380.2,
+    "protein_g": 29.9,
+    "carbs_g": 21.7,
+    "fat_g": 18.1,
+    "weight_g": 218.0
+   },
+   "predicted": {
+    "calories": 265.0,
+    "protein_g": 16.5,
+    "carbs_g": 25.2,
+    "fat_g": 10.8,
+    "weight_g": 170.0
+   },
+   "item_names": [
+    "Penne pasta with beef tips in sauce"
+   ],
+   "confidence": 0.8,
+   "latency_s": 6.52,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 615,
+    "reasoning_tokens": 314,
+    "cost_usd": 0.00422175
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1562698276",
+   "tier": "nutrition5k",
+   "category": "plate",
+   "portion_group": null,
+   "truth": {
+    "calories": 434.6,
+    "protein_g": 32.0,
+    "carbs_g": 36.0,
+    "fat_g": 16.9,
+    "weight_g": 307.0
+   },
+   "predicted": {
+    "calories": 350.0,
+    "protein_g": 29.0,
+    "carbs_g": 31.0,
+    "fat_g": 12.0,
+    "weight_g": 265.0
+   },
+   "item_names": [
+    "Steak with Rice and Broccoli"
+   ],
+   "confidence": 0.85,
+   "latency_s": 30.79,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 4358,
+    "reasoning_tokens": 4071,
+    "cost_usd": 0.018258
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1560974009",
+   "tier": "nutrition5k",
+   "category": "plate",
+   "portion_group": null,
+   "truth": {
+    "calories": 483.0,
+    "protein_g": 45.3,
+    "carbs_g": 30.2,
+    "fat_g": 20.8,
+    "weight_g": 409.0
+   },
+   "predicted": {
+    "calories": 470.0,
+    "protein_g": 30.0,
+    "carbs_g": 43.0,
+    "fat_g": 19.5,
+    "weight_g": 330.0
+   },
+   "item_names": [
+    "Glazed crispy chicken with shredded cabbage",
+    "Broccoli and arugula salad",
+    "Cooked whole grains & lentils"
+   ],
+   "confidence": 0.8,
+   "latency_s": 10.36,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 1444,
+    "reasoning_tokens": 909,
+    "cost_usd": 0.0073305
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1568060501",
+   "tier": "nutrition5k",
+   "category": "plate",
+   "portion_group": null,
+   "truth": {
+    "calories": 548.7,
+    "protein_g": 40.0,
+    "carbs_g": 46.4,
+    "fat_g": 22.5,
+    "weight_g": 413.0
+   },
+   "predicted": {
+    "calories": 440.0,
+    "protein_g": 25.5,
+    "carbs_g": 43.0,
+    "fat_g": 18.5,
+    "weight_g": 350.0
+   },
+   "item_names": [
+    "Mixed vegetable and corn salad",
+    "Shredded pork with rice and vegetables"
+   ],
+   "confidence": 0.8,
+   "latency_s": 6.45,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 940,
+    "reasoning_tokens": 523,
+    "cost_usd": 0.0054405
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1566419635",
+   "tier": "nutrition5k",
+   "category": "plate",
+   "portion_group": null,
+   "truth": {
+    "calories": 605.9,
+    "protein_g": 49.4,
+    "carbs_g": 50.8,
+    "fat_g": 22.4,
+    "weight_g": 389.0
+   },
+   "predicted": {
+    "calories": 790.0,
+    "protein_g": 46.5,
+    "carbs_g": 64.5,
+    "fat_g": 39.0,
+    "weight_g": 470.0
+   },
+   "item_names": [
+    "Cheese Pizza Slices",
+    "Caesar Salad",
+    "Chicken Breast with Cream Sauce",
+    "Roasted Potato Wedges",
+    "Green Beans"
+   ],
+   "confidence": 0.85,
+   "latency_s": 11.92,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 2205,
+    "reasoning_tokens": 1419,
+    "cost_usd": 0.01018425
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1566414342",
+   "tier": "nutrition5k",
+   "category": "plate",
+   "portion_group": null,
+   "truth": {
+    "calories": 846.4,
+    "protein_g": 83.6,
+    "carbs_g": 53.3,
+    "fat_g": 31.6,
+    "weight_g": 552.0
+   },
+   "predicted": {
+    "calories": 610.0,
+    "protein_g": 30.5,
+    "carbs_g": 59.0,
+    "fat_g": 27.5,
+    "weight_g": 380.0
+   },
+   "item_names": [
+    "Creamy Chicken and Vegetable Bake",
+    "Roasted Potatoes",
+    "Couscous and Roasted Pepper Salad"
+   ],
+   "confidence": 0.7,
+   "latency_s": 10.6,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 1613,
+    "reasoning_tokens": 1052,
+    "cost_usd": 0.00796425
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1565020796",
+   "tier": "nutrition5k",
+   "category": "breakfast",
+   "portion_group": null,
+   "truth": {
+    "calories": 90.6,
+    "protein_g": 12.1,
+    "carbs_g": 0.7,
+    "fat_g": 3.5,
+    "weight_g": 99.0
+   },
+   "predicted": {
+    "calories": 94.0,
+    "protein_g": 10.5,
+    "carbs_g": 0.6,
+    "fat_g": 5.1,
+    "weight_g": 69.0
+   },
+   "item_names": [
+    "Chopped egg whites",
+    "Bacon strip"
+   ],
+   "confidence": 0.8,
+   "latency_s": 8.38,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 1257,
+    "reasoning_tokens": 844,
+    "cost_usd": 0.00662925
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1560441288",
+   "tier": "nutrition5k",
+   "category": "breakfast",
+   "portion_group": null,
+   "truth": {
+    "calories": 165.2,
+    "protein_g": 10.5,
+    "carbs_g": 5.7,
+    "fat_g": 11.0,
+    "weight_g": 72.0
+   },
+   "predicted": {
+    "calories": 145.0,
+    "protein_g": 7.2,
+    "carbs_g": 9.7,
+    "fat_g": 8.7,
+    "weight_g": 63.0
+   },
+   "item_names": [
+    "Crispy Bacon",
+    "Roasted Breakfast Potatoes"
+   ],
+   "confidence": 0.85,
+   "latency_s": 13.83,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 1417,
+    "reasoning_tokens": 991,
+    "cost_usd": 0.00722925
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1563984140",
+   "tier": "nutrition5k",
+   "category": "breakfast",
+   "portion_group": null,
+   "truth": {
+    "calories": 245.4,
+    "protein_g": 47.2,
+    "carbs_g": 3.3,
+    "fat_g": 0.9,
+    "weight_g": 472.0
+   },
+   "predicted": {
+    "calories": 448.0,
+    "protein_g": 35.2,
+    "carbs_g": 3.5,
+    "fat_g": 33.6,
+    "weight_g": 160.0
+   },
+   "item_names": [
+    "Fresh Mozzarella Cheese"
+   ],
+   "confidence": 0.8,
+   "latency_s": 7.04,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 790,
+    "reasoning_tokens": 495,
+    "cost_usd": 0.004878
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1562169762",
+   "tier": "nutrition5k",
+   "category": "breakfast",
+   "portion_group": null,
+   "truth": {
+    "calories": 262.3,
+    "protein_g": 17.7,
+    "carbs_g": 7.0,
+    "fat_g": 18.2,
+    "weight_g": 210.0
+   },
+   "predicted": {
+    "calories": 245.0,
+    "protein_g": 15.5,
+    "carbs_g": 8.0,
+    "fat_g": 16.5,
+    "weight_g": 200.0
+   },
+   "item_names": [
+    "Scrambled Eggs",
+    "Roasted Brussels Sprouts"
+   ],
+   "confidence": 0.85,
+   "latency_s": 7.33,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 1167,
+    "reasoning_tokens": 744,
+    "cost_usd": 0.00629175
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1558116201",
+   "tier": "nutrition5k",
+   "category": "breakfast",
+   "portion_group": null,
+   "truth": {
+    "calories": 313.6,
+    "protein_g": 17.6,
+    "carbs_g": 3.8,
+    "fat_g": 24.8,
+    "weight_g": 91.0
+   },
+   "predicted": {
+    "calories": 340.0,
+    "protein_g": 14.5,
+    "carbs_g": 3.5,
+    "fat_g": 30.0,
+    "weight_g": 110.0
+   },
+   "item_names": [
+    "Sliced smoked sausage"
+   ],
+   "confidence": 0.85,
+   "latency_s": 7.75,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 940,
+    "reasoning_tokens": 645,
+    "cost_usd": 0.0054405
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1563812570",
+   "tier": "nutrition5k",
+   "category": "breakfast",
+   "portion_group": null,
+   "truth": {
+    "calories": 369.1,
+    "protein_g": 37.7,
+    "carbs_g": 11.3,
+    "fat_g": 18.0,
+    "weight_g": 320.0
+   },
+   "predicted": {
+    "calories": 220.0,
+    "protein_g": 24.3,
+    "carbs_g": 3.7,
+    "fat_g": 11.0,
+    "weight_g": 235.0
+   },
+   "item_names": [
+    "Scrambled egg whites",
+    "Turkey bacon",
+    "Mixed green side salad with light dressing"
+   ],
+   "confidence": 0.85,
+   "latency_s": 9.11,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 1347,
+    "reasoning_tokens": 810,
+    "cost_usd": 0.00696675
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1566402123",
+   "tier": "nutrition5k",
+   "category": "breakfast",
+   "portion_group": null,
+   "truth": {
+    "calories": 445.1,
+    "protein_g": 46.7,
+    "carbs_g": 38.5,
+    "fat_g": 8.6,
+    "weight_g": 657.0
+   },
+   "predicted": {
+    "calories": 226.0,
+    "protein_g": 21.9,
+    "carbs_g": 29.1,
+    "fat_g": 1.9,
+    "weight_g": 360.0
+   },
+   "item_names": [
+    "Chopped hard-boiled egg whites",
+    "Roasted sweet potato cubes",
+    "Diced watermelon"
+   ],
+   "confidence": 0.9,
+   "latency_s": 10.0,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 1649,
+    "reasoning_tokens": 1098,
+    "cost_usd": 0.00809925
+   },
+   "error": null
+  },
+  {
+   "id": "n5k-1566923060",
+   "tier": "nutrition5k",
+   "category": "breakfast",
+   "portion_group": null,
+   "truth": {
+    "calories": 515.8,
+    "protein_g": 18.8,
+    "carbs_g": 34.0,
+    "fat_g": 34.6,
+    "weight_g": 248.0
+   },
+   "predicted": {
+    "calories": 448.0,
+    "protein_g": 17.4,
+    "carbs_g": 31.2,
+    "fat_g": 28.1,
+    "weight_g": 255.0
+   },
+   "item_names": [
+    "Scrambled Eggs",
+    "Hash Browns",
+    "Crispy Bacon",
+    "Pineapple Chunks"
+   ],
+   "confidence": 0.88,
+   "latency_s": 29.97,
+   "usage": {
+    "prompt_tokens": 1436,
+    "completion_tokens": 2446,
+    "reasoning_tokens": 1787,
+    "cost_usd": 0.0102495
+   },
+   "error": null
+  },
+  {
+   "id": "rest-big-mac",
+   "tier": "restaurant",
+   "category": "burger",
+   "portion_group": null,
+   "truth": {
+    "calories": 565,
+    "protein_g": 25,
+    "carbs_g": 46,
+    "fat_g": 31,
+    "weight_g": null
+   },
+   "predicted": {
+    "calories": 590.0,
+    "protein_g": 25.0,
+    "carbs_g": 46.0,
+    "fat_g": 34.0,
+    "weight_g": 219.0
+   },
+   "item_names": [
+    "Double-decker cheeseburger (Big Mac style)"
+   ],
+   "confidence": 0.95,
+   "latency_s": 5.04,
+   "usage": {
+    "prompt_tokens": 2606,
+    "completion_tokens": 613,
+    "reasoning_tokens": 327,
+    "cost_usd": 0.00425325
+   },
+   "error": null
+  },
+  {
+   "id": "rest-quarter-pounder-cheese",
+   "tier": "restaurant",
+   "category": "burger",
+   "portion_group": null,
+   "truth": {
+    "calories": 530,
+    "protein_g": 30.5,
+    "carbs_g": 42,
+    "fat_g": 27,
+    "weight_g": null
+   },
+   "predicted": {
+    "calories": 520.0,
+    "protein_g": 30.0,
+    "carbs_g": 42.0,
+    "fat_g": 26.0,
+    "weight_g": 220.0
+   },
+   "item_names": [
+    "Quarter pounder cheeseburger"
+   ],
+   "confidence": 0.95,
+   "latency_s": 5.22,
+   "usage": {
+    "prompt_tokens": 2582,
+    "completion_tokens": 547,
+    "reasoning_tokens": 260,
+    "cost_usd": 0.00398775
+   },
+   "error": null
+  },
+  {
+   "id": "rest-double-double",
+   "tier": "restaurant",
+   "category": "burger",
+   "portion_group": null,
+   "truth": {
+    "calories": 670,
+    "protein_g": 37,
+    "carbs_g": 39,
+    "fat_g": 41,
+    "weight_g": null
+   },
+   "predicted": {
+    "calories": 670.0,
+    "protein_g": 37.0,
+    "carbs_g": 39.0,
+    "fat_g": 41.0,
+    "weight_g": 330.0
+   },
+   "item_names": [
+    "In-N-Out Double-Double Burger"
+   ],
+   "confidence": 0.95,
+   "latency_s": 6.44,
+   "usage": {
+    "prompt_tokens": 2563,
+    "completion_tokens": 856,
+    "reasoning_tokens": 569,
+    "cost_usd": 0.00513225
+   },
+   "error": null
+  },
+  {
+   "id": "rest-egg-mcmuffin",
+   "tier": "restaurant",
+   "category": "breakfast_sandwich",
+   "portion_group": null,
+   "truth": {
+    "calories": 305,
+    "protein_g": 17,
+    "carbs_g": 30,
+    "fat_g": 12.5,
+    "weight_g": null
+   },
+   "predicted": {
+    "calories": 310.0,
+    "protein_g": 17.0,
+    "carbs_g": 30.0,
+    "fat_g": 13.0,
+    "weight_g": 140.0
+   },
+   "item_names": [
+    "Egg, Canadian bacon, and cheese English muffin sandwich"
+   ],
+   "confidence": 0.95,
+   "latency_s": 4.91,
+   "usage": {
+    "prompt_tokens": 2582,
+    "completion_tokens": 729,
+    "reasoning_tokens": 444,
+    "cost_usd": 0.00467025
+   },
+   "error": null
+  },
+  {
+   "id": "rest-sausage-egg-mcmuffin",
+   "tier": "restaurant",
+   "category": "breakfast_sandwich",
+   "portion_group": null,
+   "truth": {
+    "calories": 480,
+    "protein_g": 20.5,
+    "carbs_g": 30,
+    "fat_g": 30.5,
+    "weight_g": null
+   },
+   "predicted": {
+    "calories": 480.0,
+    "protein_g": 20.0,
+    "carbs_g": 30.0,
+    "fat_g": 31.0,
+    "weight_g": 168.0
+   },
+   "item_names": [
+    "Sausage, egg, and cheese muffin sandwich"
+   ],
+   "confidence": 0.95,
+   "latency_s": 5.36,
+   "usage": {
+    "prompt_tokens": 2582,
+    "completion_tokens": 612,
+    "reasoning_tokens": 328,
+    "cost_usd": 0.0042315
+   },
+   "error": null
+  },
+  {
+   "id": "rest-filet-o-fish",
+   "tier": "restaurant",
+   "category": "sandwich",
+   "portion_group": null,
+   "truth": {
+    "calories": 385,
+    "protein_g": 16,
+    "carbs_g": 38.5,
+    "fat_g": 19,
+    "weight_g": null
+   },
+   "predicted": {
+    "calories": 390.0,
+    "protein_g": 16.0,
+    "carbs_g": 39.0,
+    "fat_g": 19.0,
+    "weight_g": 142.0
+   },
+   "item_names": [
+    "Fish Filet Sandwich"
+   ],
+   "confidence": 0.95,
+   "latency_s": 4.42,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 430,
+    "reasoning_tokens": 250,
+    "cost_usd": 0.003528
+   },
+   "error": null
+  },
+  {
+   "id": "rest-chick-fil-a-sandwich",
+   "tier": "restaurant",
+   "category": "sandwich",
+   "portion_group": null,
+   "truth": {
+    "calories": 420,
+    "protein_g": 29,
+    "carbs_g": 41,
+    "fat_g": 16,
+    "weight_g": null
+   },
+   "predicted": {
+    "calories": 440.0,
+    "protein_g": 29.0,
+    "carbs_g": 41.0,
+    "fat_g": 19.0,
+    "weight_g": 175.0
+   },
+   "item_names": [
+    "Chick-fil-A Chicken Sandwich"
+   ],
+   "confidence": 0.95,
+   "latency_s": 4.28,
+   "usage": {
+    "prompt_tokens": 2570,
+    "completion_tokens": 453,
+    "reasoning_tokens": 170,
+    "cost_usd": 0.00362625
+   },
+   "error": null
+  },
+  {
+   "id": "rest-popeyes-classic-sandwich",
+   "tier": "restaurant",
+   "category": "sandwich",
+   "portion_group": null,
+   "truth": {
+    "calories": 700,
+    "protein_g": 28,
+    "carbs_g": 50,
+    "fat_g": 42,
+    "weight_g": null
+   },
+   "predicted": {
+    "calories": 690.0,
+    "protein_g": 29.0,
+    "carbs_g": 52.0,
+    "fat_g": 41.0,
+    "weight_g": 250.0
+   },
+   "item_names": [
+    "Fried Chicken Sandwich"
+   ],
+   "confidence": 0.9,
+   "latency_s": 5.64,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 660,
+    "reasoning_tokens": 378,
+    "cost_usd": 0.0043905
+   },
+   "error": null
+  },
+  {
+   "id": "rest-mcnuggets-10",
+   "tier": "restaurant",
+   "category": "fried_pieces",
+   "portion_group": null,
+   "truth": {
+    "calories": 410,
+    "protein_g": 23,
+    "carbs_g": 26,
+    "fat_g": 24,
+    "weight_g": null
+   },
+   "predicted": {
+    "calories": 420.0,
+    "protein_g": 23.0,
+    "carbs_g": 25.0,
+    "fat_g": 25.0,
+    "weight_g": 170.0
+   },
+   "item_names": [
+    "Chicken McNuggets (10 piece)"
+   ],
+   "confidence": 0.98,
+   "latency_s": 8.57,
+   "usage": {
+    "prompt_tokens": 2579,
+    "completion_tokens": 877,
+    "reasoning_tokens": 589,
+    "cost_usd": 0.005223
+   },
+   "error": null
+  },
+  {
+   "id": "rest-chick-fil-a-nuggets-12",
+   "tier": "restaurant",
+   "category": "fried_pieces",
+   "portion_group": null,
+   "truth": {
+    "calories": 375,
+    "protein_g": 40.5,
+    "carbs_g": 16.5,
+    "fat_g": 16.5,
+    "weight_g": null
+   },
+   "predicted": {
+    "calories": 400.0,
+    "protein_g": 38.0,
+    "carbs_g": 16.0,
+    "fat_g": 20.0,
+    "weight_g": 190.0
+   },
+   "item_names": [
+    "Fried chicken breast nuggets"
+   ],
+   "confidence": 0.9,
+   "latency_s": 8.06,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 1206,
+    "reasoning_tokens": 919,
+    "cost_usd": 0.006438
+   },
+   "error": null
+  },
+  {
+   "id": "rest-mcdonalds-hash-brown",
+   "tier": "restaurant",
+   "category": "side",
+   "portion_group": null,
+   "truth": {
+    "calories": 140,
+    "protein_g": 2,
+    "carbs_g": 18,
+    "fat_g": 8,
+    "weight_g": null
+   },
+   "predicted": {
+    "calories": 145.0,
+    "protein_g": 1.5,
+    "carbs_g": 15.5,
+    "fat_g": 8.5,
+    "weight_g": 58.0
+   },
+   "item_names": [
+    "Hash brown patty"
+   ],
+   "confidence": 0.95,
+   "latency_s": 4.92,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 568,
+    "reasoning_tokens": 276,
+    "cost_usd": 0.0040455
+   },
+   "error": null
+  },
+  {
+   "id": "rest-krispy-kreme-original-glazed",
+   "tier": "restaurant",
+   "category": "pastry",
+   "portion_group": null,
+   "truth": {
+    "calories": 190,
+    "protein_g": 3,
+    "carbs_g": 22,
+    "fat_g": 11,
+    "weight_g": null
+   },
+   "predicted": {
+    "calories": 220.0,
+    "protein_g": 3.0,
+    "carbs_g": 26.0,
+    "fat_g": 12.0,
+    "weight_g": 55.0
+   },
+   "item_names": [
+    "Glazed yeast donut"
+   ],
+   "confidence": 0.95,
+   "latency_s": 5.65,
+   "usage": {
+    "prompt_tokens": 2554,
+    "completion_tokens": 638,
+    "reasoning_tokens": 335,
+    "cost_usd": 0.004308
+   },
+   "error": null
+  }
+ ]
+}

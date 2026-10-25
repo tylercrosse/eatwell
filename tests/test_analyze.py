@@ -112,6 +112,19 @@ def test_image_wrapper_includes_context_when_provided(monkeypatch):
     assert "User context: extra rice" in text
 
 
+def test_wrapper_sends_reasoning_effort_only_when_configured(monkeypatch):
+    fake_client = _FakeClient([_resp(_msg(content=_FAKE.model_dump_json()))] * 2)
+    monkeypatch.setattr(openrouter, "_client", lambda settings: fake_client)
+
+    for effort in ("low", ""):
+        settings = Settings(openrouter_api_key="k", openrouter_reasoning_effort=effort)
+        asyncio.run(openrouter.analyze_food_image(b"image", settings))
+
+    low, unset = fake_client.chat.completions.calls
+    assert low["extra_body"] == {"reasoning": {"effort": "low"}}
+    assert unset["extra_body"] is None
+
+
 def test_image_wrapper_omits_empty_context(monkeypatch):
     fake_client = _FakeClient([_resp(_msg(content=_FAKE.model_dump_json()))])
     monkeypatch.setattr(openrouter, "_client", lambda settings: fake_client)
