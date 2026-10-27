@@ -15,11 +15,16 @@ RUN npm run build
 FROM python:3.12-slim
 WORKDIR /app
 
-# Install runtime deps + the app package straight from pyproject, so the image always
-# matches the declared dependencies (no hardcoded list to keep in sync).
-COPY pyproject.toml ./
+# Install the exact dependency versions from uv.lock (the set the tests ran against), then
+# the app package itself without re-resolving. Installing from pyproject's ranges let a
+# rebuild silently pick up new major/minor versions (sqlmodel 0.0.48 broke /api/entries).
+COPY pyproject.toml uv.lock ./
 COPY app/ ./app/
-RUN pip install --no-cache-dir .
+RUN pip install --no-cache-dir uv==0.5.18 \
+    && uv export --frozen --no-dev --no-emit-project --no-hashes -o /tmp/requirements.txt \
+    && pip install --no-cache-dir -r /tmp/requirements.txt \
+    && pip install --no-cache-dir --no-deps . \
+    && pip uninstall -y uv && rm /tmp/requirements.txt
 
 # Operational scripts. Not importable as part of the package, but needed on the machine:
 # manage_invites.py is how you get back in if a bad guest list locks everyone out.
